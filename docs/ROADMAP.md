@@ -39,7 +39,7 @@ the missing forward half.
 | 4 | Master data and entity resolution | In-Ash resolution over CDM resources | 🟡 Partial | [ADR 0054](adr/0054-mdm-stewardship-is-system-one.md) |
 | 4 | Performance at enterprise data volumes | A seeded large tenant and a query budget | 🔵 Planned | — |
 | 4 | SBOM and build provenance | CycloneDX SBOM; attested builds | 🔵 Planned | — |
-| 4 | Zero-downtime deploys and reversible migrations | Expand/contract, proven by a two-version test | 🔵 Planned | — |
+| 4 | Zero-downtime deploys and reversible migrations | Expand/contract, proven by a two-version test | 🟡 Partial | — |
 <!-- roadmap:items:end -->
 
 Generated from [`roadmap.json`](roadmap.json). Edit the JSON, not the table.

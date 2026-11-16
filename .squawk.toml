@@ -1,0 +1,5 @@
+# Squawk, the migration SQL linter (scripts/migration-lint.sh, q43). Every rule runs and
+# warns; the blocking subset is named in scripts/migration-lint.sh, because Squawk itself
+# fails on any rule that fires and Ash codegen trips the lock-time ones on every migration.
+# Postgres 18 is what CI and a deployment run.
+pg_version = "18.0"

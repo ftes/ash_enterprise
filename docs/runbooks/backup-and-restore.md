@@ -74,6 +74,9 @@ A restore brings back what the dump held. Erasure keys are rows like any other: 
 taken is unshredded by the restore (its wrapped key is back), so shred it again after restoring
 (`docs/runbooks/crypto-shredding.md`).
 
+A rollback of a schema change, and rehearsing one on the restored copy (`--rollback-to`), is in
+`docs/runbooks/deploy-and-rollback.md`.
+
 ## Retention: ninety days hot, never purged before four hundred
 
 `AshEnterprise.Audit.RetentionWorker` runs daily (`config/config.exs` crontab).

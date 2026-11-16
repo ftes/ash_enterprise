@@ -36,12 +36,20 @@ defmodule AshEnterprise.Release do
   Runs all pending migrations.
 
   Safe to run on every deploy: `Ecto.Migrator` skips what has already run.
-  """
-  def migrate do
-    load_app()
 
-    for repo <- repos() do
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+  Options, for tooling around the release rather than for a deploy:
+
+    * `:repos` -- the repos to migrate; every repo in `:ecto_repos` by default.
+    * `:to` -- migrate up to and including this version instead of everything pending.
+    * `:migrations_path` -- a directory of migrations instead of the repo's own.
+    * `:migrator_opts` -- more options for `Ecto.Migrator.run/4`.
+  """
+  def migrate(opts \\ []) do
+    load_app()
+    direction_opts = if opts[:to], do: [to: opts[:to]], else: [all: true]
+
+    for repo <- Keyword.get(opts, :repos, repos()) do
+      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &run(&1, :up, direction_opts, opts))
     end
 
     :ok
@@ -53,11 +61,24 @@ defmodule AshEnterprise.Release do
   Deliberately requires an explicit version rather than defaulting to "one
   step". A rollback is a decision someone should have to state precisely, at
   3am, in a command they can read back to a colleague.
+
+  `version` is rolled back too: `rollback(repo, 20261101000000)` reverses that
+  migration and everything after it, and leaves the one before it applied.
+  `opts` are `:migrations_path` and `:migrator_opts`, as for `migrate/1`.
   """
-  def rollback(repo, version) do
+  def rollback(repo, version, opts \\ []) do
     load_app()
-    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &run(&1, :down, [to: version], opts))
     :ok
+  end
+
+  defp run(repo, direction, direction_opts, opts) do
+    migrator_opts = Keyword.merge(direction_opts, Keyword.get(opts, :migrator_opts, []))
+
+    case opts[:migrations_path] do
+      nil -> Ecto.Migrator.run(repo, direction, migrator_opts)
+      path -> Ecto.Migrator.run(repo, path, direction, migrator_opts)
+    end
   end
 
   @doc """

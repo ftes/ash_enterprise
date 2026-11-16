@@ -24,6 +24,14 @@ defmodule Mix.Tasks.AshEnterprise.Backup.Drill do
   4. **Report** the dump's size and SHA-256, how long the dump and the restore took, and
      what was checked. `--json PATH` also writes the report as JSON.
 
+  5. **Rehearse a rollback on the copy** (`--rollback-to VERSION`, or `latest` for the newest
+     applied migration). On the restored copy only, never the source, the migrator rolls back
+     to VERSION (VERSION is rolled back too) and applies everything again, and every table's
+     row count is compared with the restored copy's. A `down` that destroys rows, or leaves the
+     replay with a different count, fails the drill: that is the honest answer to "can this
+     deploy be rolled back on our data". The source's `schema_migrations` is read before and
+     after and must not change.
+
   Exits non-zero, keeping the restored database for inspection, when any count differs or a
   chain has a finding. Otherwise the restored database is dropped (`--keep` keeps it) and the
   dump is deleted unless `--dump PATH` names where to keep it.
@@ -39,7 +47,7 @@ defmodule Mix.Tasks.AshEnterprise.Backup.Drill do
 
   @requirements ["app.config"]
 
-  @switches [keep: :boolean, dump: :string, json: :string]
+  @switches [keep: :boolean, dump: :string, json: :string, rollback_to: :string]
 
   @impl Mix.Task
   def run(argv) do
@@ -67,6 +75,7 @@ defmodule Mix.Tasks.AshEnterprise.Backup.Drill do
     keep? = opts[:keep] == true
 
     {:ok, admin} = Postgrex.start_link(conn)
+    source_versions = applied_versions(admin)
 
     {dump_ms, counts} = :timer.tc(fn -> dump_from_snapshot(admin, conn, path) end, :millisecond)
 
@@ -81,21 +90,112 @@ defmodule Mix.Tasks.AshEnterprise.Backup.Drill do
 
     {verify_ms, chains} = :timer.tc(fn -> verify_chains(target) end, :millisecond)
 
-    checks = compare(counts, restored, chains)
+    rollback = rollback_rehearsal(opts[:rollback_to], target, restored)
+    checks = counts |> compare(restored, chains) |> add_rollback(rollback)
     kept? = keep? or checks.status != "ok"
 
     unless kept?,
       do: Postgrex.query!(admin, ~s[DROP DATABASE IF EXISTS "#{target}" WITH (FORCE)], [])
 
+    source_untouched? = applied_versions(admin) == source_versions
     GenServer.stop(admin)
 
-    Map.merge(checks, %{
+    Map.merge(add_source_check(checks, source_untouched?), %{
       source: source,
       restored_into: target,
       restored_kept: kept?,
       dump: dump_report(path, opts[:dump]),
       timings_ms: %{dump: dump_ms, restore: restore_ms, verify: verify_ms}
     })
+  end
+
+  defp add_source_check(%{status: status} = checks, true), do: %{checks | status: status}
+
+  defp add_source_check(checks, false),
+    do: %{checks | status: "failed"} |> Map.put(:source_migrations_changed, true)
+
+  # Ops tooling reading the migrator's own bookkeeping table: it belongs to no Ash resource,
+  # so there is no action to call.
+  defp applied_versions(conn) do
+    %{rows: rows} =
+      Postgrex.query!(conn, "SELECT version FROM public.schema_migrations ORDER BY 1", [])
+
+    List.flatten(rows)
+  end
+
+  defp add_rollback(checks, nil), do: checks
+
+  defp add_rollback(checks, rollback) do
+    status = if rollback.mismatches == [], do: checks.status, else: "failed"
+    checks |> Map.put(:rollback, rollback) |> Map.put(:status, status)
+  end
+
+  # Rolls the COPY back to `to` and forward again with the application's own migrator, on a
+  # dynamic repo pointed at the copy, and compares row counts with the restored copy's. The
+  # source database is never given to the migrator.
+  defp rollback_rehearsal(nil, _target, _restored), do: nil
+
+  defp rollback_rehearsal(to, target, restored) do
+    {:ok, repo} =
+      AshEnterprise.Repo.start_link(
+        name: nil,
+        database: target,
+        pool: DBConnection.ConnectionPool,
+        pool_size: 2,
+        log: false
+      )
+
+    AshEnterprise.Repo.put_dynamic_repo(repo)
+
+    try do
+      repo_opts = [dynamic_repo: repo]
+      path = Ecto.Migrator.migrations_path(AshEnterprise.Repo)
+
+      applied =
+        for {:up, v, _} <- Ecto.Migrator.migrations(AshEnterprise.Repo, [path], repo_opts), do: v
+
+      version = rollback_version(to, applied)
+
+      rolled_back =
+        Ecto.Migrator.run(AshEnterprise.Repo, :down, [to: version] ++ repo_opts)
+
+      after_down =
+        Enum.map(
+          Ecto.Migrator.migrations(AshEnterprise.Repo, [path], repo_opts),
+          &elem(&1, 0)
+        )
+
+      replayed = Ecto.Migrator.run(AshEnterprise.Repo, :up, [all: true] ++ repo_opts)
+      {:ok, copy} = Postgrex.start_link(Keyword.put(connection_opts(), :database, target))
+      after_replay = count_rows(copy)
+      GenServer.stop(copy)
+
+      mismatches =
+        for {table, rows} <- restored, Map.get(after_replay, table) != rows do
+          %{table: table, restored: rows, after_replay: Map.get(after_replay, table)}
+        end
+
+      %{
+        to: version,
+        rolled_back: length(rolled_back),
+        replayed: length(replayed),
+        pending_after_down: Enum.count(after_down, &(&1 == :down)),
+        mismatches: mismatches
+      }
+    after
+      AshEnterprise.Repo.put_dynamic_repo(AshEnterprise.Repo)
+      Supervisor.stop(repo)
+    end
+  end
+
+  defp rollback_version("latest", applied), do: Enum.max(applied)
+
+  defp rollback_version(version, applied) do
+    version = String.to_integer(version)
+
+    if version in applied,
+      do: version,
+      else: Mix.raise("--rollback-to #{version} is not an applied migration of the restored copy")
   end
 
   defp compare(counts, restored, chains) do
@@ -256,6 +356,21 @@ defmodule Mix.Tasks.AshEnterprise.Backup.Drill do
       tables, rows      #{report.tables} tables, #{report.rows} rows; #{length(report.mismatches)} count mismatch(es)
       audit chains      #{report.chains} chain(s), #{report.events_verified} event(s), #{report.chain_findings} finding(s)
     """)
+
+    if r = report[:rollback] do
+      Mix.shell().info(
+        "  rollback to #{r.to}  #{r.rolled_back} migration(s) rolled back on the copy, #{r.replayed} replayed, #{length(r.mismatches)} count difference(s)"
+      )
+
+      for m <- r.mismatches,
+          do:
+            Mix.shell().error(
+              "  #{m.table}: #{m.restored} restored, #{inspect(m.after_replay)} after replay"
+            )
+    end
+
+    if report[:source_migrations_changed],
+      do: Mix.shell().error("  the source database's schema_migrations changed during the drill")
 
     for m <- report.mismatches do
       Mix.shell().error(

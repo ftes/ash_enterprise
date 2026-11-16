@@ -1,0 +1,41 @@
+{
+  "_comment": "Contract steps: a migration newer than the reversibility floor that trips a blocking Squawk rule on purpose (the last step of expand/contract, when no running node still reads what it removes). One entry per version and rule: {\"version\": \"20261201000000\", \"rule\": \"ban-drop-column\", \"ticket\": \"ECL-1\", \"reason\": \"one line: why no old node needs it\"}. Review signs an entry, in the commit or PR that adds it. See docs/runbooks/deploy-and-rollback.md.",
+  "steps": [
+    {
+      "version": "20261105205717",
+      "rule": "adding-required-field",
+      "ticket": "ECL-49",
+      "reason": "applied (deployed) before this lint existed; acknowledged at its adoption, so that it holds only what is added after it"
+    },
+    {
+      "version": "20261105205717",
+      "rule": "changing-column-type",
+      "ticket": "ECL-49",
+      "reason": "applied (deployed) before this lint existed; acknowledged at its adoption, so that it holds only what is added after it"
+    },
+    {
+      "version": "20261109160000",
+      "rule": "ban-drop-table",
+      "ticket": "ECL-49",
+      "reason": "applied (deployed) before this lint existed; acknowledged at its adoption, so that it holds only what is added after it"
+    },
+    {
+      "version": "20261109214308",
+      "rule": "changing-column-type",
+      "ticket": "ECL-49",
+      "reason": "applied (deployed) before this lint existed; acknowledged at its adoption, so that it holds only what is added after it"
+    },
+    {
+      "version": "20261112150122",
+      "rule": "ban-drop-column",
+      "ticket": "ECL-49",
+      "reason": "applied (deployed) before this lint existed; acknowledged at its adoption, so that it holds only what is added after it"
+    },
+    {
+      "version": "20261112162250",
+      "rule": "ban-drop-column",
+      "ticket": "ECL-49",
+      "reason": "applied (deployed) before this lint existed; acknowledged at its adoption, so that it holds only what is added after it"
+    }
+  ]
+}

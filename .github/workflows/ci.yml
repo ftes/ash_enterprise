@@ -215,6 +215,18 @@ jobs:
       - name: Migrations replay into a non-public schema
         run: scripts/schema-portable-migrations.sh
 
+      # q43: every migration newer than priv/repo/REVERSIBLE_SINCE rolls back through
+      # AshEnterprise.Release.rollback/3 and replays to the schema it replays. The script
+      # proves itself on fixture migrations first. docs/runbooks/deploy-and-rollback.md.
+      - name: Migrations roll back and replay
+        run: scripts/migration-round-trip.sh
+
+      # q43: Squawk (pinned in the script) over the SQL of those migrations; dropping or
+      # renaming, retyping, or adding a required column blocks unless a contract step is
+      # acknowledged in priv/repo/migration-contract-steps.json.
+      - name: Migration SQL lint (Squawk)
+        run: scripts/migration-lint.sh
+
       # The agent-facing gate: every relative link in the composed AGENTS.md
       # still resolves, and the semantic manifests (once any exist) still parse
       # with valid ash:v0 symbol ids. The contract step inside it needs
@@ -533,8 +545,13 @@ jobs:
           mix ash.setup
           mix ash_enterprise.seed
 
+      # --rollback-to latest: on the restored copy, roll the newest migration back and apply
+      # it again, and compare row counts (docs/runbooks/deploy-and-rollback.md).
       - name: Backup and restore drill
-        run: scripts/backup-restore-drill --json "${{ runner.temp }}/drill.json"
+        run: scripts/backup-restore-drill --rollback-to latest --json "${{ runner.temp }}/drill.json"
+
+      - name: Drill rollback test
+        run: mix test --only backup_drill test/mix/tasks/ash_enterprise_backup_drill_test.exs
 
       - name: Drill report
         if: always()

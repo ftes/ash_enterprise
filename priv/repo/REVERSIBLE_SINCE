@@ -1,0 +1,10 @@
+# The reversibility floor (q43): every migration NEWER than the version on a line must
+# reverse through AshEnterprise.Release.rollback/3 and replay to the same schema.
+# scripts/migration-round-trip.sh holds them to it in CI.
+#
+#   <repo> <version>
+#
+# The floor only moves up when a newer migration's down is found not to be an inverse
+# (fix it before it ships, do not raise the floor), and only moves down by making older
+# downs pass. Why each line is where it is: docs/runbooks/deploy-and-rollback.md.
+AshEnterprise.Repo 20261105033324

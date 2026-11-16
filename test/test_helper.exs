@@ -14,9 +14,13 @@ else
   # with `--only in_zone_live` and S1_GEN_BASE_URL / S1_GEN_MODEL set.
   # `:durability` runs only under `mix test.durability`, which switches the
   # whole run off the sandbox (docs/DURABILITY-TESTS.md).
+  # `:backup_drill` dumps and restores the test database, which needs pg_dump no older than
+  # the server; CI runs it in the backup-restore-drill job with `mix test --only backup_drill`.
   # `:scale` seeds 50,000 rows to hold the page budget; CI runs it as its own job
   # with `mix test --only scale` (test/ash_enterprise/scale/).
-  ExUnit.configure(exclude: [:instrument_contract, :in_zone_live, :durability, :scale])
+  ExUnit.configure(
+    exclude: [:instrument_contract, :in_zone_live, :durability, :scale, :backup_drill]
+  )
 
   Ecto.Adapters.SQL.Sandbox.mode(AshEnterprise.Repo, :manual)
   # The evidence substrate's repo rides the same test database (AST-152); its

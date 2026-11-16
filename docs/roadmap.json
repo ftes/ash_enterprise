@@ -458,7 +458,7 @@
       "id": "q43",
       "section": "change",
       "question": "Can a deploy happen without downtime, and can a migration be reversed?",
-      "answer": "Partial. Every generated migration has a `down`, and `ash_strangler`'s four-phase cutover is built precisely so a legacy migration can be reversed at any phase. What is untested is the app's own rolling deploy: nothing proves an old and a new node can serve the same schema at once, which is the property zero-downtime actually needs.",
+      "answer": "Partial. Every generated migration has a `down`, and `ash_strangler`'s four-phase cutover is built precisely so a legacy migration can be reversed at any phase. The reversible half is now checked, not assumed: every migration newer than a recorded floor (`priv/repo/REVERSIBLE_SINCE`) rolls back through the release's `AshEnterprise.Release.rollback/3` and replays to the same schema in CI (`scripts/migration-round-trip.sh`, which first proves it can fail on fixture migrations), a pinned Squawk reads the SQL of those migrations and blocks dropping or renaming a column or table, changing a column type and adding a required column unless a contract step is acknowledged with a reason (`scripts/migration-lint.sh`), and the backup drill can roll the newest migration back and forward on a restored copy and compare row counts (`--rollback-to`; `docs/runbooks/deploy-and-rollback.md`). Older migrations sit below the floor: their generated `down` bodies were never run and are not claimed. What is still untested is the app's own rolling deploy: nothing proves an old and a new node can serve the same schema at once, which is the property zero-downtime actually needs, and a single node restarted on deploy cannot show it.",
       "status": "partial",
       "item": "deploys"
     },
@@ -802,8 +802,8 @@
       "title": "Zero-downtime deploys and reversible migrations",
       "priority": 4,
       "choice": "Expand/contract, proven by a two-version test",
-      "status": "planned",
-      "effort": "Every migration already has a `down`. What is missing is a test that an old and a new node can serve the same schema simultaneously, which is what zero-downtime actually requires and what `down` alone does not give.",
+      "status": "partial",
+      "effort": "Reversibility is checked: every migration newer than a recorded floor rolls back through the release's rollback call and replays to the same schema in CI, Squawk blocks the SQL that breaks a node still running the previous release, and the backup drill can roll the newest migration back on a restored copy. What is missing is a test that an old and a new node can serve the same schema simultaneously, which is what zero-downtime actually requires; a single node restarted on deploy cannot show it.",
       "bar": "Not applicable. Named because 'reversible migrations' is on every enterprise checklist and this repository can currently only claim half of it."
     },
     {
