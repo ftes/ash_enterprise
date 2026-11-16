@@ -342,7 +342,7 @@ defmodule AshEnterprise.Mdm.People.Pipeline do
     exact =
       if email do
         Person
-        |> Ash.Query.filter(email == ^email)
+        |> Ash.Query.filter(email_bidx == ^AshEnterprise.Erasure.BlindIndex.of(tenant, email))
         |> Ash.read!(tenant: tenant, actor: system, authorize?: true)
       else
         []

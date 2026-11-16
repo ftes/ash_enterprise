@@ -33,8 +33,11 @@ defmodule AshEnterprise.Mdm.DemoDataTest do
     assert counts.merged >= 1
 
     assert Person
-           |> Ash.Query.filter(email == ^"nadia@x.io")
-           |> Ash.exists?(tenant: org, authorize?: false)
+           |> Ash.Query.for_read(:by_address, %{email: "nadia@x.io"},
+             tenant: org,
+             authorize?: false
+           )
+           |> Ash.exists?()
 
     candidate =
       MatchCandidate

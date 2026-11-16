@@ -94,8 +94,11 @@ defmodule AshEnterpriseWeb.TimeTravelLive do
 
   defp search(query, ""), do: query
 
-  defp search(query, q),
-    do: Ash.Query.filter(query, contains(name, ^q) or contains(email, ^q))
+  # Addresses are sealed: matched whole, through their blind index.
+  defp search(query, q) do
+    address = AshEnterprise.Erasure.BlindIndex.of(query.tenant, q)
+    Ash.Query.filter(query, contains(name, ^q) or email_bidx == ^address)
+  end
 
   defp load_person(socket, id, as_of) do
     case person_history(socket, id) do

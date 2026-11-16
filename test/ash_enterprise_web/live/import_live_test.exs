@@ -176,8 +176,11 @@ defmodule AshEnterpriseWeb.ImportLiveTest do
     assert candidate != nil
 
     assert Person
-           |> Ash.Query.filter(email == ^"nadia@x.io")
-           |> Ash.exists?(tenant: org, authorize?: false)
+           |> Ash.Query.for_read(:by_address, %{email: "nadia@x.io"},
+             tenant: org,
+             authorize?: false
+           )
+           |> Ash.exists?()
   end
 
   test "an existing active mapping is selectable and runs end to end", %{

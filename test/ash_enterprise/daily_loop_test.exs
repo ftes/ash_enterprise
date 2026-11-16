@@ -69,19 +69,24 @@ defmodule AshEnterprise.DailyLoopTest do
   end
 
   describe "people" do
-    test "the directory digest searches by name or address and counts their events" do
+    test "the directory digest searches by name or whole address and counts their events" do
       ctx = tenant!()
       event!(ctx, "Planning", 10, 30, organizer: {"ada@example.test", "Ada Park"})
       person!(ctx, "grace@example.test", "Grace Hopper")
 
-      assert {:ok, text} = Console.people("ada", opts(ctx))
-      assert text =~ "Ada Park  <ada@example.test>  · 1 events"
-      refute text =~ "Grace"
+      # Addresses are sealed: a part of one finds nobody, a whole one does.
+      assert {:ok, "People matching \"ada@example\" — nobody."} =
+               Console.people("ada@example", opts(ctx))
+
+      for search <- ["Ada", "ADA@example.test"] do
+        assert {:ok, text} = Console.people(search, opts(ctx))
+        assert text =~ "Ada Park  <ada@example.test>  · 1 events"
+        refute text =~ "Grace"
+      end
 
       [ada] =
         Person
-        |> Ash.Query.for_read(:read, %{}, opts(ctx))
-        |> Ash.Query.filter(email == "ada@example.test")
+        |> Ash.Query.for_read(:by_address, %{email: "ada@example.test"}, opts(ctx))
         |> Ash.Query.load([:next_event, :organized_event_count])
         |> Ash.read!()
 

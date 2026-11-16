@@ -68,8 +68,8 @@ defmodule AshEnterprise.Mdm.People.Adapter do
   def observe(tenant) do
     people =
       Person
-      |> Ash.Query.filter(merged == false and not is_nil(email))
-      |> Ash.Query.select([:id, :name, :email])
+      |> Ash.Query.filter(merged == false and not is_nil(email_bidx))
+      |> Ash.Query.select([:id, :name])
       |> Ash.read!(tenant: tenant, authorize?: false)
 
     ids = Enum.map(people, & &1.id)

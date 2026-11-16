@@ -20,7 +20,7 @@ defmodule AshEnterprise.Mdm.Changes.AssertFromSource do
       Ash.Changeset.after_action(changeset, fn changeset, person ->
         values = %{
           "name" => Ash.Changeset.get_attribute(changeset, :name),
-          "email" => Ash.Changeset.get_attribute(changeset, :email)
+          "email" => Ash.Changeset.get_argument(changeset, :email)
         }
 
         AshEnterprise.Mdm.Refold.assert_from_source!(

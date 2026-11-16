@@ -248,8 +248,8 @@ defmodule AshEnterprise.Canonical.Projections.CalendarTest do
 
     people =
       Person
-      |> Ash.Query.sort(:email)
       |> Ash.read!(tenant: org.id, authorize?: false)
+      |> Enum.sort_by(&to_string(&1.email))
       |> Enum.map(&{&1.id, to_string(&1.email), &1.name})
 
     {events, people}

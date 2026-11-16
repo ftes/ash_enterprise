@@ -104,7 +104,7 @@ defmodule AshEnterprise.Canonical.Projections.Gmail do
 
   alias AshEnterprise.Canonical.{Conversation, Message, Person}
   alias AshEnterprise.Canonical.Projections.{Golden, Write, ZoneGate}
-  alias AshEnterprise.Erasure.{LiveScope, Shredded}
+  alias AshEnterprise.Erasure.{BlindIndex, LiveScope, Shredded}
   alias AshEnterprise.Ingestion.SourceObject
   alias AshEnterprise.Integration.Gmail.Sync
   alias AshEnterprise.Integration.LinkedAccount
@@ -437,7 +437,7 @@ defmodule AshEnterprise.Canonical.Projections.Gmail do
 
   defp existing_person(email, context) do
     case Person.read(
-           query: [filter: [email: email], limit: 1],
+           query: [filter: [email_bidx: BlindIndex.of(context.tenant_id, email)], limit: 1],
            tenant: context.tenant_id,
            authorize?: false
          ) do
@@ -463,7 +463,7 @@ defmodule AshEnterprise.Canonical.Projections.Gmail do
     # call in AshEnterprise.Canonical.Projection.
     |> Write.create(
       upsert?: true,
-      upsert_identity: :unique_email,
+      upsert_identity: :unique_email_bidx,
       # The fold writes the name: this source's is a statement, not the answer.
       upsert_fields: []
     )

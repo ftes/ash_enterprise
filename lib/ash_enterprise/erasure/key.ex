@@ -94,6 +94,12 @@ defmodule AshEnterprise.Erasure.Key do
       filter expr(scope_id == ^arg(:scope_id))
     end
 
+    read :for_scopes do
+      description "The keys of every scope in `scope_ids`: one query for a page of sealed values."
+      argument :scope_ids, {:array, :uuid}, allow_nil?: false
+      filter expr(scope_id in ^arg(:scope_ids))
+    end
+
     create :issue do
       accept [:scope_id, :wrapped_key, :fingerprint, :master_key_id]
     end
@@ -112,6 +118,7 @@ defmodule AshEnterprise.Erasure.Key do
 
   code_interface do
     define :for_scope, args: [:scope_id], not_found_error?: false
+    define :for_scopes, args: [:scope_ids]
     define :issue
     define :destroy_for_shred
   end

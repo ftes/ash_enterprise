@@ -234,7 +234,7 @@ defmodule AshEnterprise.Canonical.Projection do
     # before this comment existed to prevent exactly that regression.
     |> Ash.create!(
       upsert?: true,
-      upsert_identity: :unique_email,
+      upsert_identity: :unique_email_bidx,
       # The fold writes the name: this source's is a statement, not the answer.
       upsert_fields: []
     )

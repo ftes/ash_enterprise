@@ -146,13 +146,13 @@ defmodule AshEnterprise.Mdm.LineageTest do
 
     merged_golden =
       AshEnterprise.Canonical.Person
-      |> Ash.Query.filter(email == ^"ann@x.io")
-      |> Ash.read_one!(tenant: org, authorize?: false)
+      |> Ash.Query.for_read(:by_address, %{email: "ann@x.io"}, tenant: org, authorize?: false)
+      |> Ash.read_one!()
 
     new_golden =
       AshEnterprise.Canonical.Person
-      |> Ash.Query.filter(email == ^"nadia@x.io")
-      |> Ash.read_one!(tenant: org, authorize?: false)
+      |> Ash.Query.for_read(:by_address, %{email: "nadia@x.io"}, tenant: org, authorize?: false)
+      |> Ash.read_one!()
 
     steward_xref =
       SourceIdentity

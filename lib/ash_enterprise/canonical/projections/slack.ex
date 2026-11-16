@@ -87,9 +87,9 @@ defmodule AshEnterprise.Canonical.Projections.Slack do
   (`replay/3` reads them through the decrypting path), or `SourceRecord`s with
   `erasure_scope_id:` in the options. A record whose scope has been shredded
   reads as `AshEnterprise.Erasure.Shredded` and projects nothing; a record
-  with no scope is never projected. `Person` rows are not sealed (their name
-  and email are `sensitive?`, so the audit log records them as `nil`), so
-  each is written only while its member record's scope is live, checked under
+  with no scope is never projected. `Person` rows are not under the
+  connection's scope (a person's address is sealed under their own, and their
+  name is `sensitive?`), so each is written only while its member record's scope is live, checked under
   a lock a shred waits for (`AshEnterprise.Erasure.LiveScope`).
 
   ## People another user owns
@@ -113,7 +113,7 @@ defmodule AshEnterprise.Canonical.Projections.Slack do
 
   alias AshEnterprise.Canonical.{Conversation, Message, Person}
   alias AshEnterprise.Canonical.Projections.{Golden, Write, ZoneGate}
-  alias AshEnterprise.Erasure.{LiveScope, Shredded}
+  alias AshEnterprise.Erasure.{BlindIndex, LiveScope, Shredded}
   alias AshEnterprise.Ingestion.SourceObject
   alias AshEnterprise.Integration.LinkedAccount
   alias AshEnterprise.Integration.Slack.Records
@@ -394,7 +394,9 @@ defmodule AshEnterprise.Canonical.Projections.Slack do
     owner_id = context.owner_id
 
     Person
-    |> Ash.Query.filter(email in ^emails and owner_id == ^owner_id)
+    |> Ash.Query.filter(
+      email_bidx in ^BlindIndex.all(context.tenant_id, emails) and owner_id == ^owner_id
+    )
     |> Ash.read!(tenant: context.tenant_id, authorize?: false)
     |> Enum.flat_map(fn person ->
       case Map.fetch(by_email, person.email |> to_string() |> String.downcase()) do
@@ -468,7 +470,7 @@ defmodule AshEnterprise.Canonical.Projections.Slack do
 
   defp existing_person(email, context) do
     Person
-    |> Ash.Query.filter(email == ^email)
+    |> Ash.Query.filter(email_bidx == ^BlindIndex.of(context.tenant_id, email))
     |> Ash.read_one(tenant: context.tenant_id, authorize?: false)
     |> case do
       {:ok, person} -> {:ok, person}
@@ -506,7 +508,7 @@ defmodule AshEnterprise.Canonical.Projections.Slack do
     # silently becomes an insert.
     |> Write.create(
       upsert?: true,
-      upsert_identity: :unique_email,
+      upsert_identity: :unique_email_bidx,
       # A stated name is the fold's to write; it is not the answer on its own.
       upsert_fields: if(name in [nil, ""] or context.statement_observed_at, do: [], else: [:name])
     )

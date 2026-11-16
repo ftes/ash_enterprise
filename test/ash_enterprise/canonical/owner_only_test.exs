@@ -203,7 +203,7 @@ defmodule AshEnterprise.Canonical.OwnerOnlyTest do
         Map.merge(owner_attrs, %{email: "contact-#{unique}@owner-only.synthetic.test"}),
         opts
       )
-      |> Ash.create!(upsert?: true, upsert_identity: :unique_email, upsert_fields: [])
+      |> Ash.create!(upsert?: true, upsert_identity: :unique_email_bidx, upsert_fields: [])
 
     conversation =
       Conversation.upsert_from_source!(

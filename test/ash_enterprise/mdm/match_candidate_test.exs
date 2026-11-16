@@ -93,8 +93,8 @@ defmodule AshEnterprise.Mdm.MatchCandidateTest do
     # golden was minted.
     people =
       AshEnterprise.Canonical.Person
-      |> Ash.Query.filter(email == ^"ann2@x.io")
-      |> Ash.read!(tenant: org, authorize?: false)
+      |> Ash.Query.for_read(:by_address, %{email: "ann2@x.io"}, tenant: org, authorize?: false)
+      |> Ash.read!()
 
     assert length(people) == 1
     assert hd(people).id == golden.id

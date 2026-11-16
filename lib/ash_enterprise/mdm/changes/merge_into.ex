@@ -18,18 +18,24 @@ defmodule AshEnterprise.Mdm.Changes.MergeInto do
   `"source"` and `"assertion_id"`. With them, the deciding rule set
   (`"rule_set_id"`, `"rule_set_content_hash"`, both nil under the default) and
   `"assertions_folded"`, which tells the unmerge this merge's statements exist.
+
+  The loser's prior address is recorded sealed under the loser's own erasure
+  scope (`"prior_email_sealed"`, `AshEnterprise.Canonical.PersonSeal`), and
+  the merged values are not recorded at all: the refold recomputes them, and
+  a plaintext copy here would outlive the person's erasure.
   """
 
   use Ash.Resource.Change
   require Ash.Query
 
+  alias AshEnterprise.Canonical.PersonSeal
   alias AshEnterprise.Mdm.Refold
 
   @impl true
   def change(changeset, _opts, _context) do
     # Order matters inside the one transaction: the loser's row releases
-    # its unique email FIRST (this update), and only then does the
-    # survivor inherit — the reverse order violates unique_email.
+    # its unique address FIRST (this update), and only then does the
+    # survivor inherit — the reverse order violates unique_email_bidx.
     changeset
     |> Ash.Changeset.before_action(&stage_loser/1)
     |> Ash.Changeset.after_action(&inherit/2)
@@ -102,7 +108,7 @@ defmodule AshEnterprise.Mdm.Changes.MergeInto do
       |> Enum.map(& &1.id)
 
     # The loser's address is released only when the survivor takes it
-    # (unique_email). Otherwise the loser keeps it, so the next
+    # (unique_email_bidx). Otherwise the loser keeps it, so the next
     # projection of that address still finds this row — and links its
     # golden (`Canonical.Projections.Golden`) instead of minting a
     # duplicate the merge already resolved.
@@ -111,19 +117,8 @@ defmodule AshEnterprise.Mdm.Changes.MergeInto do
     # Meetings, messages and conversations follow the person (PROD-9).
     joins = AshEnterprise.Mdm.PersonJoins.plan(tenant, loser.id, survivor.id)
 
-    changeset
-    |> Ash.Changeset.set_context(%{
-      mdm_merge: %{
-        survivor_id: survivor.id,
-        merged_attrs: merged_attrs,
-        moved_identity_ids: moved_identity_ids,
-        prior_email: prior_email,
-        joins: joins
-      }
-    })
-    |> Ash.Changeset.force_change_attribute(:merge_provenance, %{
+    provenance = %{
       "survivor_id" => survivor.id,
-      "merged_attrs" => merged_attrs,
       "moved_identity_ids" => moved_identity_ids,
       "prior_email" => prior_email,
       "joins" => joins,
@@ -131,11 +126,40 @@ defmodule AshEnterprise.Mdm.Changes.MergeInto do
       "assertions_folded" => true,
       "rule_set_id" => rule_set && rule_set.id,
       "rule_set_content_hash" => rule_set && rule_set.content_hash
-    })
-    |> Ash.Changeset.force_change_attribute(:merged, true)
-    |> Ash.Changeset.force_change_attribute(:master_id, survivor.id)
-    |> release_email(prior_email)
+    }
+
+    case PersonSeal.seal_provenance(loser, provenance) do
+      {:ok, sealed_provenance} ->
+        changeset
+        |> Ash.Changeset.set_context(%{
+          mdm_merge: %{
+            survivor_id: survivor.id,
+            merged_attrs: merged_attrs,
+            moved_identity_ids: moved_identity_ids,
+            prior_email: prior_email,
+            joins: joins
+          }
+        })
+        |> loser_scope(loser, prior_email)
+        |> Ash.Changeset.force_change_attribute(:merge_provenance, sealed_provenance)
+        |> Ash.Changeset.force_change_attribute(:merged, true)
+        |> Ash.Changeset.force_change_attribute(:master_id, survivor.id)
+        |> release_email(prior_email)
+
+      {:error, message} ->
+        Ash.Changeset.add_error(changeset, field: :merge_provenance, message: message)
+    end
   end
+
+  # A loser from before the seal has no scope on its row yet; sealing the
+  # prior address just opened it (deterministically, by its id).
+  defp loser_scope(changeset, %{erasure_scope_id: nil} = loser, prior_email)
+       when is_binary(prior_email) do
+    {:ok, scope_id} = PersonSeal.ensure_scope(loser.id)
+    Ash.Changeset.force_change_attribute(changeset, :erasure_scope_id, scope_id)
+  end
+
+  defp loser_scope(changeset, _loser, _prior_email), do: changeset
 
   # The loser's address when the survivor takes it, else nil.
   defp released_email(loser, survivor, merged_attrs) do
@@ -148,8 +172,7 @@ defmodule AshEnterprise.Mdm.Changes.MergeInto do
 
   defp release_email(changeset, nil), do: changeset
 
-  defp release_email(changeset, _email),
-    do: Ash.Changeset.force_change_attribute(changeset, :email, nil)
+  defp release_email(changeset, _email), do: PersonSeal.put_email(changeset, nil)
 
   # Runs after the loser's row committed: its email is released, so the
   # survivor can inherit it without violating unique_email.

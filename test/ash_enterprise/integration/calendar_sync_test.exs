@@ -1191,8 +1191,8 @@ defmodule AshEnterprise.Integration.CalendarSyncTest do
 
   defp people(org) do
     Person
-    |> Ash.Query.sort(:email)
     |> Ash.read!(tenant: org.id, authorize?: false)
+    |> Enum.sort_by(&to_string(&1.email))
   end
 
   defp snapshot(org) do

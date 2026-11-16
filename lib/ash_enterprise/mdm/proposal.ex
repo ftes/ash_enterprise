@@ -81,11 +81,15 @@ defmodule AshEnterprise.Mdm.Proposal do
     end
   end
 
+  # A sealed value (Person's address) is a calculation over its ciphertext,
+  # but a mapping targets it as a field all the same.
   defp public_attributes(module) do
     module
     |> Ash.Resource.Info.attributes()
     |> Enum.reject(&(&1.public? == false))
-    |> Enum.map(&to_string(&1.name))
+    |> Enum.map(& &1.name)
+    |> Enum.concat(AshEnterprise.Erasure.Calculations.Unseal.sealed_fields(module))
+    |> Enum.map(&to_string/1)
   end
 
   # The deterministic floor: normalized exact matches between observed

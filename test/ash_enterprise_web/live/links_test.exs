@@ -119,8 +119,11 @@ defmodule AshEnterpriseWeb.LinksTest do
 
       [ada] =
         Person
-        |> Ash.Query.filter(email == "ada@example.test")
-        |> Ash.read!(actor: ctx.actor, tenant: ctx.tenant)
+        |> Ash.Query.for_read(:by_address, %{email: "ada@example.test"},
+          actor: ctx.actor,
+          tenant: ctx.tenant
+        )
+        |> Ash.read!()
 
       {:ok, view, _html} = live(conn, ctx_path("/app/people", "person", ada.id))
       assert has_element?(view, "#ash-a2ui-surface[phx-hook=AshA2ui]")
@@ -143,8 +146,8 @@ defmodule AshEnterpriseWeb.LinksTest do
 
       [sender] =
         Person
-        |> Ash.Query.filter(email != "ada@example.test")
         |> Ash.read!(actor: ctx.actor, tenant: ctx.tenant)
+        |> Enum.reject(&(to_string(&1.email) == "ada@example.test"))
 
       {:ok, view, _html} = live(conn, ctx_path("/app/people", "person", sender.id))
       [sent] = (view |> pushed() |> data_model())["records"]["sent"]

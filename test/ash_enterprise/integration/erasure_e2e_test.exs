@@ -195,18 +195,34 @@ defmodule AshEnterprise.Integration.ErasureE2ETest do
       assert_no_plaintext(F.content_strings())
     end
 
-    test "a correspondent's name and email outlive a shred in canonical_people (documented gap)",
-         ctx do
+    test "a connection shred leaves the correspondent, sealed under their own scope", ctx do
       account = link_via_task!(ctx, "google-calendar", "conn-cal-people-#{ctx.unique}")
       stub_calendar()
       assert {:ok, _} = perform_job(Calendar.SyncWorker, Calendar.SyncWorker.args(account))
       shred_via_task!(ctx, account)
 
-      # Not sealed (shared across sources, upserted on email); sensitive, so
-      # the audit log never holds them, but the row does.
-      assert Person
-             |> Ash.read!(tenant: ctx.org.id, authorize?: false)
-             |> Enum.any?(&(to_string(&1.email) == "ada@example.test"))
+      # By design: a person is shared across the sources that saw them, so a
+      # connection's shred does not reach them. Their address is sealed under
+      # a scope of their own (erasing the person shreds that), and the row
+      # holds it only as ciphertext.
+      ada =
+        Person.by_address!("ada@example.test", tenant: ctx.org.id, authorize?: false)
+
+      assert to_string(ada.email) == "ada@example.test"
+
+      assert {:ok, %Scope{kind: :data_subject, status: :active, id: scope_id}} =
+               Erasure.scope_by_ref(
+                 :data_subject,
+                 AshEnterprise.Canonical.PersonSeal.scope_ref(ada.id),
+                 authorize?: false
+               )
+
+      assert ada.erasure_scope_id == scope_id
+      refute scope_id == scope!(account).id
+
+      %{rows: rows} = Repo.query!("SELECT row_to_json(p)::text FROM canonical_people p")
+      text = rows |> List.flatten() |> Enum.join("\n")
+      refute_spells(text, ["ada@example.test"], "canonical_people")
 
       assert_no_audit_event_spells(["ada@example.test", "Ada #{F.marker()}"])
     end
@@ -624,9 +640,10 @@ defmodule AshEnterprise.Integration.ErasureE2ETest do
   defp conversations(ctx), do: Conversation.read!(tenant: ctx.org.id, authorize?: false)
 
   # Every table a sync, a projection or a job writes content-bearing data to,
-  # read raw. `canonical_people` is deliberately not here: a correspondent's
-  # name and email are not sealed (runbook, "Not reached"), and the test below
-  # says so rather than pretending otherwise.
+  # read raw. `canonical_people` is deliberately not here: a correspondent is
+  # not under any connection's scope, and their name stays plaintext on the
+  # row (runbook, "Not reached"); the test below sweeps it for their address,
+  # which is sealed under their own scope.
   @swept_tables ~w(ingestion_source_objects canonical_calendar_events canonical_messages
                    canonical_conversations business_events business_simulation_events
                    integration_linked_accounts erasure_scopes

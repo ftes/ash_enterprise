@@ -36,6 +36,7 @@ defmodule AshEnterprise.Mdm.Refold do
   require Ash.Query
 
   alias AshEnterprise.Canonical.Person
+  alias AshEnterprise.Erasure.BlindIndex
   alias AshEnterprise.Mdm.{AttributeAssertion, MatchRuleSet, People}
   alias AshEnterprise.Repo.AdvisoryLock
   alias AshMdm.Assertions
@@ -244,7 +245,7 @@ defmodule AshEnterprise.Mdm.Refold do
   defp drop_taken_email(%{"email" => email} = changes, tenant, golden) when is_binary(email) do
     taken? =
       Person
-      |> Ash.Query.filter(email == ^email and id != ^golden.id)
+      |> Ash.Query.filter(email_bidx == ^BlindIndex.of(tenant, email) and id != ^golden.id)
       |> Ash.exists?(tenant: tenant, authorize?: false)
 
     if taken?, do: Map.delete(changes, "email"), else: changes

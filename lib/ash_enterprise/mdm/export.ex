@@ -39,6 +39,7 @@ defmodule AshEnterprise.Mdm.Export do
   require Ash.Query
 
   alias AshEnterprise.Canonical.Person
+  alias AshEnterprise.Erasure.Calculations.Unseal
   alias AshEnterprise.Security.ActorContext
 
   @data_class :customer_confidential
@@ -111,8 +112,13 @@ defmodule AshEnterprise.Mdm.Export do
   # anything else (a private merge column, a relationship) refuses the
   # export rather than reaching past what the grant covers.
   defp egress_fields(mapping) do
+    # A sealed value (the address) is a calculation, unsealed on read.
     exportable =
-      Person |> Ash.Resource.Info.public_attributes() |> Map.new(&{to_string(&1.name), &1.name})
+      Person
+      |> Ash.Resource.Info.public_attributes()
+      |> Enum.map(& &1.name)
+      |> Enum.concat(Unseal.sealed_fields(Person))
+      |> Map.new(&{to_string(&1), &1})
 
     mapping.field_rules
     |> Enum.filter(&(&1["op"] in @value_ops and not is_nil(&1["path"])))
@@ -132,9 +138,12 @@ defmodule AshEnterprise.Mdm.Export do
   # The one read the egress grant authorizes: this tenant's golden persons
   # (Person's `:goldens`), the mapped fields and the id only.
   defp goldens(tenant, fields) do
+    {sealed, attributes} = Enum.split_with(fields, &(&1 in Unseal.sealed_fields(Person)))
+
     Person
     |> Ash.Query.for_read(:goldens, %{}, tenant: tenant, authorize?: false)
-    |> Ash.Query.select([:id | fields])
+    |> Ash.Query.select([:id | attributes])
+    |> Ash.Query.load(sealed)
     |> Ash.read!()
   end
 

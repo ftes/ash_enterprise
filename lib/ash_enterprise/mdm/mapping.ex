@@ -24,6 +24,12 @@ defmodule AshEnterprise.Mdm.Mapping do
   use AshMdm.Resources,
       {:mapping, repo: AshEnterprise.Repo, table: "mdm_mappings", tenant?: true}
 
+  changes do
+    # The validator accounts the target's attributes; a sealed value (the
+    # address) is a calculation, accounted here after it.
+    change AshEnterprise.Mdm.Changes.AccountSealedFields, where: [action_is(:validate)]
+  end
+
   calculations do
     calculate :rule_summary, :string, AshEnterprise.Mdm.Calculations.RuleSummary do
       public? true

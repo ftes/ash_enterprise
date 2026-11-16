@@ -7,7 +7,7 @@
     "egress_paths": 15,
     "tenant_scoped": 99,
     "unclassified_personal_attributes": 0,
-    "with_sealed_attributes": 14,
+    "with_sealed_attributes": 15,
     "with_sensitive_attributes": 33
   },
   "resources": [
@@ -1551,13 +1551,30 @@
       "cdm_entity": null,
       "api_type": null,
       "sensitive_attributes": [
-        "email",
+        "email_bidx",
+        "legacy_email",
+        "merge_provenance",
         "name"
       ],
-      "sealed_attributes": [],
+      "sealed_attributes": [
+        {
+          "attribute": "encrypted_email",
+          "sealing": "application_vault"
+        }
+      ],
       "personal_looking_attributes": [
         {
-          "attribute": "email",
+          "attribute": "email_bidx",
+          "class": "sensitive",
+          "reason": null
+        },
+        {
+          "attribute": "encrypted_email",
+          "class": "sealed",
+          "reason": null
+        },
+        {
+          "attribute": "legacy_email",
           "class": "sensitive",
           "reason": null
         }

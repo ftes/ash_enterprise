@@ -345,7 +345,7 @@ defmodule AshEnterprise.Mdm.RefoldTest do
       tenant: org,
       authorize?: false
     )
-    |> Ash.create!(upsert?: true, upsert_identity: :unique_email, upsert_fields: [])
+    |> Ash.create!(upsert?: true, upsert_identity: :unique_email_bidx, upsert_fields: [])
   end
 
   defp say!(org, person, values, source, observed_at) do

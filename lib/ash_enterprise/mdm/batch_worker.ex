@@ -181,7 +181,7 @@ defmodule AshEnterprise.Mdm.BatchWorker do
     exact =
       if email do
         AshEnterprise.Canonical.Person
-        |> Ash.Query.filter(email == ^email)
+        |> Ash.Query.filter(email_bidx == ^AshEnterprise.Erasure.BlindIndex.of(tenant, email))
         |> Ash.read!(tenant: tenant, actor: system, authorize?: true)
       else
         []
@@ -398,7 +398,7 @@ defmodule AshEnterprise.Mdm.BatchWorker do
     existing =
       email &&
         AshEnterprise.Canonical.Person
-        |> Ash.Query.filter(email == ^email)
+        |> Ash.Query.filter(email_bidx == ^AshEnterprise.Erasure.BlindIndex.of(tenant, email))
         |> Ash.read_one!(tenant: tenant, authorize?: false)
 
     if existing do

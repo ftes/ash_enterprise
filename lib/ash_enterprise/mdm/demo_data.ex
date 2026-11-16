@@ -125,7 +125,7 @@ defmodule AshEnterprise.Mdm.DemoData do
   defp seed_golden_with_loser!(org_id, admin) do
     ann =
       Person
-      |> Ash.Query.filter(email == ^"ann@x.io")
+      |> Ash.Query.filter(email_bidx == ^AshEnterprise.Erasure.BlindIndex.of(org_id, "ann@x.io"))
       |> Ash.read_one!(tenant: org_id, authorize?: false)
 
     ann =

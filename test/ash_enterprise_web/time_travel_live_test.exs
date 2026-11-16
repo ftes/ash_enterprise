@@ -69,7 +69,12 @@ defmodule AshEnterpriseWeb.TimeTravelLiveTest do
 
     assert has_element?(view, "#time-travel-person-#{s.id}", "Sam Work")
 
+    # Addresses are sealed: only a whole one finds its person.
     view |> element("#time-travel-search") |> render_change(%{"q" => "sam.work"})
+    assert_patch(view)
+    refute has_element?(view, "#time-travel-person-#{s.id}")
+
+    view |> element("#time-travel-search") |> render_change(%{"q" => "Sam.Work@example.test"})
     assert_patch(view)
     assert has_element?(view, "#time-travel-person-#{s.id}")
 

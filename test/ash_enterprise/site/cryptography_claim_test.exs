@@ -19,6 +19,7 @@ defmodule AshEnterprise.Site.CryptographyClaimTest do
   @named %{
     "lib/ash_enterprise/automation/alert_webhook.ex" => "checking signed provider webhooks",
     "lib/ash_enterprise/credentialing/registry_webhook.ex" => "checking signed provider webhooks",
+    "lib/ash_enterprise/erasure/blind_index.ex" => "the blind index that finds a sealed address",
     "lib/ash_enterprise/erasure/crypto.ex" => "sub-keys of an erasure scope's key",
     "lib/ash_enterprise/execution/digest_key.ex" => "invocation argument digests",
     "lib/ash_enterprise/mdm/assertion_digest_key.ex" => "master-data assertion digests"

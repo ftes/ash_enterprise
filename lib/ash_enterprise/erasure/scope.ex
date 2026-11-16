@@ -217,6 +217,12 @@ defmodule AshEnterprise.Erasure.Scope do
   actions do
     defaults [:read]
 
+    read :by_ids do
+      description "The scopes with these ids (the keyring's batched open resolves keyless ones here)."
+      argument :ids, {:array, :uuid}, allow_nil?: false
+      filter expr(id in ^arg(:ids))
+    end
+
     read :by_ref do
       description "The scope for one `(kind, ref)`, or nil."
       get? true

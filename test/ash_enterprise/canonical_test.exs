@@ -223,9 +223,7 @@ defmodule AshEnterprise.CanonicalTest do
   end
 
   defp person_by_email(email, context) do
-    AshEnterprise.Canonical.Person
-    |> Ash.Query.filter(email == ^email)
-    |> Ash.read_one!(authorize?: false, tenant: context[:tenant])
+    AshEnterprise.Canonical.Person.by_address!(email, authorize?: false, tenant: context[:tenant])
   end
 
   # The projected rows as a plain map, with volatile columns (ids, timestamps)

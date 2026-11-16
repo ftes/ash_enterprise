@@ -211,7 +211,7 @@ defmodule AshEnterprise.Mdm.Changes.StewardVerdict do
       email_taken? =
         !is_nil(email) &&
           AshEnterprise.Canonical.Person
-          |> Ash.Query.filter(email == ^email)
+          |> Ash.Query.filter(email_bidx == ^AshEnterprise.Erasure.BlindIndex.of(tenant, email))
           |> Ash.exists?(tenant: tenant, authorize?: false)
 
       unless email_taken? do

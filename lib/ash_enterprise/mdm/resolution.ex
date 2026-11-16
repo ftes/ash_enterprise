@@ -221,7 +221,7 @@ defmodule AshEnterprise.Mdm.Resolution do
       Person
       |> Ash.Query.for_read(:read, %{}, read_opts(opts))
       |> Ash.Query.filter(id in ^ids)
-      |> Ash.Query.select([:id, :name, :email])
+      |> Ash.Query.select([:id, :name])
       |> Ash.read!()
       |> Map.new(&{to_string(&1.id), person_label(&1)})
 

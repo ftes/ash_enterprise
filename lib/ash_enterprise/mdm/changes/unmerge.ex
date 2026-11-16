@@ -15,7 +15,7 @@ defmodule AshEnterprise.Mdm.Changes.Unmerge do
 
   use Ash.Resource.Change
 
-  alias AshEnterprise.Canonical.Person
+  alias AshEnterprise.Canonical.{Person, PersonSeal}
   alias AshEnterprise.Mdm.Refold
 
   @impl true
@@ -24,18 +24,18 @@ defmodule AshEnterprise.Mdm.Changes.Unmerge do
     # email goes back in this same changeset — no second update, whose event
     # replay would resurrect the merged flag. The survivor's release is a
     # separate write and comes first: while the survivor holds the address,
-    # restoring it here violates unique_email. The identities repoint after
-    # the row commits (their history shows merged -> restored).
+    # restoring it here violates unique_email_bidx. The identities repoint
+    # after the row commits (their history shows merged -> restored). The
+    # prior address was sealed under this person's scope; a shredded scope
+    # restores nothing.
     provenance = changeset.data.merge_provenance || %{}
+    prior_email = PersonSeal.prior_email(provenance)
 
-    case provenance["prior_email"] do
-      email when is_binary(email) and email != "" ->
-        Ash.Changeset.force_change_attribute(changeset, :email, email)
-
-      _ ->
-        changeset
+    case prior_email do
+      email when is_binary(email) and email != "" -> PersonSeal.put_email(changeset, email)
+      _ -> changeset
     end
-    |> Ash.Changeset.before_action(&release_from_survivor(&1, provenance["prior_email"]))
+    |> Ash.Changeset.before_action(&release_from_survivor(&1, prior_email))
     |> Ash.Changeset.after_action(fn changeset, result ->
       tenant = changeset.tenant
 

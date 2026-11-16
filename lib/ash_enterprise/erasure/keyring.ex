@@ -13,8 +13,14 @@ defmodule AshEnterprise.Erasure.Keyring do
   Every seal and every open fetches the scope's key row and unwraps it. A cache
   of unwrapped keys would make a shred take effect "eventually" on every node
   that had warmed it — and "eventually" is not an erasure guarantee. The cost is
-  one primary-key lookup per sealed value read; batching it is a performance
-  change for when it is measured to matter.
+  one primary-key lookup per sealed value read.
+
+  `open_many!/1` batches that for a page: one query for the keys of every
+  scope the page's values name, and one more only when some scope has no key
+  (to tell a shred from a lost key). The keys live for that one call and are
+  dropped with its result, so a shred still takes effect on the next read.
+  `AshEnterprise.Erasure.Calculations.Unseal` reads through it, so a page of
+  N sealed people costs two queries, not N.
 
   ## Failure is loud everywhere except one place
 
@@ -106,6 +112,84 @@ defmodule AshEnterprise.Erasure.Keyring do
       {:error, :unknown_scope} ->
         raise ArgumentError,
               "sealed value names erasure scope #{scope_id}, which was never issued"
+    end
+  end
+
+  @doc """
+  Opens many sealed binaries at once: each value's result, in order, exactly
+  as `open!/1` would give it (`{:ok, plaintext}` or `{:shredded, marker}`),
+  raising on everything `open!/1` raises on.
+
+  The scope keys are fetched in one query and unwrapped once per scope, for
+  this call only (see "No cache, on purpose").
+  """
+  @spec open_many!([binary()]) :: [{:ok, binary()} | {:shredded, Shredded.t()}]
+  def open_many!([]), do: []
+
+  def open_many!(sealed_values) when is_list(sealed_values) do
+    scoped = Enum.map(sealed_values, &{scope_of!(&1), &1})
+    keys = live_keys(scoped |> Enum.map(&elem(&1, 0)) |> Enum.uniq())
+
+    Enum.map(scoped, fn {scope_id, sealed} ->
+      case Map.fetch!(keys, scope_id) do
+        {:ok, dek} -> {:ok, open_with!(sealed, scope_id, dek)}
+        {:error, :shredded} -> {:shredded, %Shredded{erasure_scope_id: scope_id}}
+      end
+    end)
+  end
+
+  # Every scope's key in one query; a scope with no key row is resolved by
+  # one more query over just those, through `keyless_many/1`.
+  defp live_keys(scope_ids) do
+    found =
+      scope_ids
+      |> Key.for_scopes!(authorize?: false)
+      |> Map.new(&{&1.scope_id, {:ok, unwrap!(&1)}})
+
+    case Enum.reject(scope_ids, &Map.has_key?(found, &1)) do
+      [] -> found
+      missing -> Map.merge(found, keyless_many(missing))
+    end
+  end
+
+  defp keyless_many(scope_ids) do
+    statuses =
+      scope_ids
+      |> AshEnterprise.Erasure.scopes_by_id!(authorize?: false)
+      |> Map.new(&{&1.id, &1.status})
+
+    Map.new(scope_ids, fn scope_id ->
+      case Map.fetch(statuses, scope_id) do
+        {:ok, :shredded} ->
+          {scope_id, {:error, :shredded}}
+
+        {:ok, :active} ->
+          raise "erasure scope #{scope_id} is active but has no key: its content is " <>
+                  "unrecoverable. This is a lost key, not a shred -- investigate before anything else."
+
+        :error ->
+          raise ArgumentError,
+                "sealed value names erasure scope #{scope_id}, which was never issued"
+      end
+    end)
+  end
+
+  defp scope_of!(sealed) do
+    case Crypto.scope_of(sealed) do
+      {:ok, scope_id} -> scope_id
+      :error -> raise ArgumentError, "not an erasure-sealed value (no AEE1 header)"
+    end
+  end
+
+  defp open_with!(sealed, scope_id, dek) do
+    case Crypto.open(sealed, dek) do
+      {:ok, plaintext} ->
+        plaintext
+
+      :error ->
+        raise ArgumentError,
+              "sealed value for erasure scope #{scope_id} failed authentication: " <>
+                "the ciphertext was altered or does not belong to that scope"
     end
   end
 

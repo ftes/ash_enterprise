@@ -361,7 +361,7 @@ defmodule AshEnterprise.Canonical.Projections.GmailTest do
           tenant: ctx.org.id,
           authorize?: false
         )
-        |> Ash.create!(upsert?: true, upsert_identity: :unique_email, upsert_fields: [:name])
+        |> Ash.create!(upsert?: true, upsert_identity: :unique_email_bidx, upsert_fields: [:name])
 
       assert {:ok, counts} = Projection.replay(owner: ctx.owner, tenant: ctx.org)
 

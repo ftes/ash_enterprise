@@ -715,8 +715,11 @@ defmodule AshEnterprise.Mdm.BatchTest do
       # The collision is not a merge: no second person, no identity.
       assert [_one] =
                AshEnterprise.Canonical.Person
-               |> Ash.Query.filter(email == "ann@x.io")
-               |> Ash.read!(tenant: org, authorize?: false)
+               |> Ash.Query.for_read(:by_address, %{email: "ann@x.io"},
+                 tenant: org,
+                 authorize?: false
+               )
+               |> Ash.read!()
     end
   end
 

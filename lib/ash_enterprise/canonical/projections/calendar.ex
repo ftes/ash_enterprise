@@ -76,10 +76,11 @@ defmodule AshEnterprise.Canonical.Projections.Calendar do
   A source whose scope is already shredded has nothing left to project and is
   counted as `:shredded`.
 
-  `Person` rows are not sealed (`AshEnterprise.Canonical.Person`, "Erasure"):
-  their name and email are `sensitive?`, so the audit log records them as
-  `nil`; the rows themselves outlive a shred. They are written only while the
-  scope is live, checked under a lock a shred waits for
+  `Person` rows are not under the connection's scope
+  (`AshEnterprise.Canonical.Person`, "Erasure"): a person's address is sealed
+  under their own scope, and their name is `sensitive?`, so the audit log holds
+  neither; the rows themselves outlive a connection shred. They are written
+  only while the connection's scope is live, checked under a lock a shred waits for
   (`AshEnterprise.Erasure.LiveScope`), so a shred committed between a landing
   and its projection writes no new person from the destroyed content. The end-to-end erasure test
   (`test/ash_enterprise/integration/erasure_e2e_test.exs`) sweeps the whole
@@ -104,7 +105,7 @@ defmodule AshEnterprise.Canonical.Projections.Calendar do
 
   alias AshEnterprise.Canonical.{CalendarEvent, Person}
   alias AshEnterprise.Canonical.Projections.Golden
-  alias AshEnterprise.Erasure.{LiveScope, Shredded}
+  alias AshEnterprise.Erasure.{BlindIndex, LiveScope, Shredded}
   alias AshEnterprise.Ingestion.SourceObject
 
   require Ash.Query
@@ -548,7 +549,7 @@ defmodule AshEnterprise.Canonical.Projections.Calendar do
 
   defp existing_person(email, context) do
     Person
-    |> Ash.Query.filter(email == ^email)
+    |> Ash.Query.filter(email_bidx == ^BlindIndex.of(context.tenant_id, email))
     |> Ash.read_one(tenant: context.tenant_id, authorize?: false)
   end
 
@@ -565,7 +566,7 @@ defmodule AshEnterprise.Canonical.Projections.Calendar do
     )
     |> Ash.create(
       upsert?: true,
-      upsert_identity: :unique_email,
+      upsert_identity: :unique_email_bidx,
       # A stated name is the fold's to write; it is not the answer on its own.
       upsert_fields: if(is_nil(name) or context.statement_observed_at, do: [], else: [:name])
     )

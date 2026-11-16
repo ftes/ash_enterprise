@@ -84,11 +84,10 @@ defmodule AshEnterprise.Assistant.Lookups.Messages do
 
   defp from_person(query, person) do
     pattern = Support.like(person)
+    # Addresses are sealed: matched whole, through their blind index.
+    address = AshEnterprise.Erasure.BlindIndex.of(query.tenant, person)
 
-    Ash.Query.filter(
-      query,
-      ilike(sender.name, ^pattern) or ilike(type(sender.email, :string), ^pattern)
-    )
+    Ash.Query.filter(query, ilike(sender.name, ^pattern) or sender.email_bidx == ^address)
   end
 
   defp in_window(query, nil), do: query

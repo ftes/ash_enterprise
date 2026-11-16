@@ -121,9 +121,10 @@ defmodule AshEnterprise.Assistant.Composer do
         ~w(label email next_event conversation_count sent_message_count organized_event_count),
       default: ~w(label email next_event conversation_count),
       read: "read",
-      search: ~w(name email),
+      # Addresses are sealed: searched and sorted by name only.
+      search: ~w(name),
       sort: {"name", "asc"},
-      sortable: ~w(name email conversation_count sent_message_count)
+      sortable: ~w(name conversation_count sent_message_count)
     },
     "briefs" => %{
       resource: MorningBrief,

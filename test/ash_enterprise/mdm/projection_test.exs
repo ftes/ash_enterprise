@@ -75,8 +75,8 @@ defmodule AshEnterprise.Mdm.ProjectionTest do
 
     before =
       Person
-      |> Ash.Query.sort(email: :asc)
       |> Ash.read!(tenant: org, authorize?: false)
+      |> Enum.sort_by(&to_string(&1.email))
       |> Enum.map(&{&1.email, &1.name})
 
     # Delete every golden; the mapping is still active and the identity
@@ -87,8 +87,8 @@ defmodule AshEnterprise.Mdm.ProjectionTest do
 
     after_replay =
       Person
-      |> Ash.Query.sort(email: :asc)
       |> Ash.read!(tenant: org, authorize?: false)
+      |> Enum.sort_by(&to_string(&1.email))
       |> Enum.map(&{&1.email, &1.name, &1.merged, &1.master_id, &1.id})
 
     assert [{email, name, false, nil, id}] = after_replay
@@ -110,8 +110,8 @@ defmodule AshEnterprise.Mdm.ProjectionTest do
 
     second =
       Person
-      |> Ash.Query.sort(email: :asc)
       |> Ash.read!(tenant: org, authorize?: false)
+      |> Enum.sort_by(&to_string(&1.email))
       |> Enum.map(&{&1.email, &1.name, &1.merged, &1.master_id, &1.id})
 
     assert after_replay == second

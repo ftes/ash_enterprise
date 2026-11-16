@@ -71,6 +71,7 @@ defmodule AshEnterprise.Erasure do
       define :ensure_scope, action: :ensure, args: [:kind, :ref]
       define :open_scope, action: :open
       define :get_scope, action: :read, get_by: [:id]
+      define :scopes_by_id, action: :by_ids, args: [:ids]
       define :scope_by_ref, action: :by_ref, args: [:kind, :ref], not_found_error?: false
       define :list_scopes, action: :read
       define :shred_scope, action: :shred, args: [:confirm, :reason]

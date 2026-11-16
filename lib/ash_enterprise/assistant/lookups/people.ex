@@ -37,16 +37,20 @@ defmodule AshEnterprise.Assistant.Lookups.People do
   end
 
   defp search("", _as_of, _opts),
-    do: {:error, "Give part of a name or an email address to search for."}
+    do: {:error, "Give part of a name, or a whole email address, to search for."}
 
   defp search(query, as_of, opts) do
     pattern = Support.like(query)
 
+    # A name matches on any part; an address only whole, through its blind
+    # index: addresses are sealed, so the database cannot search inside them.
+    address = AshEnterprise.Erasure.BlindIndex.of(opts[:tenant], query)
+
     Person
     |> Ash.Query.for_read(:read, %{}, opts)
-    |> Ash.Query.filter(ilike(name, ^pattern) or ilike(type(email, :string), ^pattern))
+    |> Ash.Query.filter(ilike(name, ^pattern) or email_bidx == ^address)
     |> only_goldens(as_of)
-    |> Ash.Query.sort(name: :asc_nils_last, email: :asc)
+    |> Ash.Query.sort(name: :asc_nils_last, id: :asc)
     |> Ash.Query.limit(@shown)
     |> Ash.Query.load([:label, :conversation_count, :next_event])
     |> Ash.read(opts)

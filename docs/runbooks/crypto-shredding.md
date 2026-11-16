@@ -35,10 +35,11 @@ A scope is `(kind, ref)`, unique, with exactly one key for its whole life:
 | kind | covers | ref |
 |---|---|---|
 | `connection` | everything that came in through one linked account, or one tap pipeline | for a provider sync, the **linked account's id** (a uuid); for a configured tap, `pipeline:<name>` |
-| `data_subject` | content belonging to one person | the subject's stable id |
+| `data_subject` | content belonging to one person | the subject's stable id; for a `Canonical.Person`, `canonical_person:<person id>` |
 
 Each row is sealed under exactly one scope. Shredding a `connection` scope does not reach a person's data that came in
-through a *different* connection, and nothing lands under a `data_subject` scope yet (see "Not reached" below).
+through a *different* connection. A `Canonical.Person`'s address is sealed under the person's own `data_subject` scope,
+opened the first time anything is sealed for them (see "Not reached" below for what that does not cover).
 
 A row never changes scope. A landing whose `(external_system, external_id)` already exists under a different scope is
 refused (`AshEnterprise.Ingestion.Changes.KeepErasureScope`; the provider syncs report it as `cross_scope_landing` and
@@ -125,6 +126,22 @@ skips a blocked account until `mix ash_enterprise.integration.sync --linked-acco
 `mix ash_enterprise.integration.accounts` does not show the block; the sync task prints a note when it runs a blocked
 account.
 
+### People written before the seal
+
+The migration that sealed `Canonical.Person` addresses keeps the old plaintext `email` column until every row is
+sealed. After deploying it, take a backup, then:
+
+```bash
+devenv shell -- mix ash_enterprise.erasure.seal_people                 # dry run: counts only, writes nothing, opens no scope
+devenv shell -- mix ash_enterprise.erasure.seal_people --apply         # seal every row, one transaction per row
+devenv shell -- mix ash_enterprise.erasure.seal_people --apply --tenant <organization uuid>
+```
+
+Each row gets its own scope, its address sealed under it, its blind index, and its plaintext column blanked; a merged
+loser's prior address in `merge_provenance` is sealed under the loser's scope and its copy of the merged values is
+dropped. It prints counts (`people`, `sealed`, `provenance`), never values. A second run finds nothing. A later
+migration drops the plaintext column.
+
 ## Before you shred: stop new data arriving
 
 Shredding stops nothing from arriving. A shredded scope refuses any further writes under it (checked again under a
@@ -210,16 +227,30 @@ Be honest with whoever asked for the erasure about these. Each is a real copy of
   `mdm_attribute_assertions`. There is no foreign key to the person and a shred does not reach them: remove a person's
   rows there (`golden_id`) before removing the person: a read goes through the Person row, so afterwards they are
   reachable only by SQL.
-- **`Canonical.Person` rows.** Every organizer's, attendee's, sender's, recipient's and Slack member's name and email
-  address stays readable in `canonical_people` — since 2026-10-12 including every Gmail correspondent and Slack member
-  (with a profile email) projected through zone admission. The rows are owner-only (`Privilege.owner_only?/1`), so only
-  the account's owner reads them through the application; the database still holds them in plaintext. They are not sealed: a person is shared across sources and upserts on
-  email, so it cannot carry one connection's key. They are `sensitive?`, so the audit log records them as `null`, and
-  removing a person is an ordinary row delete — but a shred does not do it. A `data_subject` scope with a blind-index
-  identity is the intended fix; nothing writes under one yet. Two things limit the spread. A projector writes people
-  only while the scope is live, checked under a lock a shred waits for, so a shred that commits between a landing and
-  its projection writes no new person from the destroyed content. And no projector renames or links a Person another
-  user owns, so a shred of one account leaves nothing it wrote in someone else's rows.
+- **`Canonical.Person` rows (sealed).** A person's address is sealed under a `data_subject` scope of
+  their own (`canonical_person:<id>`, an opaque ref; `AshEnterprise.Canonical.PersonSeal`) and found by a blind index
+  (`email_bidx`, `AshEnterprise.Erasure.BlindIndex`), which is also the upsert identity. A **connection** shred does
+  not reach a person, by design: a person is shared across the sources that saw them, so they are not under any one
+  connection's key. Shredding the person's own scope makes their address unreadable on the row, in the loser's merge
+  provenance and in the audit copies, which hold only ciphertext. What still stays:
+  - **The name.** `name` stays plaintext on the row (`sensitive?`, so the audit log records it as `null`), so the MDM
+    name blocking and name search keep running in the database. Erasing a person (not built yet) is to blank it on the row; backups keep it
+    until they age out, the same window as the wrapped keys above.
+  - **The blind index.** It is keyed by a subkey of the master key, not by the person's scope, so a shred does not
+    make it unreadable. Alone it is a keyed hash and names nobody without the master key; erasing a person (not built yet) is to clear it
+    on the row. Rotating the master key (not built) must recompute every index value.
+  - **Rows from before the seal.** The expand migration keeps the old plaintext `email` column (read as
+    `legacy_email`) until every row is sealed: run `mix ash_enterprise.erasure.seal_people` (below), then the contract
+    migration drops the column. Until the task runs, a projection that meets an unsealed address seals that row first.
+  - **Audit events written before the seal.** A merge used to record the loser's prior address and the merged values
+    in `merge_provenance` in the clear, and that attribute was not `sensitive?`, so those `mdm_merge_into` audit events
+    hold them forever (the log is append-only). Since the seal, `merge_provenance` is `sensitive?` and holds the prior
+    address only sealed under the loser's scope, and no merged values.
+
+  Two things limit the spread of the rest. A projector writes people only while the connection's scope is live,
+  checked under a lock a shred waits for, so a shred that commits between a landing and its projection writes no new
+  person from the destroyed content. And no projector renames or links a Person another user owns, so a shred of one
+  account leaves nothing it wrote in someone else's rows.
 - **MDM people landings (PROD-9).** Where a tenant runs the MDM people sweep (`AshEnterprise.Mdm.People`), each
   person's name and email are also copied, once per source and linked account they were seen in, into
   `mdm_source_records` (source `canonical`, stream `people`) and the staged rows in `mdm_staged_records`. Like the

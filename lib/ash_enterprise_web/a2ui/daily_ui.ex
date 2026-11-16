@@ -286,13 +286,15 @@ defmodule AshEnterpriseWeb.A2ui.PeopleUI do
       resource AshEnterprise.Canonical.Person
       label "Open a person"
       option_label :name
-      option_search [:name, :email]
+      # Addresses are sealed (Person, "Erasure"): the database searches and
+      # sorts on the name only.
+      option_search [:name]
       option_limit 25
     end
 
     query :directory do
-      search_fields [:name, :email]
-      sortable [:name, :email, :organized_event_count]
+      search_fields [:name]
+      sortable [:name, :organized_event_count]
       default_sort name: :asc
       page_size 25
       max_page_size 100
@@ -478,7 +480,7 @@ defmodule AshEnterpriseWeb.A2ui.InboxUI do
     end
 
     query :threads do
-      search_fields [[:messages, :sender, :name], [:messages, :sender, :email]]
+      search_fields [[:messages, :sender, :name]]
       sortable [:last_message_at, :message_count]
       default_sort last_message_at: :desc
       page_size 25
@@ -582,7 +584,7 @@ defmodule AshEnterpriseWeb.A2ui.SlackUI do
     end
 
     query :conversations do
-      search_fields [[:messages, :sender, :name], [:messages, :sender, :email]]
+      search_fields [[:messages, :sender, :name]]
       sortable [:last_message_at, :message_count]
       default_sort last_message_at: :desc
       page_size 25

@@ -151,14 +151,24 @@ a regression test in `erasure_test.exs` or `ingestion_test.exs`:
   account it fetched through (the calendar's is a SHA-256 of the linked account id and Google's calendar id), so the
   same calendar or channel reached through two accounts lands as two rows under two scopes. The canonical upserts
   (`CalendarEvent.upsert_from_source`) rely on that namespacing and do not carry the guard themselves.
-- *Person sealing.* A keyed blind index (HMAC of the normalized email under a scope-independent key) as the upsert
-  identity, with `name`/`email` sealed under a per-person `data_subject` scope, would let a shred reach the row.
+- ~~*Person sealing.*~~ **Built (address only).** `Canonical.Person` seals its address under a per-person
+  `data_subject` scope (`canonical_person:<id>`, `Canonical.PersonSeal`) and upserts on a blind index
+  (`Erasure.BlindIndex`: HMAC-SHA256 of the tenant and the normalized address, under a subkey of the erasure master
+  key, never `secret_key_base`, whose routine rotation would orphan every identity). The upsert takes an advisory lock
+  on the address's index and seals under the scope of the person it finds, so two concurrent projections of one
+  address end with one row and one scope. `name` stays plaintext and `sensitive?`, so MDM name blocking and name
+  search keep running in the database; erasing the person (not built yet) is to blank it. `merge_provenance` is now `sensitive?` and holds
+  the loser's prior address only sealed under the loser's scope, and no merged values: audit events of merges written
+  before this change keep those values in plaintext. A page of sealed people opens their keys in one query
+  (`Erasure.Keyring.open_many!/1`). Addresses are matched only whole: substring search on an address is gone. The
+  plaintext column stays until `mix ash_enterprise.erasure.seal_people` has sealed every row; a later migration drops
+  it. Master-key rotation, when built, must recompute every index value.
 - *Error scrubbing.* Removing `max_length` closes the known constraint path; a shared step that replaces the value on
   `InvalidArgument`/`InvalidAttribute` for sensitive fields before errors reach tracers, Oban or BPMN incidents would
   close the class.
 
-`data_subject` scopes exist in the model, but nothing writes under one yet. Per-person erasure (q14) is therefore
-partial, not shipped.
+`Canonical.Person` addresses are sealed under `data_subject` scopes; erasing a person (shredding their scope and
+blanking the rest) is not built yet. Per-person erasure (q14) is therefore partial, not shipped.
 
 **Wired to the Nango adapters (2026-10-12).** Each `Integration.LinkedAccount` gets its own `connection` scope
 (`connection:<linked account id>`), and everything its sync brings in is sealed under it: raw provider records,

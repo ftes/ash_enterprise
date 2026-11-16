@@ -22,7 +22,7 @@ defmodule AshEnterprise.Canonical.Actions.DirectoryDigest do
     |> Ash.Query.for_read(:read, %{}, opts)
     |> narrow(search)
     |> Ash.Query.load([:label, :organized_event_count])
-    |> Ash.Query.sort(name: :asc_nils_last, email: :asc)
+    |> Ash.Query.sort(name: :asc_nils_last, id: :asc)
     |> Ash.read(opts)
     |> case do
       {:ok, people} -> {:ok, render(people, search)}
@@ -34,7 +34,9 @@ defmodule AshEnterprise.Canonical.Actions.DirectoryDigest do
 
   defp narrow(query, search) do
     term = String.trim(search)
-    Ash.Query.filter(query, contains(name, ^term) or contains(email, ^Ash.CiString.new(term)))
+    # Addresses are sealed: matched whole, through their blind index.
+    address = AshEnterprise.Erasure.BlindIndex.of(query.tenant, term)
+    Ash.Query.filter(query, contains(name, ^term) or email_bidx == ^address)
   end
 
   defp render([], nil), do: "People — nobody yet."

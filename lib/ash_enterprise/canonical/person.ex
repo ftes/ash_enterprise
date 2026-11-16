@@ -23,14 +23,25 @@ defmodule AshEnterprise.Canonical.Person do
 
   ## Erasure (ADR 0024)
 
-  `name` and `email` are **not** sealed under an erasure scope: `email` is the
-  upsert identity, and a sealed value (randomized ciphertext) cannot be one
-  without a blind index. They are `sensitive?`, which keeps them out of the
-  immutable audit log -- ash_events records sensitive inputs as nil -- so a
-  connection shred leaves them only in this table, where rows are ordinary
-  mutable data. Shredding a connection does not reach them; removing a
-  correspondent is a row-level delete, not a key destroy. Listed in
-  `docs/runbooks/crypto-shredding.md`.
+  Each person has an erasure scope of their own (`kind: :data_subject`, ref
+  `canonical_person:<id>`; `AshEnterprise.Canonical.PersonSeal`). Their
+  address is stored only sealed under it (`encrypted_email`, read as the
+  `email` calculation) and found by a blind index (`email_bidx`,
+  `AshEnterprise.Erasure.BlindIndex`), which is also the upsert identity.
+  Shredding the person's scope makes the address unreadable in this table and
+  in the audit copy. A connection shred does not reach a person: a person is
+  shared across the sources that saw them, so they are not under any one
+  connection's scope.
+
+  `name` stays plaintext and `sensitive?` (kept out of the audit log), so the
+  MDM name blocking and name search still run in the database; erasing the
+  person (not built yet) is to blank it on the row. `merge_provenance` is
+  `sensitive?` too, and holds the prior address only sealed.
+
+  The plaintext `email` column from before the seal is still in the table,
+  read as `legacy_email` and blanked as each row is sealed
+  (`mix ash_enterprise.erasure.seal_people`); a later migration drops it.
+  Listed in `docs/runbooks/crypto-shredding.md`.
 
   Opt-outs from the platform base, same reasoning as `SourceObject`'s: these
   rows are machine-derived projections — reconstructable from raw landings by
@@ -66,16 +77,17 @@ defmodule AshEnterprise.Canonical.Person do
       # `master` is a display relationship over the merge's own `master_id`:
       # no foreign key, the schema is unchanged.
       reference :master, ignore?: true
+      reference :erasure_scope, on_delete: :restrict
     end
   end
 
   attributes do
     uuid_primary_key :id
 
-    # `sensitive?` on name and email (ADR 0024): ash_events records a
-    # sensitive input as nil, so the immutable audit log never holds a
-    # correspondent's name or address. The row itself still does, in
-    # plaintext and outside any erasure scope -- see "Erasure" above.
+    # `sensitive?` (ADR 0024): ash_events records a sensitive input as nil,
+    # so the immutable audit log never holds a correspondent's name. The row
+    # holds it in plaintext; erasing the person (not built yet) is to blank
+    # it there.
     attribute :name, :string do
       public? true
       sensitive? true
@@ -97,15 +109,37 @@ defmodule AshEnterprise.Canonical.Person do
     # What the merge took from this record, so the unmerge correction can
     # restore exactly that (prior email, moved identity ids), and who won
     # each field under which rule set (AshEnterprise.Mdm.Changes.MergeInto).
+    # Sensitive: a merge writes it with `force_change_attribute`, and the
+    # audit log records every forced attribute. The prior address inside it
+    # is sealed (`PersonSeal.seal_provenance/2`).
     attribute :merge_provenance, :map do
       public? false
+      sensitive? true
     end
 
-    attribute :email, :ci_string do
-      public? true
+    # The address, sealed under the person's own scope (`PersonSeal`). The
+    # stored form is ash_cloak's, so the audit copy is ciphertext a shred
+    # reaches. Read it as the `email` calculation.
+    attribute :encrypted_email, :string do
+      public? false
+      description "The address, sealed under this person's erasure scope."
+    end
+
+    # The v1 linkage key, blind: HMAC of the tenant and the normalized
+    # address. Sensitive so the audit log never holds it: the key is not the
+    # scope's, so a shred would not reach a copy there.
+    attribute :email_bidx, :binary do
+      public? false
       sensitive? true
-      constraints max_length: 320
-      description "The v1 linkage key. Nullable: a name-only contact is a person with no link."
+    end
+
+    # The plaintext column from before the seal, kept by the expand migration
+    # until every row is sealed and blanked; the contract migration drops it.
+    # No action accepts it.
+    attribute :legacy_email, :ci_string do
+      source :email
+      public? false
+      sensitive? true
     end
 
     create_timestamp :inserted_at
@@ -113,6 +147,13 @@ defmodule AshEnterprise.Canonical.Person do
   end
 
   relationships do
+    belongs_to :erasure_scope, AshEnterprise.Erasure.Scope do
+      public? false
+      attribute_writable? false
+
+      description "This person's own erasure scope: its key seals their address."
+    end
+
     # The merge lineage, readable (MDM-6): a merged loser points at the
     # golden that absorbed it. Public so the golden surface can link it; the
     # link is loaded under the reader's policies like any relationship, so an
@@ -184,7 +225,16 @@ defmodule AshEnterprise.Canonical.Person do
   end
 
   calculations do
-    calculate :label, :string, expr(name || type(email, :string)) do
+    calculate :email,
+              :ci_string,
+              {AshEnterprise.Erasure.Calculations.Unseal,
+               field: :encrypted_email, type: :ci_string} do
+      public? true
+      sensitive? true
+      description "The v1 linkage key, unsealed. Nil for a name-only contact."
+    end
+
+    calculate :label, :string, AshEnterprise.Canonical.Calculations.PersonLabel do
       public? true
       description "Their display name, else their address."
     end
@@ -206,9 +256,22 @@ defmodule AshEnterprise.Canonical.Person do
   end
 
   identities do
-    # "Unique on email where present": Postgres unique indexes leave multiple
-    # NULLs alone, so name-only contacts do not collide.
-    identity :unique_email, [:email]
+    # "Unique on the address where present", through its blind index:
+    # Postgres unique indexes leave multiple NULLs alone, so name-only
+    # contacts do not collide. Per tenant (the tenant attribute is part of
+    # every identity here).
+    identity :unique_email_bidx, [:email_bidx]
+  end
+
+  preparations do
+    # Every read unseals the address, a page at a time.
+    prepare build(load: [:email])
+  end
+
+  changes do
+    # Every write: an `email` argument becomes the blind index and the
+    # sealed address (`PersonSeal.put_email/3`).
+    change AshEnterprise.Canonical.Changes.SealPerson, on: [:create, :update]
   end
 
   actions do
@@ -232,6 +295,17 @@ defmodule AshEnterprise.Canonical.Person do
       argument :id, :string, allow_nil?: false
 
       filter expr(external_system == ^arg(:system) and external_id == ^arg(:id))
+    end
+
+    read :by_address do
+      description """
+      The person an exact address belongs to, through its blind index. The
+      address is sealed, so only a whole address matches (case aside).
+      """
+
+      get? true
+      argument :email, :ci_string, allow_nil?: false, sensitive?: true
+      prepare AshEnterprise.Canonical.Preparations.ByAddress
     end
 
     read :goldens do
@@ -262,12 +336,18 @@ defmodule AshEnterprise.Canonical.Person do
 
       accept [
         :name,
-        :email,
         :owner_id,
         :owner_type,
         :owning_user_id,
         :owning_business_unit_id
       ]
+
+      argument :email, :ci_string do
+        sensitive? true
+        constraints max_length: 320
+
+        description "The address: sealed under the person's scope, and its blind index is the upsert identity. Nil for a name-only contact."
+      end
 
       argument :statement_source, :string do
         description "The projector's source name, for the attribute statements this write makes."
@@ -280,7 +360,7 @@ defmodule AshEnterprise.Canonical.Person do
       change AshEnterprise.Mdm.Changes.AssertFromSource
 
       upsert? true
-      upsert_identity :unique_email
+      upsert_identity :unique_email_bidx
 
       # `upsert_fields` is chosen per write by the projector: a payload that
       # carries a display name refreshes it, a name-less payload conflicts and
@@ -291,7 +371,14 @@ defmodule AshEnterprise.Canonical.Person do
 
     update :mdm_survivor_update do
       description "Writes a person's folded values (`AshEnterprise.Mdm.Refold`), and nothing else does."
-      accept [:name, :email]
+      accept [:name]
+      require_atomic? false
+
+      argument :email, :ci_string do
+        sensitive? true
+        constraints max_length: 320
+        description "The folded address, sealed under the person's scope. Nil releases it."
+      end
     end
 
     update :mdm_merge_into do
@@ -342,7 +429,8 @@ defmodule AshEnterprise.Canonical.Person do
       """
 
       argument :golden_id, :uuid, allow_nil?: false
-      accept [:name, :email, :owner_id, :owning_business_unit_id]
+      argument :email, :ci_string, sensitive?: true, constraints: [max_length: 320]
+      accept [:name, :owner_id, :owning_business_unit_id]
 
       change set_attribute(:id, arg(:golden_id))
     end
@@ -356,12 +444,28 @@ defmodule AshEnterprise.Canonical.Person do
       the row back to stewardship instead of overwriting anyone.
       """
 
-      accept [:name, :email, :owner_id, :owning_business_unit_id]
+      argument :email, :ci_string, sensitive?: true, constraints: [max_length: 320]
+      accept [:name, :owner_id, :owning_business_unit_id]
+    end
+
+    update :seal_legacy do
+      description """
+      Seals a row from before addresses were sealed: the plaintext column's
+      value under the person's own scope, its blind index, the plaintext
+      blanked; a merge's prior address sealed too (`Changes.SealLegacy`).
+      Only `mix ash_enterprise.erasure.seal_people` and the projectors'
+      upsert call it.
+      """
+
+      accept []
+      require_atomic? false
+      change AshEnterprise.Canonical.Changes.SealLegacy
     end
   end
 
   code_interface do
     define :by_external, args: [:system, :id], not_found_error?: false
+    define :by_address, args: [:email], not_found_error?: false
     define :upsert_from_source
     define :read
   end

@@ -1,10 +1,13 @@
 defmodule AshEnterprise.Canonical.Calculations.PersonLabel do
   @moduledoc """
-  How a related `AshEnterprise.Canonical.Person` is named on a surface: their
+  How a `AshEnterprise.Canonical.Person` is named on a surface: their
   display name, else their address, else nil. `relationship:` names the
-  belongs_to to read through (`:organizer`, `:sender`).
+  belongs_to to read through (`:organizer`, `:sender`); without it, the
+  person's own label (`Person.label`).
 
-  The person is loaded under the reading actor's policies, so a correspondent
+  A module calculation, not an expression: the address is sealed, so the
+  database cannot read it (`AshEnterprise.Canonical.PersonSeal`). A related
+  person is loaded under the reading actor's policies, so a correspondent
   the reader may not see is simply blank.
   """
 
@@ -14,20 +17,31 @@ defmodule AshEnterprise.Canonical.Calculations.PersonLabel do
 
   @impl true
   def init(opts) do
-    if is_atom(opts[:relationship]) and not is_nil(opts[:relationship]),
+    if is_atom(opts[:relationship]),
       do: {:ok, opts},
-      else: {:error, "relationship is required"}
+      else: {:error, "relationship must be a relationship name"}
   end
 
   # The person is loaded in `calculate/3`, as the reader: a relationship
   # named here would be loaded as a calculation dependency, which Ash does
   # without authorization (see `AshEnterprise.Platform.Calculations.RelatedField`).
   @impl true
-  def load(query, opts, _context),
-    do: RelatedField.source_attribute(query.resource, opts[:relationship])
+  def load(query, opts, _context) do
+    case opts[:relationship] do
+      nil -> [:name, :email]
+      relationship -> RelatedField.source_attribute(query.resource, relationship)
+    end
+  end
 
   @impl true
   def calculate(records, opts, context) do
+    case opts[:relationship] do
+      nil -> Enum.map(records, &label/1)
+      _relationship -> calculate_related(records, opts, context)
+    end
+  end
+
+  defp calculate_related(records, opts, context) do
     with {:ok, loaded} <-
            RelatedField.load_related(records, opts[:relationship], [:name, :email], context) do
       {:ok, Enum.map(loaded, &label(Map.get(&1, opts[:relationship])))}

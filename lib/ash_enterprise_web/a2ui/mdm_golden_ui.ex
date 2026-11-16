@@ -29,8 +29,9 @@ defmodule AshEnterpriseWeb.A2ui.MdmGoldenUI do
     end
 
     query :default do
-      search_fields([:name, :email])
-      sortable([:name, :email, :created_on])
+      # Addresses are sealed (Person, "Erasure"): searched and sorted by name.
+      search_fields([:name])
+      sortable([:name, :created_on])
       default_sort(name: :asc)
       page_size(25)
     end
