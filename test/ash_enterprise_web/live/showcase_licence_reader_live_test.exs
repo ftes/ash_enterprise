@@ -211,6 +211,48 @@ defmodule AshEnterpriseWeb.ShowcaseLicenceReaderLiveTest do
     refute has_element?(operator, "#erase-#{credential.id}")
   end
 
+  describe "a viewer without the number's grant" do
+    # The committee reads the clinic's records but not the licence numbers (ADR 0073).
+    for mode <- [:live, :recorded] do
+      test "is not offered the reading in #{mode} mode, and a pushed one is refused, not a crash",
+           ctx do
+        previous = Application.get_env(:ash_enterprise, Showcase)
+
+        Application.put_env(
+          :ash_enterprise,
+          Showcase,
+          Keyword.put(previous, :model_mode, unquote(mode))
+        )
+
+        on_exit(fn -> Application.put_env(:ash_enterprise, Showcase, previous) end)
+
+        %{clinic: clinic, tenant: tenant} = ctx
+        credential = credential(clinic, "DEMO-PT-0001")
+        {:ok, view, _html} = live(sign_in(hd(clinic.committee)), @tour)
+
+        assert has_element?(view, "#beat-read")
+        refute has_element?(view, "#read-#{credential.id}")
+
+        assert render_hook(view, "read", %{"id" => credential.id}) =~
+                 "Not allowed for the person signed in."
+
+        # The page is still there, and nothing started.
+        assert has_element?(view, "#beat-read")
+
+        assert [] =
+                 Execution.list_agent_runs!(
+                   query: [filter: [subject_id: credential.clinician_id]],
+                   authorize?: false,
+                   tenant: tenant
+                 )
+
+        # The coordinator, who holds the number's grant, is offered it.
+        {:ok, coordinator, _html} = live(sign_in(clinic.coordinator), @tour)
+        assert has_element?(coordinator, "#read-#{credential.id}")
+      end
+    end
+  end
+
   describe "with the demo flag off" do
     setup do
       previous = Application.get_env(:ash_enterprise, Showcase)

@@ -7,6 +7,12 @@ defmodule AshEnterprise.Platform.Verifiers.SecuredFields do
     an aggregate or a relationship is not a column.
   - Not the primary key: Ash shows a primary key to everyone, whatever a field policy
     says, so securing it would be a declaration Ash ignores.
+  - `sensitive? true`: a column's grant governs reads of the resource, but its value
+    also travels in places a field policy does not reach. The audit log keeps an
+    action's changed values (`AshEnterprise.Audit.Changes.RedactSensitive` leaves out
+    only sensitive ones), and the audit log and the audit package are read through a
+    row grant. A secured column that is not sensitive would be readable there by
+    anyone who reads the row's events.
   - Not an ownership or tenant column: the row grant's own depth filter reads
     `owner_id` and `owning_business_unit_id`, and the tenant boundary reads
     `organization_id`, so hiding them would hide what authorization is computed from.
@@ -75,6 +81,12 @@ defmodule AshEnterprise.Platform.Verifiers.SecuredFields do
         [
           "secured_fields #{inspect(name)} is an ownership or tenant column, " <>
             "which authorization itself reads"
+        ]
+
+      not attribute.sensitive? ->
+        [
+          "secured_fields #{inspect(name)} must be `sensitive? true`, or the audit log " <>
+            "keeps its value for every reader of the row's events"
         ]
 
       true ->

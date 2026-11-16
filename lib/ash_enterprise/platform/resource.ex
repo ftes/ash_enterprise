@@ -373,6 +373,12 @@ defmodule AshEnterprise.Platform.Resource do
     quote do
       unquote(secured_field_policies([]))
 
+      # A form sends back what its reader was shown for a hidden column; an update keeps
+      # the stored value instead of writing that stand-in over it.
+      changes do
+        change AshEnterprise.Security.Changes.KeepHiddenSecuredFields, on: [:update]
+      end
+
       field_policies do
         (unquote_splicing(field_policies))
 

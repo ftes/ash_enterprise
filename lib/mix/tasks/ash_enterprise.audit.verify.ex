@@ -8,8 +8,10 @@ defmodule Mix.Tasks.AshEnterprise.Audit.Verify do
       mix ash_enterprise.audit.verify
       mix ash_enterprise.audit.verify --tenant 0198f3a4-...
 
-  Exits non-zero when any chain has a finding, so it can be a scheduled check
-  rather than something someone remembers to run. The check itself is
+  Exits non-zero when any chain has a finding or cannot be read, so it can be a
+  scheduled check rather than something someone remembers to run. A chain that
+  cannot be read is reported with its error, and every other chain is still
+  verified. The check itself is
   `AshEnterprise.Audit.Verify`, which a release runs as
   `AshEnterprise.Release.audit_verify/2`.
   """

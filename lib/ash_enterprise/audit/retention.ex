@@ -26,6 +26,10 @@ defmodule AshEnterprise.Audit.Retention do
   carries on, `backlog/1` counts it, the last run of the chain says so in its `reason`, and
   `AshEnterprise.Audit.RetentionWorker` reports it (a telemetry metric and a log warning).
 
+  Evidence moves one `batch_size` batch a run. What is still eligible after it is
+  evidence's backlog: `evidence_backlog/2` counts it, and the worker reports it beside the
+  audit log's.
+
   **Evidence's move is `ash_compliance`'s** (`AshCompliance.Ownership.Retention`): each batch
   is copied, compared with the hot rows column by column and by hash, and only then deleted
   from the hot table, in one transaction. The newest evidence artifact of each organization,
@@ -46,8 +50,11 @@ defmodule AshEnterprise.Audit.Retention do
   when it is recorded, so a back-dated artifact is still kept 400 days from when it arrived.
   """
 
+  require Ash.Query
+
   alias AshCompliance.Ownership.Retention, as: EvidenceRetention
-  alias AshEnterprise.Audit.{ArchiveRun, EventLog}
+  alias AshCompliance.Resources.EvidenceArtifact
+  alias AshEnterprise.Audit.{ArchivedEvidence, ArchiveRun, EventLog}
   alias AshEnterprise.Platform.SystemActor
   alias AshEvents.Chain.SQL
 
@@ -127,12 +134,60 @@ defmodule AshEnterprise.Audit.Retention do
 
   @doc """
   The audit events still eligible after a run's audit steps: what the next run will take
-  (`AshEvents.Chain.Retention.backlog/1`). Evidence moves one batch a run, so its backlog
-  is not counted here.
+  (`AshEvents.Chain.Retention.backlog/1`). Evidence's is `evidence_backlog/2`.
   """
   @spec backlog(:disabled | map()) :: non_neg_integer()
   def backlog(%{audit: steps}), do: AshEvents.Chain.Retention.backlog(steps)
   def backlog(_), do: 0
+
+  @doc """
+  The evidence artifacts still eligible for `:archive` or `:purge` now: what the next run
+  will take. Evidence moves one batch a run, so after a run this is the evidence backlog.
+
+  For `:archive`, the hot artifacts collected before the hot window that are not the
+  newest of their organization, control and collector, the rule `ash_compliance` moves
+  by. For `:purge`, the archived artifacts recorded before `purge_after_days`; none when
+  no age is configured. Options: `:now`, `:hot_days`, `:days`.
+  """
+  @spec evidence_backlog(:archive | :purge, keyword()) :: non_neg_integer()
+  def evidence_backlog(kind, opts \\ [])
+
+  def evidence_backlog(:archive, opts) do
+    cutoff = cutoff(opts, Keyword.get(opts, :hot_days, hot_days()))
+
+    EvidenceArtifact
+    |> Ash.Query.filter(
+      collected_at < ^cutoff and
+        exists(
+          EvidenceArtifact,
+          organization_id == parent(organization_id) and control_id == parent(control_id) and
+            collector == parent(collector) and
+            (collected_at > parent(collected_at) or
+               (collected_at == parent(collected_at) and id > parent(id)))
+        )
+    )
+    |> Ash.count!(authorize?: false)
+  end
+
+  def evidence_backlog(:purge, opts) do
+    case Keyword.get(opts, :days, purge_after_days()) do
+      nil ->
+        0
+
+      days ->
+        cutoff = cutoff(opts, days)
+
+        ArchivedEvidence
+        |> Ash.Query.filter(collected_at < ^cutoff and inserted_at < ^cutoff)
+        |> Ash.count!(authorize?: false)
+    end
+  end
+
+  defp cutoff(opts, days) do
+    opts
+    |> Keyword.get_lazy(:now, &DateTime.utc_now/0)
+    |> DateTime.add(-days * 86_400, :second)
+  end
 
   defp batch_size(opts),
     do: Keyword.get(opts, :batch_size, Keyword.get(config(), :batch_size, @default_batch))

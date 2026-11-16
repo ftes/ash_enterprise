@@ -170,6 +170,220 @@ defmodule AshEnterprise.Security.SecuredFieldsTest do
     end
   end
 
+  describe "a sort, a cursor, or a derived read of a secured column" do
+    test "a sort on the secured column without the grant is refused, naming the column", ctx do
+      reader = DailyFixtures.member!(ctx.admin, "Reviewer", [{Credential, :read, :global}])
+
+      assert {:error, %Ash.Error.Invalid{errors: errors}} =
+               Credential |> Ash.Query.sort(number: :asc) |> Ash.read(as(reader))
+
+      assert [%Ash.Error.Query.UnsortableField{field: :number}] = errors
+      assert Exception.message(hd(errors)) =~ ":number"
+
+      # A client's sort across a relationship (`sort_input("credential.number")`) needs no
+      # refusal: Ash's field policy has already replaced the hidden value with nil there.
+
+      # Through an aggregate on the parent.
+      clinicians =
+        DailyFixtures.member!(ctx.admin, "Clinicians", [
+          {Credentialing.Clinician, :read, :global},
+          {Credential, :read, :global}
+        ])
+
+      {:ok, first_number} =
+        Ash.Query.Aggregate.new(Credentialing.Clinician, :first_number, :first,
+          path: [:credentials],
+          field: :number
+        )
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.UnsortableField{}]}} =
+               Credentialing.Clinician
+               |> Ash.Query.sort([{first_number, :asc}])
+               |> Ash.read(as(clinicians))
+    end
+
+    test "a grant that reaches only some rows may not sort by the column either", ctx do
+      reader = DailyFixtures.member!(ctx.admin, "Reviewer", [{Credential, :read, :global}])
+      role = role!(ctx.admin, [{@number_key, :read, :local}])
+
+      Security.UserRole
+      |> Ash.Changeset.for_create(
+        :assign,
+        %{
+          user_id: reader.user.id,
+          role_id: role.id,
+          scoping_business_unit_id: ctx.admin.user.owning_business_unit_id
+        },
+        authorize?: false,
+        tenant: ctx.admin.tenant
+      )
+      |> Ash.create!()
+
+      reader = %{reader | actor: DailyFixtures.actor(reader.user)}
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.UnsortableField{}]}} =
+               Credential |> Ash.Query.sort(number: :desc) |> Ash.read(as(reader))
+    end
+
+    test "a keyset cursor the reader wrote is refused", ctx do
+      reader = DailyFixtures.member!(ctx.admin, "Reviewer", [{Credential, :read, :global}])
+
+      forged =
+        Base.encode64(:erlang.term_to_binary([ctx.credential.expires_on, ctx.credential.id]))
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Page.InvalidKeyset{}]}} =
+               Credential
+               |> Ash.Query.sort(expires_on: :asc)
+               |> Ash.read(Keyword.put(as(reader), :page, limit: 5, after: forged))
+
+      # The cursor a page hands out is accepted.
+      page =
+        Credential
+        |> Ash.Query.sort(expires_on: :asc)
+        |> Ash.read!(Keyword.put(as(reader), :page, limit: 1))
+
+      [last] = page.results
+
+      assert {:ok, %Ash.Page.Keyset{}} =
+               Credential
+               |> Ash.Query.sort(expires_on: :asc)
+               |> Ash.read(
+                 Keyword.put(as(reader), :page, limit: 1, after: last.__metadata__.keyset)
+               )
+    end
+
+    test "a filter on a calculation that reads the column is refused without the grant", ctx do
+      import Ash.Expr, only: [expr: 1]
+      reader = DailyFixtures.member!(ctx.admin, "Reviewer", [{Credential, :read, :global}])
+
+      {:ok, shout} =
+        Ash.Query.Calculation.new(
+          :shout,
+          Ash.Resource.Calculation.Expression,
+          [expr: expr(number <> "!")],
+          :string,
+          []
+        )
+
+      ref = %Ash.Query.Ref{attribute: shout, relationship_path: [], resource: Credential}
+      value = ctx.credential.number <> "!"
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidFilterReference{} = e]}} =
+               Credential |> Ash.Query.filter(^ref == ^value) |> Ash.read(as(reader))
+
+      assert e.field == :number
+    end
+
+    test "a filter on an aggregate that reads the column is refused without the grant", ctx do
+      import Ash.Expr, only: [expr: 1]
+      number = ctx.credential.number
+
+      clinicians =
+        DailyFixtures.member!(ctx.admin, "Clinicians", [
+          {Credentialing.Clinician, :read, :global},
+          {Credential, :read, :global}
+        ])
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidFilterReference{}]}} =
+               Credentialing.Clinician
+               |> Ash.Query.filter(
+                 count(credentials, query: [filter: expr(number == ^number)]) > 0
+               )
+               |> Ash.read(as(clinicians))
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidFilterReference{}]}} =
+               Credentialing.Clinician
+               |> Ash.Query.filter(first(credentials, field: :number) == ^number)
+               |> Ash.read(as(clinicians))
+    end
+
+    test "the credential form leaves a hidden number as it is when its editor cannot see it",
+         ctx do
+      editor =
+        DailyFixtures.member!(ctx.admin, "Editor", [
+          {Credential, :read, :global},
+          {Credential, :write, :global}
+        ])
+
+      opts = as(editor)
+
+      {:ok, opened} =
+        AshEnterpriseWeb.A2ui.Host.act(
+          AshEnterpriseWeb.A2ui.CredentialUI,
+          AshEnterprise.A2uiMessage.ash_action(
+            AshEnterpriseWeb.A2ui.CredentialUI,
+            "start_edit",
+            %{
+              "recordId" => ctx.credential.id
+            }
+          ),
+          opts
+        )
+
+      form =
+        Enum.find_value(opened, fn
+          %{"updateDataModel" => %{"path" => "/form", "value" => value}} -> value
+          _other -> nil
+        end)
+
+      # The editor's form does not carry the number: what stands in for it is hidden text.
+      refute form["number"] == ctx.credential.number
+
+      for sent <- [form["number"], "", nil] do
+        values = Map.merge(form, %{"number" => sent, "expires_on" => "2031-06-30"})
+
+        {_status, _messages} =
+          AshEnterpriseWeb.A2ui.Host.act(
+            AshEnterpriseWeb.A2ui.CredentialUI,
+            AshEnterprise.A2uiMessage.ash_action(
+              AshEnterpriseWeb.A2ui.CredentialUI,
+              "submit_form",
+              %{"recordId" => ctx.credential.id, "values" => values}
+            ),
+            opts
+          )
+
+        stored =
+          Ash.get!(Credential, ctx.credential.id, authorize?: false, tenant: ctx.admin.tenant)
+
+        assert stored.number == ctx.credential.number, "sent #{inspect(sent)}"
+        assert stored.expires_on == ~D[2031-06-30]
+      end
+    end
+
+    test "a holder at :global sorts, pages and filters through derived reads", ctx do
+      holder =
+        DailyFixtures.member!(ctx.admin, "Holder", [
+          {Credential, :read, :global},
+          {Credentialing.Clinician, :read, :global},
+          {@number_key, :read, :global}
+        ])
+
+      number = ctx.credential.number
+
+      assert [%{id: id}] =
+               Credential
+               |> Ash.Query.filter(id == ^ctx.credential.id)
+               |> Ash.Query.sort(number: :asc)
+               |> Ash.read!(as(holder))
+
+      assert id == ctx.credential.id
+
+      assert [%{id: clinician_id}] =
+               Credentialing.Clinician
+               |> Ash.Query.filter(first(credentials, field: :number) == ^number)
+               |> Ash.read!(as(holder))
+
+      assert clinician_id == ctx.clinician.id
+
+      # A system read is not a reader: nothing is refused.
+      assert [_ | _] =
+               Credential
+               |> Ash.Query.sort(number: :asc)
+               |> Ash.read!(authorize?: false, tenant: ctx.admin.tenant)
+    end
+  end
+
   describe "a reader with the column's grant" do
     test "a reader with the field grant sees the column", ctx do
       holder =
@@ -301,6 +515,11 @@ defmodule AshEnterprise.Security.SecuredFieldsTest do
         assert refusal(credential_with(secured_fields: [column])) =~
                  "is an ownership or tenant column"
       end
+    end
+
+    test "a secured field that is not sensitive? does not compile" do
+      assert refusal(credential_with(secured_fields: [:expires_on])) =~
+               "secured_fields :expires_on must be `sensitive? true`"
     end
 
     test "a resource with its own field policies cannot also declare secured fields" do

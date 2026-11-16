@@ -563,6 +563,11 @@ if config_env() == :prod do
 
   config :ash_enterprise, session_signing_salt: signing_salts.session
 
+  # Keyset cursors are signed, so Ash refuses a cursor it did not hand out: one a client
+  # wrote to page past a value it may not see (ADR 0073). The key is derived from
+  # SECRET_KEY_BASE, never the key itself, so there is no further secret to manage.
+  config :ash, keyset_signing_secret: AshEnterprise.Secrets.keyset_signing_secret(secret_key_base)
+
   host = System.get_env("PHX_HOST") || "example.com"
 
   config :ash_enterprise, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")

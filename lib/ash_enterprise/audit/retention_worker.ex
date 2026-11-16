@@ -14,7 +14,9 @@ defmodule AshEnterprise.Audit.RetentionWorker do
   waits for the next run. The job's result carries the count as `backlog`, the
   `[:ash_enterprise, :audit, :retention]` telemetry event carries it as a measurement (the
   `ash_enterprise.audit.retention.backlog` metric), each chain's last run says so in its
-  `reason`, and a non-zero backlog logs a warning.
+  `reason`, and a non-zero backlog logs a warning. Evidence moves one batch a run, and what
+  is still eligible after it is reported the same way: `backlog.evidence` in the result,
+  the `evidence_backlog` and `evidence_purge_backlog` measurements, and a warning.
   """
 
   use Oban.Worker, queue: :default, max_attempts: 3, unique: [period: 3600]
@@ -33,13 +35,23 @@ defmodule AshEnterprise.Audit.RetentionWorker do
 
   @doc """
   Archives, then purges. Options are passed to both (`AshEnterprise.Audit.Retention`).
-  Returns `{:ok, %{archived: counts, purged: counts, backlog: %{archive: n, purge: n}}}`.
+  Returns `{:ok, %{archived: counts, purged: counts, backlog: %{archive: n, purge: n,
+  evidence: %{archive: n, purge: n}}}}`: the audit events, then the evidence artifacts,
+  still eligible after the run.
   """
   @spec run(keyword()) :: {:ok, map()} | {:error, term()}
   def run(opts \\ []) do
     with {:ok, archived} <- Retention.archive(opts),
          {:ok, purged} <- Retention.purge(opts) do
-      backlog = %{archive: Retention.backlog(archived), purge: Retention.backlog(purged)}
+      backlog = %{
+        archive: Retention.backlog(archived),
+        purge: Retention.backlog(purged),
+        evidence: %{
+          archive: Retention.evidence_backlog(:archive, opts),
+          purge: if(purged == :disabled, do: 0, else: Retention.evidence_backlog(:purge, opts))
+        }
+      }
+
       report(archived, backlog)
       {:ok, %{archived: summary(archived), purged: summary(purged), backlog: backlog}}
     end
@@ -50,7 +62,13 @@ defmodule AshEnterprise.Audit.RetentionWorker do
 
     :telemetry.execute(
       @event,
-      %{backlog: backlog.archive, purge_backlog: backlog.purge, failed: failed},
+      %{
+        backlog: backlog.archive,
+        purge_backlog: backlog.purge,
+        evidence_backlog: backlog.evidence.archive,
+        evidence_purge_backlog: backlog.evidence.purge,
+        failed: failed
+      },
       %{}
     )
 
@@ -58,6 +76,14 @@ defmodule AshEnterprise.Audit.RetentionWorker do
       Logger.warning(
         "Audit retention left #{backlog.archive} event(s) past the hot window for the next " <>
           "run: more were eligible than one run may move."
+      )
+    end
+
+    if backlog.evidence.archive + backlog.evidence.purge > 0 do
+      Logger.warning(
+        "Audit retention left #{backlog.evidence.archive} evidence artifact(s) to archive " <>
+          "and #{backlog.evidence.purge} to purge for the next run: evidence moves one " <>
+          "batch a run."
       )
     end
   end

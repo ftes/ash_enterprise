@@ -8,6 +8,18 @@ defmodule AshEnterprise.Secrets do
   """
   use AshAuthentication.Secret
 
+  @doc """
+  The key Ash signs keyset cursors with (`config :ash, :keyset_signing_secret`), derived
+  from the endpoint's `secret_key_base` so that Ash never signs with the key Phoenix is
+  given. `config/runtime.exs` sets it for a deployment.
+  """
+  @spec keyset_signing_secret(String.t()) :: String.t()
+  def keyset_signing_secret(secret_key_base) when is_binary(secret_key_base) do
+    :hmac
+    |> :crypto.mac(:sha256, secret_key_base, "ash keyset signing")
+    |> Base.encode64(padding: false)
+  end
+
   def secret_for(
         [:authentication, :tokens, :signing_secret],
         AshEnterprise.Accounts.User,

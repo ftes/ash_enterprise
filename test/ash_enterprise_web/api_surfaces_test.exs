@@ -123,6 +123,39 @@ defmodule AshEnterpriseWeb.ApiSurfacesTest do
       assert length(results) == 50
     end
 
+    # A type's to-many relationship field is a page too (`PagedGraphqlRelationships`):
+    # unpaged, one page of a list query carried every child, and the field's `limit` was
+    # honoured whatever it was.
+    test "a nested has_many field is a page: an asked-for size is clamped, and none gets 50" do
+      admin = DailyFixtures.tenant!()
+      root = admin.user.owning_business_unit_id
+
+      %Ash.BulkResult{status: :success} =
+        1..260
+        |> Enum.map(&%{name: "Child #{&1}", parent_business_unit_id: root})
+        |> Ash.bulk_create(AshEnterprise.Accounts.BusinessUnit, :create,
+          authorize?: false,
+          tenant: admin.tenant,
+          return_errors?: true
+        )
+
+      children = fn field ->
+        admin.user
+        |> bearer()
+        |> post("/gql", %{
+          query:
+            ~s|{ listBusinessUnits(filter: {id: {eq: "#{root}"}}) { results { #{field} { results { id } } } } }|
+        })
+        |> json_response(200)
+        |> get_in(["data", "listBusinessUnits", "results"])
+        |> then(fn [unit] -> get_in(unit, ["childBusinessUnits", "results"]) end)
+      end
+
+      # The field is a keyset page (`KeysetPageOfBusinessUnit`), sized by `first`.
+      assert length(children.("childBusinessUnits(first: 1000000)")) == 250
+      assert length(children.("childBusinessUnits")) == 50
+    end
+
     # The websocket used to connect anyone, with no actor and no tenant, beside an
     # HTTP path that authenticates a bearer token. Nothing subscribed through it,
     # so it is gone; these fail when subscriptions come back without a socket that

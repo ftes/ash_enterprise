@@ -167,6 +167,46 @@ defmodule AshEnterprise.Legacy.ReconcileWorkerTest do
     assert projected_login(legacy_id) == ["missed.event"]
   end
 
+  test "a projected row made :active by hand while its legacy user is suspended is drift, repaired" do
+    victim = Enum.find(projected(), &(&1.login == "awhitfield"))
+    Repo.query!("UPDATE legacy.users SET state = 'suspended' WHERE id = $1", [victim.legacy_id])
+    assert %{converged?: true} = ReconcileWorker.run()
+
+    assert Enum.find(projected(), &(&1.legacy_id == victim.legacy_id)).lifecycle_status ==
+             :inactive
+
+    # Someone sets the projected row live again by hand; every compared text column agrees.
+    Repo.query!("UPDATE projected_users SET lifecycle_status = 'active' WHERE legacy_id = $1", [
+      victim.legacy_id
+    ])
+
+    report = ReconcileWorker.run(repair?: false)
+    refute report.projection_agrees?
+
+    assert Enum.any?(report.mismatched_ranges, fn {lo, hi} ->
+             lo <= victim.legacy_id and victim.legacy_id <= hi
+           end)
+
+    assert %{converged?: true} = ReconcileWorker.run()
+
+    assert Enum.find(projected(), &(&1.legacy_id == victim.legacy_id)).lifecycle_status ==
+             :inactive
+  end
+
+  test "a projected row still live after its legacy row was archived is reported and left as it is" do
+    legacy_id = insert_legacy_user!("archived.upstream")
+    assert %{converged?: true, archived_in_legacy: %{count: 0}} = ReconcileWorker.run()
+
+    Repo.query!("UPDATE legacy.users SET deleted_at = now() WHERE id = $1", [legacy_id])
+
+    report = ReconcileWorker.run()
+
+    assert report.archived_in_legacy == %{count: 1, keys: [legacy_id]}
+    assert report.orphaned.count == 0
+    assert report.repaired == 0
+    assert projected_login(legacy_id) == ["archived.upstream"]
+  end
+
   test "a projected row whose legacy row was hard-deleted is reported and left in place" do
     legacy_id = insert_legacy_user!("gone.for.good")
     assert %{converged?: true} = ReconcileWorker.run()

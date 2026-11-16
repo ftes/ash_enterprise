@@ -8,6 +8,7 @@
     "tenant_scoped": 100,
     "unclassified_personal_attributes": 0,
     "with_sealed_attributes": 15,
+    "with_secured_attributes": 1,
     "with_sensitive_attributes": 33
   },
   "resources": [
@@ -27,7 +28,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.CatalogVersion",
@@ -45,7 +47,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.ComplianceEvaluation",
@@ -63,7 +66,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.Control",
@@ -81,7 +85,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.ControlMapping",
@@ -99,7 +104,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.ControlRevision",
@@ -117,7 +123,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.EvidenceArtifact",
@@ -135,7 +142,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.Finding",
@@ -153,7 +161,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.PolicyBundle",
@@ -171,7 +180,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.PolicyOverride",
@@ -189,7 +199,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.Profile",
@@ -207,7 +218,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.ProfileRevision",
@@ -225,7 +237,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.RuleSetRevision",
@@ -243,7 +256,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshCompliance.Resources.TenantPolicySet",
@@ -261,7 +275,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.AI.ModelCall",
@@ -279,7 +294,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.AI.ModelProfile",
@@ -297,7 +313,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.AI.RequestClassifier",
@@ -315,7 +332,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.ApiKey",
@@ -335,7 +353,8 @@
         "api_key_hash"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.BusinessUnit",
@@ -353,7 +372,8 @@
       "api_type": "business_unit",
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.Offboarding",
@@ -371,7 +391,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.Organization",
@@ -389,7 +410,8 @@
       "api_type": "organization",
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.Position",
@@ -407,7 +429,8 @@
       "api_type": "position",
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.ProjectedUser",
@@ -430,8 +453,19 @@
           "attribute": "email",
           "class": "excepted",
           "reason": "A read model over a legacy table in a strangler phase: the value is what the legacy source holds, in the clear. Masking or sealing is decided at cutover, not by the read model."
+        },
+        {
+          "attribute": "full_name",
+          "class": "excepted",
+          "reason": "A read model over a legacy table in a strangler phase: the value is what the legacy source holds, in the clear. Masking or sealing is decided at cutover, not by the read model."
+        },
+        {
+          "attribute": "login",
+          "class": "excepted",
+          "reason": "A read model over a legacy table in a strangler phase: the value is what the legacy source holds, in the clear. Masking or sealing is decided at cutover, not by the read model."
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.SignInLockout",
@@ -451,7 +485,8 @@
         "key"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.Team",
@@ -469,7 +504,8 @@
       "api_type": "team",
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.TeamMembership",
@@ -487,7 +523,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.Token",
@@ -507,7 +544,8 @@
         "jti"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.User",
@@ -534,7 +572,8 @@
           "class": "sensitive",
           "reason": null
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Accounts.UserIdentity",
@@ -555,7 +594,14 @@
         "refresh_token"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [
+        {
+          "attribute": "uid",
+          "class": "excepted",
+          "reason": "The identity provider's subject for the person, which a federated sign-in is matched by: it must be queryable in the clear, and names the person only to that provider."
+        }
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Agents.AgentMessage",
@@ -573,7 +619,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Agents.AgentRun",
@@ -591,7 +638,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Agents.AgentSession",
@@ -609,7 +657,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Agents.Console",
@@ -627,7 +676,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Agents.MorningBrief",
@@ -645,7 +695,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Agents.ToolCall",
@@ -663,7 +714,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Compose",
@@ -681,7 +733,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Account",
@@ -699,7 +752,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.ActivityCount",
@@ -717,7 +771,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Approval",
@@ -735,7 +790,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Brief",
@@ -753,7 +809,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.CalendarEvent",
@@ -771,7 +828,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Conversation",
@@ -789,7 +847,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Duplicate",
@@ -823,7 +882,8 @@
           "class": "excepted",
           "reason": "Computed, never stored: the assistant's lookup builds it on request, as the asking person, behind the zone gate."
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Message",
@@ -841,7 +901,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Person",
@@ -865,7 +926,8 @@
           "class": "excepted",
           "reason": "Computed, never stored: the assistant's lookup builds it on request, as the asking person, behind the zone gate."
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.StalledReview",
@@ -883,7 +945,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.Task",
@@ -901,7 +964,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Lookup.WorkEntry",
@@ -919,7 +983,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.PinnedApp",
@@ -937,7 +1002,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.ReplyDraft",
@@ -962,7 +1028,8 @@
           "sealing": "application_vault"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Thread",
@@ -987,7 +1054,8 @@
           "sealing": "application_vault"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Assistant.Turn",
@@ -1017,7 +1085,8 @@
           "sealing": "application_vault"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Audit.ArchiveRun",
@@ -1035,7 +1104,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Audit.ArchivedEvent",
@@ -1057,7 +1127,8 @@
         "metadata"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Audit.ArchivedEvidence",
@@ -1075,7 +1146,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Audit.EventLog",
@@ -1097,7 +1169,8 @@
         "metadata"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Audit.Package",
@@ -1115,7 +1188,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Automation.Incident",
@@ -1133,7 +1207,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Automation.Occurrence",
@@ -1151,7 +1226,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.Cursor",
@@ -1169,7 +1245,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.Definition",
@@ -1189,7 +1266,8 @@
         "xml"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.Dispatch",
@@ -1207,7 +1285,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.HumanTask",
@@ -1225,7 +1304,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.Instance",
@@ -1243,7 +1323,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.ProcessEvent",
@@ -1261,7 +1342,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.Redrive",
@@ -1279,7 +1361,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.Subscription",
@@ -1297,7 +1380,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.TaskCandidate",
@@ -1315,7 +1399,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Bpmn.Token",
@@ -1333,7 +1418,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.BusinessEvents.Ledger",
@@ -1355,7 +1441,8 @@
         "metadata"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.BusinessEvents.Ledger.SimulationEvent",
@@ -1377,7 +1464,8 @@
         "metadata"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.Account",
@@ -1395,7 +1483,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.CalendarEvent",
@@ -1425,7 +1514,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.CommitmentScan",
@@ -1443,7 +1533,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.Conversation",
@@ -1473,7 +1564,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.ConversationParticipant",
@@ -1491,7 +1583,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.EventAttendee",
@@ -1509,7 +1602,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.Message",
@@ -1534,7 +1628,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.Person",
@@ -1578,7 +1673,8 @@
           "class": "sensitive",
           "reason": null
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.Project",
@@ -1596,7 +1692,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Canonical.Task",
@@ -1626,7 +1723,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Compliance.EventLog",
@@ -1648,7 +1746,8 @@
         "metadata"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Credentialing.Clinic",
@@ -1666,7 +1765,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Credentialing.Clinician",
@@ -1698,7 +1798,8 @@
           "class": "sensitive",
           "reason": null
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Credentialing.Credential",
@@ -1718,7 +1819,13 @@
         "number"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": [
+        {
+          "attribute": "number",
+          "privilege": "prvReadCredential.number"
+        }
+      ]
     },
     {
       "resource": "AshEnterprise.Credentialing.DocumentEvent",
@@ -1736,7 +1843,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Credentialing.LicenceDocument",
@@ -1754,7 +1862,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Credentialing.RegistryApi",
@@ -1772,7 +1881,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Decisions.Definition",
@@ -1792,7 +1902,8 @@
         "xml"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Decisions.Evaluation",
@@ -1810,7 +1921,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Erasure.Key",
@@ -1831,7 +1943,8 @@
         "wrapped_key"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Erasure.PersonErasure",
@@ -1849,7 +1962,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Erasure.Scope",
@@ -1867,7 +1981,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.AgentVersion",
@@ -1885,7 +2000,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.Entry",
@@ -1903,7 +2019,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.HumanInput",
@@ -1921,7 +2038,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.Intervention",
@@ -1939,7 +2057,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.Invocation",
@@ -1975,7 +2094,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.ReleaseManifest",
@@ -1993,7 +2113,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.Run",
@@ -2024,7 +2145,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.RunFinished",
@@ -2042,7 +2164,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.StartProcess",
@@ -2060,7 +2183,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Execution.Step",
@@ -2085,7 +2209,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Flags.Flag",
@@ -2103,7 +2228,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Ingestion.SourceObject",
@@ -2128,7 +2254,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Calendar.Sync",
@@ -2146,7 +2273,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Calendar.SyncCursor",
@@ -2168,7 +2296,8 @@
         "sync_token"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Gmail",
@@ -2186,7 +2315,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Gmail.SyncState",
@@ -2204,7 +2334,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.GoogleCalendar",
@@ -2222,7 +2353,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.GoogleSheets",
@@ -2240,7 +2372,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.LinkedAccount",
@@ -2261,7 +2394,8 @@
         "label"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Operations.Delivery",
@@ -2279,7 +2413,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.ProjectionCursor",
@@ -2297,7 +2432,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Slack",
@@ -2315,7 +2451,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Slack.ConversationCursor",
@@ -2333,7 +2470,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Slack.KnownMember",
@@ -2351,7 +2489,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Integration.Slack.Sync",
@@ -2369,7 +2508,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Legacy.Twins.Companies",
@@ -2387,7 +2527,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Legacy.Twins.Users",
@@ -2420,8 +2561,14 @@
           "attribute": "last_name",
           "class": "excepted",
           "reason": "The twin of a legacy table this application does not own, so it mirrors the source's columns as they are, in the clear. Masking or sealing is decided at cutover, not by the twin."
+        },
+        {
+          "attribute": "login",
+          "class": "excepted",
+          "reason": "The twin of a legacy table this application does not own, so it mirrors the source's columns as they are, in the clear. Masking or sealing is decided at cutover, not by the twin."
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Legacy.User",
@@ -2444,8 +2591,19 @@
           "attribute": "email",
           "class": "excepted",
           "reason": "A read model over a legacy table in a strangler phase: the value is what the legacy source holds, in the clear. Masking or sealing is decided at cutover, not by the read model."
+        },
+        {
+          "attribute": "full_name",
+          "class": "excepted",
+          "reason": "A read model over a legacy table in a strangler phase: the value is what the legacy source holds, in the clear. Masking or sealing is decided at cutover, not by the read model."
+        },
+        {
+          "attribute": "login",
+          "class": "excepted",
+          "reason": "A read model over a legacy table in a strangler phase: the value is what the legacy source holds, in the clear. Masking or sealing is decided at cutover, not by the read model."
         }
-      ]
+      ],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Licences.Dependency",
@@ -2463,7 +2621,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Lineage.Job",
@@ -2481,7 +2640,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Lineage.JobRun",
@@ -2499,7 +2659,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Lineage.Run",
@@ -2517,7 +2678,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Lineage.Window",
@@ -2535,7 +2697,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.AttributeAssertion",
@@ -2556,7 +2719,8 @@
         "value"
       ],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.Egress",
@@ -2574,7 +2738,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.ImportBatch",
@@ -2592,7 +2757,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.Mapping",
@@ -2610,7 +2776,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.MappingProposal",
@@ -2628,7 +2795,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.MatchCandidate",
@@ -2646,7 +2814,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.MatchRuleSet",
@@ -2664,7 +2833,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.SourceIdentity",
@@ -2682,7 +2852,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.SourceRecord",
@@ -2700,7 +2871,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Mdm.StagedRecord",
@@ -2718,7 +2890,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Planning.Binding",
@@ -2736,7 +2909,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Planning.Candidate",
@@ -2761,7 +2935,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Planning.CheckResult",
@@ -2786,7 +2961,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Planning.ModelVersion",
@@ -2804,7 +2980,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Planning.Run",
@@ -2834,7 +3011,8 @@
           "sealing": "erasure_scope"
         }
       ],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Process.Binding",
@@ -2852,7 +3030,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Quality.AgentReply",
@@ -2870,7 +3049,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Quality.CaseResult",
@@ -2888,7 +3068,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Quality.Suite",
@@ -2906,7 +3087,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Quality.SuiteRun",
@@ -2924,7 +3106,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Reference.Currency",
@@ -2942,7 +3125,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Reference.LanguageLocale",
@@ -2960,7 +3144,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Reference.TimeZoneDefinition",
@@ -2978,7 +3163,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.AccessGrant",
@@ -2996,7 +3182,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.AccessRequest",
@@ -3014,7 +3201,8 @@
       "api_type": "both",
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.AgentStartGrant",
@@ -3032,7 +3220,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.AuthenticationEvent",
@@ -3050,7 +3239,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.AutomationRole",
@@ -3068,7 +3258,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.BreakGlassSession",
@@ -3086,7 +3277,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.Privilege",
@@ -3104,7 +3296,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.Role",
@@ -3122,7 +3315,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.RolePrivilege",
@@ -3140,7 +3334,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.TeamRole",
@@ -3158,7 +3353,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.Security.UserRole",
@@ -3176,7 +3372,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.BandTableCertification",
@@ -3194,7 +3391,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.Banding",
@@ -3212,7 +3410,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.CalibrationRun",
@@ -3230,7 +3429,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.CalibrationSample",
@@ -3248,7 +3448,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.EvidenceAssertion",
@@ -3266,7 +3467,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.Fact",
@@ -3284,7 +3486,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.FilterExecution",
@@ -3302,7 +3505,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.FilterProposal",
@@ -3320,7 +3524,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.HumanVerdict",
@@ -3338,7 +3543,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.Judgment",
@@ -3356,7 +3562,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.QuestionProposal",
@@ -3374,7 +3581,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEnterprise.SystemOne.StandingHead",
@@ -3392,7 +3600,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEvents.Projections.Checkpoint",
@@ -3410,7 +3619,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEvents.Projections.DeadLetter",
@@ -3428,7 +3638,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     },
     {
       "resource": "AshEvents.Projections.Registry",
@@ -3446,7 +3657,8 @@
       "api_type": null,
       "sensitive_attributes": [],
       "sealed_attributes": [],
-      "personal_looking_attributes": []
+      "personal_looking_attributes": [],
+      "secured_attributes": []
     }
   ],
   "global_tables": [

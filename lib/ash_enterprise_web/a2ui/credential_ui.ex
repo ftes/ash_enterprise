@@ -1,7 +1,14 @@
 defmodule AshEnterpriseWeb.A2ui.CredentialUI do
   @moduledoc """
-  The credentialing workspace: the clinic's credentials, by number, with the clinician
-  each belongs to and whether the registry has activated it.
+  The credentialing workspace: the clinic's credentials, soonest to expire first, with the
+  clinician each belongs to and whether the registry has activated it.
+
+  The number is a secured column (ADR 0073): a reader without its grant sees it hidden, and
+  a sort on it is refused for them (`AshEnterprise.Security.Preparations.SecuredFieldRefs`),
+  so the table neither sorts by it by default nor offers it as a sort. A search on it
+  matches nothing for that reader. Edit leaves a hidden number as it is: the form sends
+  no value for a field its reader could not see, and `Credential.correct` keeps the number
+  when none is given.
 
   **Ask to activate** runs `Credential.request_activation` as the person clicking: the
   request for the governed `activate_credential` (ADR 0055), which waits for a member of
@@ -31,8 +38,8 @@ defmodule AshEnterpriseWeb.A2ui.CredentialUI do
 
     query :default do
       search_fields [:number]
-      sortable [:number, :status, :expires_on]
-      default_sort number: :asc
+      sortable [:status, :expires_on]
+      default_sort expires_on: :asc
       page_size 25
     end
 

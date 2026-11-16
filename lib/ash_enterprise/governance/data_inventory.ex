@@ -10,8 +10,9 @@ defmodule AshEnterprise.Governance.DataInventory do
 
   A read-only description of declared schema and ownership kind: the domain,
   table, ownership, whether the table is tenant-scoped or global, audit,
-  archival and lifecycle switches, CDM provenance, API exposure, and which
-  attributes are `sensitive?` or sealed. It uses the column names ADR 0013
+  archival and lifecycle switches, CDM provenance, API exposure, which
+  attributes are `sensitive?` or sealed, and which are secured columns, read
+  only through a grant on the column (`secured_fields`, ADR 0073). It uses the column names ADR 0013
   chose for a catalogue; it makes no claim of compatibility with any
   catalogue's schema, because nothing here checks one.
 
@@ -29,7 +30,9 @@ defmodule AshEnterprise.Governance.DataInventory do
   is an `encrypted_*` column (the cloaked attributes, sealed under an erasure
   scope or the application vault), and otherwise carries no class. A narrow
   name heuristic (`looks_personal?/1`) flags attributes that look like personal
-  data. A flagged attribute must be sensitive, sealed, or listed with a reason
+  data: contact details, names (`first_name`, `last_name`, `full_name`), a
+  person's `login`, and an identity provider's subject `uid`. A flagged attribute
+  must be sensitive, sealed, or listed with a reason
   in `DataFlows.looks_personal_exceptions/0`; one that is none of these is
   `unclassified`, and `unclassified/1` is what a test asserts is empty.
 
@@ -39,7 +42,7 @@ defmodule AshEnterprise.Governance.DataInventory do
 
   alias AshEnterprise.Governance.DataFlows
 
-  @personal ~r/(^|_)(email|phone|first_name|last_name|birth\w*|address|national_id)($|_)/
+  @personal ~r/(^|_)(email|phone|first_name|last_name|full_name|login|birth\w*|address|national_id)($|_)|^uid$/
 
   @doc "The attribute-name heuristic for personal data."
   @spec looks_personal?(atom() | String.t()) :: boolean()
@@ -75,6 +78,7 @@ defmodule AshEnterprise.Governance.DataInventory do
         "global_tables" => length(global_tables(entries)),
         "with_sensitive_attributes" => Enum.count(entries, &(&1["sensitive_attributes"] != [])),
         "with_sealed_attributes" => Enum.count(entries, &(&1["sealed_attributes"] != [])),
+        "with_secured_attributes" => Enum.count(entries, &(&1["secured_attributes"] != [])),
         "unclassified_personal_attributes" => length(unclassified(entries)),
         "egress_paths" => length(flows)
       },
@@ -131,6 +135,13 @@ defmodule AshEnterprise.Governance.DataInventory do
       "cdm_entity" => platform_opt(resource, platform?, :cdm_entity, nil),
       "api_type" => platform_opt(resource, platform?, :api_type, nil) |> stringify(),
       "sensitive_attributes" => Enum.sort(sensitive),
+      "secured_attributes" =>
+        resource
+        |> platform_opt(platform?, :secured_fields, [])
+        |> Enum.sort()
+        |> Enum.map(
+          &%{"attribute" => to_string(&1), "privilege" => secured_privilege(resource, &1)}
+        ),
       "sealed_attributes" =>
         sealed_names
         |> Enum.sort()
@@ -154,6 +165,10 @@ defmodule AshEnterprise.Governance.DataInventory do
   end
 
   defp sealed?(name), do: String.starts_with?(to_string(name), "encrypted_")
+
+  # The `:read` privilege a secured column is granted through (ADR 0073).
+  defp secured_privilege(resource, field),
+    do: "prvRead#{resource |> Module.split() |> List.last()}.#{field}"
 
   # Sealed under an erasure scope when an action runs the scope-sealing change,
   # otherwise by the application vault (`ash_cloak` default).

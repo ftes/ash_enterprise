@@ -161,13 +161,17 @@ defmodule AshEnterpriseWeb.Telemetry do
   end
 
   # Audit retention's daily run (`AshEnterprise.Audit.RetentionWorker`): the audit events
-  # left past the hot window for the next run, and the moves that did not verify. No tags:
+  # and evidence artifacts left past the hot window for the next run, and the moves that did
+  # not verify. No tags:
   # one series for the deployment.
   @doc "The metrics the daily retention run feeds."
   def retention_metrics do
     [
       last_value("ash_enterprise.audit.retention.backlog",
         description: "Audit events past the hot window that the last retention run left"
+      ),
+      last_value("ash_enterprise.audit.retention.evidence_backlog",
+        description: "Evidence artifacts past the hot window that the last retention run left"
       ),
       last_value("ash_enterprise.audit.retention.failed",
         description: "Archive moves the last retention run recorded as failed"

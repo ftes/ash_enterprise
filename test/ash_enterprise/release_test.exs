@@ -32,6 +32,44 @@ defmodule AshEnterprise.ReleaseTest do
   end
 
   describe "audit_verify" do
+    test "a chain that cannot be read is reported, the others are still verified, and it is not clean",
+         %{admin: admin} do
+      other = tenant!()
+
+      verifier = fn log, partition ->
+        if partition == admin.tenant,
+          do: raise("relation is unreadable"),
+          else: AshEvents.Chain.verify(log, partition)
+      end
+
+      out =
+        capture_io(fn ->
+          send(self(), {:report, Release.audit_verify(nil, verifier: verifier)})
+        end)
+
+      assert_received {:report, report}
+      assert report.status == :broken
+      assert report.unreadable == 1
+      assert report.findings == 0
+
+      assert %{error: "relation is unreadable", checked: 0} =
+               Enum.find(report.chains, &(&1.partition == admin.tenant))
+
+      assert %{findings: [], checked: checked} =
+               Enum.find(report.chains, &(&1.partition == other.tenant))
+
+      assert checked > 0
+      assert out =~ "could not be verified: relation is unreadable"
+      assert out =~ "1 chain(s) could not be verified"
+
+      # One tenant's chain alone, unreadable: broken too, not a crash.
+      capture_io(fn ->
+        send(self(), {:report, Release.audit_verify(admin.tenant, verifier: verifier)})
+      end)
+
+      assert_received {:report, %{status: :broken, unreadable: 1}}
+    end
+
     test "audit_verify reports a broken chain", %{admin: admin} do
       tamper!(admin.tenant)
 

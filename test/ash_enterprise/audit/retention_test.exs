@@ -150,6 +150,50 @@ defmodule AshEnterprise.Audit.RetentionTest do
       assert archived_count(ctx.org) == 0
     end
 
+    test "an evidence backlog over one run's batch is reported, and drains on the next", ctx do
+      for days <- [300, 250, 200, 150], do: artifact!(ctx.org, days, "old #{days}")
+      artifact!(ctx.org, 1, "newest")
+
+      ref = :telemetry_test.attach_event_handlers(self(), [RetentionWorker.event()])
+      on_exit(fn -> :telemetry.detach(ref) end)
+
+      # One batch of two moves; the other two old artifacts wait, and the run says so.
+      assert {:ok, %{backlog: %{evidence: %{archive: 2, purge: 0}}}} =
+               RetentionWorker.run(batch_size: 2)
+
+      assert_received {[:ash_enterprise, :audit, :retention], ^ref,
+                       %{evidence_backlog: 2, evidence_purge_backlog: 0}, _}
+
+      assert hot_artifacts(ctx.org) == 3
+
+      assert {:ok, %{backlog: %{evidence: %{archive: 0}}}} = RetentionWorker.run(batch_size: 2)
+      assert hot_artifacts(ctx.org) == 1
+    end
+
+    test "the newest artifact is no backlog, and nothing is counted inside the hot window",
+         ctx do
+      artifact!(ctx.org, 300, "only one, old")
+      assert Retention.evidence_backlog(:archive) == 0
+
+      # A newer one makes the old one movable; the newer one is inside the window.
+      for days <- [60, 30], do: artifact!(ctx.org, days, "recent #{days}")
+      assert Retention.evidence_backlog(:archive) == 1
+
+      # Nothing is purged unless an age is configured.
+      assert Retention.evidence_backlog(:purge) == 0
+    end
+
+    test "the purge backlog counts archived evidence past the configured age", ctx do
+      for days <- [500, 450], do: ctx.org |> artifact!(days, "old #{days}") |> recorded!(days)
+      artifact!(ctx.org, 1, "newest")
+      {:ok, %{evidence: {:archived, _}}} = Retention.archive()
+
+      assert Retention.evidence_backlog(:purge, days: 400) == 2
+      assert Retention.evidence_backlog(:purge, days: 480) == 1
+      {:ok, %{evidence: {:purged, _}}} = Retention.purge(days: 400, batch_size: 1)
+      assert Retention.evidence_backlog(:purge, days: 400) == 1
+    end
+
     test "a failed verify deletes nothing", ctx do
       [first | _] = for days <- [200, 150, 120], do: event!(ctx.org, days)
       event!(ctx.org, 1)

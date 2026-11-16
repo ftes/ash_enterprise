@@ -47,15 +47,23 @@ policy passes, and a filter a client supplied (`Ash.Query.filter_input/2`) rewri
    and would answer "which row has this number" one question at a time. So every authorized read of a platform
    resource rewrites each reference to a secured column, on the resource or across a relationship, to
    `if <visible on this row>, do: column, else: nil` (`Security.Preparations.SecuredFieldRefs`), the same rewrite Ash
-   applies to client input, from the precomputed context.
+   applies to client input, from the precomputed context. Two uses cannot be rewritten that way and are refused with
+   an `Ash.Error.Invalid` naming the column, for a reader who does not see it on every row: a sort that reads it
+   (directly, or through a calculation or an aggregate), whose order would answer what the field policy withholds, and
+   a filter on a calculation or an aggregate that reads it, which the data layer evaluates past the field policy. Keyset
+   cursors are signed (`config :ash, :keyset_signing_secret`, derived from `SECRET_KEY_BASE` in a deployment), so a
+   cursor a reader wrote to page past a hidden value is refused.
 7. `AshEnterprise.Platform.Verifiers.SecuredFields` refuses a name that is not an attribute, the primary key (Ash shows
-   it to everyone), an ownership or tenant column (authorization reads them), and a resource that also declares field
-   policies of its own. `LinkedAccount` keeps its hand-written policy, which is a different rule (visible only through
+   it to everyone), an ownership or tenant column (authorization reads them), a column that is not `sensitive?` (the
+   audit log keeps every other changed value, and is read through a row grant), and a resource that also declares
+   field policies of its own. `LinkedAccount` keeps its hand-written policy, which is a different rule (visible only through
    two actions), beside this one.
 8. Pages show a hidden value as masked text: `Phoenix.HTML.Safe` is implemented for `Ash.ForbiddenField`
-   (`AshEnterpriseWeb.HiddenField`), and on the JSON wire it is `null`, as AshJsonApi renders a forbidden field. It is
-   never a placeholder string on the wire, which a form could send back as the value, and `String.Chars` is not
-   implemented, so code that builds a key or a request from a hidden value fails instead of using a mask.
+   (`AshEnterpriseWeb.HiddenField`), and on the JSON wire it is `null`, as AshJsonApi renders a forbidden field. An
+   A2UI surface, which serializes a struct it does not know by inspecting it, shows the inspected struct. Either way a
+   form filled from the record holds a stand-in, so an update keeps the stored value when a writer who cannot see the
+   column sends back `nil`, a blank or that inspected text (`Security.Changes.KeepHiddenSecuredFields`). `String.Chars`
+   is not implemented, so code that builds a key or a request from a hidden value fails instead of using a mask.
 
 The first secured column is `Credentialing.Credential.number`. The coordinator who records numbers holds it through a
 role of its own; the credentialing committee reviews an activation without it.
@@ -81,8 +89,11 @@ role of its own; the credentialing committee reviews an activation without it.
   an aggregate (its field or its filter) that reads a secured column anywhere in the application fails a test
   (`secured_fields_test.exs`, "nothing derived reads a secured column"). A module calculation is not scanned: one
   that derives from a secured column reads it through the reader, as `Findings` does.
-- **Sorting is not rewritten.** A sort on a secured column orders the rows a reader can see by a value they cannot
-  read, which tells them the order and not the value.
+- **A sort is refused, not rewritten.** A sort on a secured column would order the rows a reader can see by a value
+  they cannot read, and a keyset page over it would let them search the values. So it is refused for a reader who
+  does not see the column on every row, a grant below `:global` included, and a page that lists such a column does
+  not sort by it by default (the credential workspace sorts by expiry). A client's sort across a relationship
+  (`sort_input("credential.number")`) is already a sort by `nil` there: Ash's field policy replaces the value.
 - **Field policies do not run in the policy bypasses.** The engines reach a secured column through the actor they
   carry, and a system actor through `RoleGrant`'s system branch; FEEL drops a forbidden field from its context
   (ADR 0027), so a process that needs the value reads it as a system actor or not at all.

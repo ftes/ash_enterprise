@@ -1,8 +1,9 @@
 defmodule AshEnterprise.Platform.BoundedReadsTest do
   @moduledoc """
   No list surface returns a whole table: every JSON:API index and GraphQL list
-  names a read whose paging is required, and every AshAi read tool names a read
-  whose page size is capped (`AshEnterprise.Test.BoundedReads`).
+  names a read whose paging is required, every GraphQL to-many relationship field
+  pages, and every AshAi read tool names a read whose page size is capped
+  (`AshEnterprise.Test.BoundedReads`).
 
   A test rather than a compile-time verifier, so a surface added on a branch
   fails here, in CI, instead of failing every other branch's compile.
@@ -76,6 +77,22 @@ defmodule AshEnterprise.Platform.BoundedReadsTest do
       end
     end
 
+    test "a GraphQL relationship field that is a plain list is reported" do
+      read = %{pages_only_when_asked() | name: :read}
+
+      for strategy <- [nil, :none] do
+        surface = %{kind: :graphql_relationship, action: read, strategy: strategy}
+        assert BoundedReads.problem(surface) =~ "a plain list"
+      end
+
+      paged = %{kind: :graphql_relationship, action: read, strategy: :keyset}
+      assert BoundedReads.problem(paged) == nil
+
+      uncapped = %{read | pagination: %{read.pagination | max_page_size: nil}}
+
+      assert BoundedReads.problem(%{paged | action: uncapped}) =~ "names no max_page_size"
+    end
+
     test "an AshAi tool over a read that does not page, or a manual read, is reported" do
       assert BoundedReads.problem(:ash_ai_tool, %Read{name: :fixture, pagination: false}) ==
                "does not page"
@@ -106,7 +123,7 @@ defmodule AshEnterprise.Platform.BoundedReadsTest do
   end
 
   describe "the application" do
-    test "every JSON:API index, GraphQL list and AshAi read tool pages by default" do
+    test "every JSON:API index, GraphQL list and relationship field, and AshAi read tool pages by default" do
       surfaces = BoundedReads.surfaces()
 
       # Not vacuous: the three Accounts lists on both APIs, and the read tools.
@@ -116,9 +133,12 @@ defmodule AshEnterprise.Platform.BoundedReadsTest do
 
       assert Enum.any?(surfaces, &(&1.kind == :ash_ai_tool and &1.action.manual == nil))
 
+      # The business unit tree and the position tree, at least.
+      assert surfaces |> Enum.filter(&(&1.kind == :graphql_relationship)) |> length() >= 2
+
       problems =
         for surface <- surfaces,
-            problem = BoundedReads.problem(surface.kind, surface.action),
+            problem = BoundedReads.problem(surface),
             not Map.has_key?(@self_bounded_manual_tools, {surface.resource, surface.name}),
             do: "#{surface.kind} #{inspect(surface.resource)} #{surface.name}: #{problem}"
 

@@ -68,11 +68,35 @@ defmodule AshEnterprise.Governance.DataInventoryTest do
 
     test "the heuristic is narrow" do
       for name <-
-            ~w(email phone first_name last_name birth_date address national_id mobile_phone)a,
+            ~w(email phone first_name last_name full_name login uid birth_date address national_id mobile_phone)a,
           do: assert(DataInventory.looks_personal?(name), inspect(name))
 
-      for name <- ~w(name title status phoneme addressed)a,
+      for name <- ~w(name title status phoneme addressed external_uid fluid logins_count)a,
           do: refute(DataInventory.looks_personal?(name), inspect(name))
+    end
+
+    test "a person's name, login and identity-provider subject are flagged, each with a reason" do
+      flagged = [
+        {AshEnterprise.Accounts.ProjectedUser, :full_name},
+        {AshEnterprise.Accounts.ProjectedUser, :login},
+        {AshEnterprise.Legacy.User, :full_name},
+        {AshEnterprise.Legacy.User, :login},
+        {AshEnterprise.Accounts.UserIdentity, :uid}
+      ]
+
+      resources = flagged |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+
+      # Without their reasons they are unclassified: the heuristic sees them.
+      without = DataInventory.build(resources, %{}, [])
+
+      for {resource, attribute} <- flagged do
+        assert %{"resource" => inspect(resource), "attribute" => to_string(attribute)} in DataInventory.unclassified(
+                 without
+               )
+      end
+
+      with_reasons = DataInventory.build(resources, DataFlows.looks_personal_exceptions(), [])
+      assert DataInventory.unclassified(with_reasons) == []
     end
   end
 
@@ -110,7 +134,7 @@ defmodule AshEnterprise.Governance.DataInventoryTest do
         entry = Map.fetch!(by_name, inspect(resource))
 
         for key <-
-              ~w(ownership tenancy audit archival api_type sensitive_attributes sealed_attributes table domain) do
+              ~w(ownership tenancy audit archival api_type sensitive_attributes sealed_attributes secured_attributes table domain) do
           assert Map.has_key?(entry, key), "#{inspect(resource)} lacks #{key}"
         end
       end
@@ -131,6 +155,18 @@ defmodule AshEnterprise.Governance.DataInventoryTest do
       assert %{"attribute" => "encrypted_commitment", "sealing" => "erasure_scope"} in task[
                "sealed_attributes"
              ]
+    end
+
+    test "a resource without secured columns lists none, and the credential lists its number with its privilege" do
+      by_name = Map.new(DataInventory.build()["resources"], &{&1["resource"], &1})
+
+      assert by_name["AshEnterprise.Accounts.Organization"]["secured_attributes"] == []
+
+      assert by_name["AshEnterprise.Credentialing.Credential"]["secured_attributes"] == [
+               %{"attribute" => "number", "privilege" => "prvReadCredential.number"}
+             ]
+
+      assert DataInventory.build()["summary"]["with_secured_attributes"] == 1
     end
 
     test "sensitive attributes are listed by name" do

@@ -387,9 +387,16 @@ defmodule AshEnterprise.Governance.DataFlows do
     %{
       {AshEnterprise.Accounts.User, :email} =>
         "The login identity. It is the credential's public half, must be queryable for sign-in and uniqueness, and cannot be sealed.",
+      {AshEnterprise.Accounts.UserIdentity, :uid} =>
+        "The identity provider's subject for the person, which a federated sign-in is matched by: it must be queryable in the clear, and names the person only to that provider.",
       {AshEnterprise.Accounts.ProjectedUser, :email} => legacy_view,
+      {AshEnterprise.Accounts.ProjectedUser, :full_name} => legacy_view,
+      {AshEnterprise.Accounts.ProjectedUser, :login} => legacy_view,
       {AshEnterprise.Legacy.User, :email} => legacy_view,
+      {AshEnterprise.Legacy.User, :full_name} => legacy_view,
+      {AshEnterprise.Legacy.User, :login} => legacy_view,
       {AshEnterprise.Legacy.Twins.Users, :email} => legacy_twin,
+      {AshEnterprise.Legacy.Twins.Users, :login} => legacy_twin,
       {AshEnterprise.Legacy.Twins.Users, :first_name} => legacy_twin,
       {AshEnterprise.Legacy.Twins.Users, :last_name} => legacy_twin,
       {AshEnterprise.Assistant.Lookup.Person, :email} => computed,

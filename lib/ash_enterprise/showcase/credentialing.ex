@@ -85,16 +85,22 @@ defmodule AshEnterprise.Showcase.Credentialing do
   @spec kill_point() :: atom()
   def kill_point, do: @kill_point
 
-  @doc "The clinic's credentials `actor` may read, with their clinicians, by number."
+  @doc """
+  The clinic's credentials `actor` may read, with their clinicians: by number for a reader
+  who sees the numbers, otherwise in the order they were recorded. A sort on a number the
+  reader cannot see is refused (ADR 0073), so the read sorts by when each was recorded and
+  only a visible number reorders the result.
+  """
   @spec credentials(term()) :: [Credential.t()]
   def credentials(actor) do
-    Credentialing.list_credentials!(
-      actor: actor,
-      tenant: ActorContext.tenant(actor),
-      load: [:clinician],
-      query: [sort: [number: :asc]]
-    )
+    [actor: actor, tenant: ActorContext.tenant(actor), load: [:clinician]]
+    |> Keyword.put(:query, sort: [created_on: :asc, id: :asc])
+    |> Credentialing.list_credentials!()
+    |> Enum.sort_by(&number_order/1)
   end
+
+  defp number_order(%{number: %Ash.ForbiddenField{}}), do: nil
+  defp number_order(%{number: number}), do: number
 
   @doc """
   The activation requests `actor` may read, newest first, each as
@@ -228,16 +234,21 @@ defmodule AshEnterprise.Showcase.Credentialing do
   clinician, so its content is sealed under the clinician's erasure scope. `run_key` names
   the run so that asking again finds it (the history seed's); by default every reading is
   a run of its own.
+
+  The reading's input names the credential's number, so it is refused (`Ash.Error.Forbidden`)
+  for an actor who may not see the number (ADR 0073): the reader would otherwise be asked
+  for a value its starter may not read.
   """
   @spec start_reading(Ash.UUID.t(), term(), String.t() | nil) ::
           {:ok, struct()} | {:error, term()}
   def start_reading(credential_id, actor, run_key \\ nil) do
     opts = [actor: actor, tenant: ActorContext.tenant(actor)]
 
-    with {:ok, credential} <- Credentialing.get_credential(credential_id, opts) do
+    with {:ok, credential} <- Credentialing.get_credential(credential_id, opts),
+         {:ok, number} <- visible_number(credential) do
       Execution.start_agent_run(
         @reader,
-        reading_input(credential.number),
+        reading_input(number),
         Map.reject(
           %{
             subject_type: inspect(Clinician),
@@ -250,6 +261,13 @@ defmodule AshEnterprise.Showcase.Credentialing do
       )
     end
   end
+
+  defp visible_number(%{number: %Ash.ForbiddenField{field: field}}) do
+    hidden = Ash.Error.Forbidden.ForbiddenField.exception(resource: Credential, field: field)
+    {:error, Ash.Error.Forbidden.exception(errors: [hidden])}
+  end
+
+  defp visible_number(%{number: number}), do: {:ok, number}
 
   @doc """
   The licence reader's runs `actor` may read, newest first, each as `%{run:,

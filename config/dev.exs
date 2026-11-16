@@ -239,3 +239,7 @@ config :ash_enterprise, AshEnterprise.Showcase, fault_controls?: true
 config :ash_enterprise, AshEnterprise.Audit.ClearRecordsForReplay,
   allow?: true,
   resources: [AshEnterprise.Accounts.BusinessUnit]
+
+# Keyset cursors are signed, so a cursor a client wrote is refused (ADR 0073). A deployment
+# derives its own from SECRET_KEY_BASE in config/runtime.exs.
+config :ash, keyset_signing_secret: "dev-only keyset signing secret, not a deployment value"

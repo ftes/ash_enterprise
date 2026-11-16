@@ -273,7 +273,8 @@ defmodule AshEnterprise.Platform.SystemAttributes do
     sections: [@platform],
     transformers: [
       AshEnterprise.Platform.Transformers.AddSystemAttributes,
-      AshEnterprise.Platform.Transformers.DefaultPagination
+      AshEnterprise.Platform.Transformers.DefaultPagination,
+      AshEnterprise.Platform.Transformers.PagedGraphqlRelationships
     ],
     verifiers: [
       AshEnterprise.Platform.Verifiers.SelfServiceActions,

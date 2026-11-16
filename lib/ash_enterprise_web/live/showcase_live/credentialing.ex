@@ -445,11 +445,19 @@ defmodule AshEnterpriseWeb.ShowcaseLive.Credentialing do
 
   defp pending(credentials), do: Enum.filter(credentials, &(&1.status == :pending))
 
-  # The credentials the reader has recorded turns for, in recorded mode; every one live.
-  defp readable(credentials, :recorded, recorded),
+  # The credentials whose documents the viewer may have read: the reading names the
+  # number, so not one whose number is hidden from them (ADR 0073). In recorded mode, only
+  # those the reader has recorded turns for.
+  defp readable(credentials, mode, recorded) do
+    credentials
+    |> Enum.reject(&AshEnterpriseWeb.HiddenField.hidden?(&1.number))
+    |> recorded_only(mode, recorded)
+  end
+
+  defp recorded_only(credentials, :recorded, recorded),
     do: Enum.filter(credentials, &MapSet.member?(recorded, &1.number))
 
-  defp readable(credentials, :live, _recorded), do: credentials
+  defp recorded_only(credentials, :live, _recorded), do: credentials
 
   defp timed_out(readings),
     do: Enum.filter(readings, fn r -> Enum.any?(r.model_calls, &(&1.outcome != :ok)) end)

@@ -18,8 +18,17 @@ defmodule AshEnterprise.Legacy.ReconcileWorker do
 
   ## What is compared, and what is not
 
+    * `login`, `email`, `full_name`, `legacy_state`, and `lifecycle_status`: the projected row's
+      lifecycle against the one its legacy state implies (`:active` for an active or stateless
+      user, `:inactive` otherwise, as `AshEnterprise.Legacy.UserProjection` aligns it). The
+      lifecycle is what access follows, so a projected row edited by hand to `:active` while
+      its legacy user is suspended is drift.
     * Archived rows (the legacy application's `deleted_at`) are outside the projection by the read
-      model's own rule, so they are neither compared nor repaired, whichever side holds them.
+      model's own rule, so they are neither compared nor repaired, whichever side holds them. A
+      projected row that is still live (not archived, lifecycle `:active`) while its legacy row
+      is archived is **reported** (`archived_in_legacy`), and never repaired here: the drain
+      carries a soft delete as an update, and whether the projection follows it is the
+      projection's rule, not this check's.
     * Projected rows of any other organization are never read: the projected side is filtered to
       `Legacy.Estate.organization_id/0`.
     * A projected row whose legacy row no longer exists is **reported and never deleted**. The
@@ -72,7 +81,17 @@ defmodule AshEnterprise.Legacy.ReconcileWorker do
 
   # Compared with the projection's own normalization: `email` is a `:ci_string` and `full_name`
   # and `login` are trimmed strings, exactly as `AshStrangler.Reconciler.plan/1` derives them.
-  @columns [login: "login", email: "email", full_name: "full_name", legacy_state: "legacy_state"]
+  # `lifecycle_status` is the one the projection derives: the legacy side spells the
+  # derivation, the projected side reads the column.
+  @columns [
+    login: "login",
+    email: "email",
+    full_name: "full_name",
+    legacy_state: "legacy_state",
+    lifecycle_status:
+      {"CASE WHEN legacy_state IS NULL OR legacy_state = 'active' " <>
+         "THEN 'active' ELSE 'inactive' END", "lifecycle_status"}
+  ]
   @normalize %{login: :trim, email: :ci_string, full_name: :trim}
 
   @type report :: %{
@@ -83,7 +102,8 @@ defmodule AshEnterprise.Legacy.ReconcileWorker do
           repaired: non_neg_integer(),
           refused: non_neg_integer(),
           converged?: boolean(),
-          orphaned: %{count: non_neg_integer(), keys: [integer()]}
+          orphaned: %{count: non_neg_integer(), keys: [integer()]},
+          archived_in_legacy: %{count: non_neg_integer(), keys: [integer()]}
         }
 
   @impl Oban.Worker
@@ -125,7 +145,8 @@ defmodule AshEnterprise.Legacy.ReconcileWorker do
       repaired: repaired,
       refused: refused,
       converged?: final.agrees?,
-      orphaned: orphans()
+      orphaned: orphans(),
+      archived_in_legacy: archived_in_legacy()
     }
 
     emit(report)
@@ -194,6 +215,25 @@ defmodule AshEnterprise.Legacy.ReconcileWorker do
     %{count: length(keys), keys: Enum.take(keys, @orphan_key_cap)}
   end
 
+  # Projected rows of the estate still live (not archived, lifecycle active) whose legacy row
+  # is archived. Reported, never repaired. Interpolated values as above.
+  @sobelow_skip ["SQL.Query"]
+  defp archived_in_legacy do
+    %Postgrex.Result{rows: rows} =
+      Repo.query!(
+        "SELECT p.legacy_id FROM #{projected_relation()} p " <>
+          "WHERE p.organization_id = '#{organization_id()}' " <>
+          "AND p.archived_at IS NULL AND p.lifecycle_status = 'active' " <>
+          "AND EXISTS (SELECT 1 FROM #{view_relation()} v " <>
+          "WHERE v.__legacy_id = p.legacy_id AND v.archived_at IS NOT NULL) " <>
+          "ORDER BY p.legacy_id",
+        []
+      )
+
+    keys = List.flatten(rows)
+    %{count: length(keys), keys: Enum.take(keys, @orphan_key_cap)}
+  end
+
   # --- the repair --------------------------------------------------------------------------
 
   defp repair(ranges) do
@@ -245,14 +285,16 @@ defmodule AshEnterprise.Legacy.ReconcileWorker do
         mismatched: length(report.mismatched_ranges),
         repaired: report.repaired,
         refused: report.refused,
-        orphaned: report.orphaned.count
+        orphaned: report.orphaned.count,
+        archived_in_legacy: report.archived_in_legacy.count
       },
       %{
         view_agrees?: report.view_agrees?,
         projection_agrees?: report.projection_agrees?,
         converged?: report.converged?,
         mismatched_ranges: report.mismatched_ranges,
-        orphaned_keys: report.orphaned.keys
+        orphaned_keys: report.orphaned.keys,
+        archived_in_legacy_keys: report.archived_in_legacy.keys
       }
     )
 
@@ -261,7 +303,8 @@ defmodule AshEnterprise.Legacy.ReconcileWorker do
         "projection_agrees=#{report.projection_agrees?} legacy=#{report.counts.legacy} " <>
         "projected=#{report.counts.projected} mismatched_ranges=#{inspect(report.mismatched_ranges)} " <>
         "repaired=#{report.repaired} refused=#{report.refused} " <>
-        "orphaned=#{report.orphaned.count} converged=#{report.converged?}"
+        "orphaned=#{report.orphaned.count} " <>
+        "archived_in_legacy=#{report.archived_in_legacy.count} converged=#{report.converged?}"
     )
   end
 end
