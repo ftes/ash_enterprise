@@ -155,7 +155,13 @@ defmodule AshEnterprise.Canonical.Commitments do
 
   defp scan_message(%Message{body: body} = message, target, extractor) do
     if is_binary(body) and String.trim(body) != "" do
-      input = %{text: body, sent_at: message.sent_at, system: message.external_system}
+      input = %{
+        text: body,
+        sent_at: message.sent_at,
+        system: message.external_system,
+        tenant: message.organization_id
+      }
+
       extractor.extract(input, target) |> extracted(message, target)
     else
       # Shredded, or nothing to read: scanned, nothing found.

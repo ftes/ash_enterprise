@@ -36,6 +36,11 @@ defmodule AshEnterprise.Zones.ResidencyPolicy do
   in the action path, next to the client, never inside an Ash policy check
   (law 3) — and turns a `false` into a structured `ResidencyDenied` with no
   call made.
+
+  The host's own model-call guard (`AshEnterprise.AI.Models.check/3`) calls
+  it too, as `allow?(tenant, :sub_processor, :generative)`, for every call to
+  a model outside the zone: one rule for the judgment path and every other AI
+  path (ADR 0026 as amended).
   """
 
   @behaviour AshJudgments.ResidencyPolicy

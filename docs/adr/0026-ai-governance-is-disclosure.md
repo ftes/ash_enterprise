@@ -1,11 +1,49 @@
 # ADR 0026 — AI governance is disclosure, not a second authorization model
 
-- **Status:** proposed
+- **Status:** accepted, as amended 2026-11-16 (below)
 - **Date:** 2026-08-19
 - **Narrowed 2026-09-28 by [ADR 0042](0042-in-zone-inference-leaving-the-zone-is-a-disclosure.md):** a model call
   to an instrument in the data's own declared zone is not an outbound disclosure; it is recorded in the judgment ledger.
   This record's disclosure logging applies to flows that leave a zone, and for customer-confidential data the per-tenant
   control is an opt-in rather than an opt-out. The rest of this record stands.
+
+## Amendment (2026-11-16): accepted as metadata only, with the opt-in on every path
+
+This record is accepted with two changes to its decision. Where the sections below disagree, this one wins.
+
+**The AI record is metadata only.** Prompts and responses are not logged, as audit events or anywhere else.
+Every model call, made, failed or refused, is one `AshEnterprise.AI.ModelCall` row: caller, the tenant it was
+made for, profile, model, residency, zone, operation, outcome, correlation id, duration and token counts. A
+failure or a refusal is recorded by its error class, never its message, which can echo the prompt. The
+correlation id joins a call to the audited action that made it, so "the user asked, the model proposed, a person
+approved, the action ran" still reconstructs as one operation. What it cannot reconstruct is the text, and that is
+the point: the record does not become a second store of personal data in free-form text, so the retention and
+encryption problem in *What it makes hard* below does not arise.
+
+**A model sub-processor needs the tenant's recorded opt-in, on every path.** The control is ADR 0042's opt-in, not
+this record's opt-out. It is `Organization.sub_processor_opt_in`, written by an audited update like any other
+attribute, and it is enforced at the one guard every model call passes (`AshEnterprise.AI.Models`): the helper
+console's prompt actions, the interpreter, question, filter and golden-record mapping proposals, commitment
+extraction, agent runs and the assistant among them. A target outside the zone is called only when:
+
+- the call names a tenant and `AshEnterprise.Zones.ResidencyPolicy` admits it for a sub-processor, the same single
+  rule the judgment path uses: the tenant has recorded the opt-in and the deployment has not set
+  `REQUIRE_IN_ZONE_MODELS`; an unknown tenant is refused; or
+- the call names no tenant and its caller is one of the deployment's declared tenantless callers, which send no
+  tenant's data at all. The list is `config :ash_enterprise, AshEnterprise.AI.Models, tenantless_callers:` and
+  holds only the catalogue translator, which sends this repository's own strings.
+
+Anything else is refused before a request is built, and the refusal is recorded with its tenant. A call inside the
+data's own zone needs no opt-in (ADR 0042). The assistant and agent runs call in-zone only, so an opted-in tenant
+still gets no hosted fallback there.
+
+A tenant reads its own record of outside-zone calls through `ModelCall`'s `:disclosures` action, behind the grant
+union like any other read: what a model sub-processor was sent, or asked to be sent, on its behalf, by caller,
+model, time and size, never content.
+
+**Not decided here.** A tenant cannot opt out of in-zone inference. A call in the data's own zone is not a
+disclosure, so this record has nothing to enforce there; an operator who wants no model at all leaves the in-zone
+profile unconfigured.
 
 ## Context
 
@@ -25,6 +63,8 @@ Nothing names which vendor or model version saw it. No tenant can decline. A que
 "can we opt out" currently has no answer, and one asking "what left our boundary" has no evidence.
 
 ## Decision
+
+*As first proposed. The amendment above replaces the prompt and response logging and the opt-out.*
 
 **Treat an LLM call as what it is — an outbound disclosure of tenant data to a sub-processor — and
 record it exactly like every other privileged action.**

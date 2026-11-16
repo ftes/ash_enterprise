@@ -432,11 +432,11 @@
       "id": "q40",
       "section": "tenancy",
       "question": "What does an AI model see, and can a customer opt out?",
-      "answer": "Partial. Thesis 5 settles the authorization half: an agent is an actor with an actor's permissions, so a model reaches nothing its user could not. ADR 0042 settles disclosure for inference: an instrument inside the data's own zone is not a disclosure and is recorded in the judgment ledger, and a sub-processor is refused unless the tenant has recorded an opt-in on its organization, which is data and is audited like any update. Every unknown case is a refusal, and `REQUIRE_IN_ZONE_MODELS` refuses sub-processors for everyone. The residency policy test asserts these. A model call's record (`AshEnterprise.AI.ModelCall`) holds its provider, model and usage, never its content, and an agent run's journal keeps the turns, sealed under the subject's erasure key (ADR 0056). ADR 0026 is still proposed, and there is no tenant-facing report of what a vendor saw.",
+      "answer": "Partial. What a model sees is what the person it acts for may read: an agent is an actor with that person's permissions (thesis 5), and a column secured with `secured_fields` reaches it only through that person's grant on the column (ADR 0073). Where it may be sent is ADR 0026 as amended and ADR 0042: a model inside the data's own zone is not a disclosure, and a model outside it is a sub-processor, called only for a tenant that has recorded `sub_processor_opt_in` on its organization, which is data and audited like any update. That opt-in is enforced at the one guard every model call passes (`AshEnterprise.AI.Models`), on every path: the helper console, proposals, extraction, agent runs and the assistant. No tenant, an unknown tenant, another tenant's opt-in, or `REQUIRE_IN_ZONE_MODELS` is a refusal before anything is sent; only a declared tenantless caller sending no tenant data (the catalogue translator) reaches a hosted model without one. The assistant runs on the in-zone profile only, so an opted-in tenant still gets no hosted fallback there. The record is metadata only: each call, refusals included, is an `AshEnterprise.AI.ModelCall` row with its tenant, model, residency and usage, never a prompt, an output or an error message, and a tenant reads its own outside-zone calls through the `:disclosures` read. An agent run's journal keeps the turns, sealed under the subject's erasure key (ADR 0056). Partial: a customer cannot opt out of in-zone inference, and there is no tenant-facing report screen beyond the `:disclosures` read.",
       "status": "partial",
       "adr": "0026",
       "item": "ai-governance",
-      "proof": "test/ash_enterprise/zones/residency_policy_test.exs"
+      "proof": "test/ash_enterprise/ai/model_opt_in_test.exs"
     },
     {
       "id": "q41",
@@ -819,10 +819,10 @@
       "id": "ai-governance",
       "title": "AI governance: what leaves the tenant boundary",
       "priority": 2,
-      "choice": "Prompt/response logging as audit events; per-tenant opt-out",
+      "choice": "Metadata-only call record stamped with the tenant; the tenant's recorded sub-processor opt-in enforced at the one model-call guard",
       "adr": "0026",
       "status": "planned",
-      "effort": "Thesis 5 already did the hard part — an agent is an actor, so a model reaches nothing its user could not, and there is no agent-specific authorization path to secure. What is left is disclosure: log prompt and response as audit events under the same tenant and correlation id as the action they produced, record which model and vendor saw them, and let a tenant switch the whole thing off.",
+      "effort": "Thesis 5 already did the hard part: an agent is an actor, so a model reaches nothing its user could not, and there is no agent-specific authorization path to secure. What is left is disclosure. ADR 0026, accepted as amended, records each model call as metadata (caller, tenant, model, residency, usage) and never its content, and refuses a model outside the zone unless the tenant has recorded an opt-in. What remains is any tenant-facing report beyond the `:disclosures` read, and an in-zone opt-out if one is ever wanted.",
       "bar": "Yes, and it is the clearest case in the set. An LLM provider is a service behind a network boundary that cannot consume ActorContext, so the rule from thesis 6 applies literally: it receives only what one actor was already entitled to, and removing it degrades a feature rather than breaking the app."
     },
     {

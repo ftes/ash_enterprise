@@ -646,8 +646,8 @@
       "applicability": "applicable",
       "frequency": "continuous",
       "owner_role": "Privacy Lead",
-      "test_ref": "file:test/ash_enterprise/zones/residency_policy_test.exs",
-      "rationale": "Disclosure to a model sub-processor is refused unless the tenant has recorded an opt-in, and every unknown case is a refusal. Other disclosures are not covered."
+      "test_ref": "file:test/ash_enterprise/ai/model_opt_in_test.exs",
+      "rationale": "Disclosure to a model sub-processor is refused unless the tenant has recorded an opt-in, at the one guard every model call passes, and every unknown case (no tenant, an unknown tenant) is a refusal; only a declared tenantless caller that sends no tenant data is exempt. Each call, refused ones included, is recorded with its tenant and never its content. Other disclosures are not covered."
     },
     {
       "id": "P6.2",

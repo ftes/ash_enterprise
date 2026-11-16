@@ -33,26 +33,41 @@ defmodule AshEnterprise.AI.Models do
 
   ## The flow guard
 
+  An in-zone target needs nothing more: a call inside the data's own zone is
+  not a disclosure (ADR 0042). A target outside the zone is a model
+  sub-processor, and every call through `call/6` (or `guard!/4`) is refused
+  before any request is built, so no byte leaves, unless:
+
+    * the call names a tenant (`tenant:` beside `caller:`) and
+      `AshEnterprise.Zones.ResidencyPolicy` admits it for
+      `:sub_processor`, the same single rule the judgment path uses: the
+      tenant has recorded `Organization.sub_processor_opt_in`, and the
+      deployment has not set `REQUIRE_IN_ZONE_MODELS`. An unknown tenant is
+      refused; or
+    * the call names no tenant and its caller is a declared tenantless caller
+      (`tenantless_callers/0`), one that sends no tenant's data at all.
+
+  A tenant's refusal raises `AshEnterprise.AI.Models.NotOptedIn`.
   `REQUIRE_IN_ZONE_MODELS=true` (`config :ash_enterprise, :ai,
-  require_in_zone_models: true`) makes every call through `call/6` refuse a
-  target that is not in-zone: it raises `AshEnterprise.AI.Models.OutsideZone`
-  before any request is built, so no byte leaves. The same flag makes
-  `AshEnterprise.Zones.ResidencyPolicy` refuse every `:sub_processor`
-  instrument profile, whatever a tenant has opted into.
+  require_in_zone_models: true`) refuses every outside-zone target, opt-in or
+  not, with `AshEnterprise.AI.Models.OutsideZone`.
 
   Every call — made, failed or refused — is recorded in
-  `AshEnterprise.AI.ModelCall`: caller, profile, model, residency, correlation
-  id, duration and token counts. Never a prompt, an output or an error
-  message, which can echo either.
+  `AshEnterprise.AI.ModelCall`: caller, tenant, profile, model, residency,
+  correlation id, duration and token counts. Never a prompt, an output or an
+  error message, which can echo either. The tenant's outside-zone calls are
+  what it can read back (`ModelCall`'s `:disclosures` action).
 
   ## Callers
 
-  * AshAi prompt actions: pass `req_llm: AshEnterprise.AI.Models.GuardedReqLLM`
-    and `req_llm_opts: [caller: "…"]` (see `AshEnterprise.AI.RequestClassifier`).
-    The same two options work for `AshAi.ToolLoop.run/2` and `stream/2`.
+  * AshAi prompt actions: pass `req_llm: AshEnterprise.AI.Models.GuardedReqLLM`,
+    `req_llm_opts: [caller: "…"]` and
+    `transform_flow: &AshEnterprise.AI.Disclosure.stamp/2`, which puts the
+    action's tenant beside the caller (see `AshEnterprise.AI.RequestClassifier`).
+    The same options work for `AshAi.ToolLoop.run/2` and `stream/2`.
   * Code calling ReqLLM itself: `resolve/1` for the spec and options, then
-    `call/6` around the request, naming what it sends so the paste guard
-    reads it.
+    `call/6` around the request with `tenant:` in its options, naming what it
+    sends so the paste guard reads it.
   * Judgment evaluations (`AshEnterprise.SystemOne.DecisionWire`): the paste
     guard over the evaluated state, then the judgment library's own call.
   * Agent runs (`AshEnterprise.Execution.AgentRuntime`), the assistant's among
@@ -63,6 +78,7 @@ defmodule AshEnterprise.AI.Models do
   alias AshEnterprise.AI.SecretShape
   alias AshEnterprise.Platform.Correlation
   alias AshEnterprise.Platform.SystemActor
+  alias AshEnterprise.Zones.ResidencyPolicy
 
   require Logger
 
@@ -99,6 +115,37 @@ defmodule AshEnterprise.AI.Models do
         "outside the zone (ADR 0042). Configure the in-zone generative profile " <>
         "(S1_GEN_BASE_URL and S1_GEN_MODEL) and unset AI_INTERPRETER_MODEL, or name an " <>
         "in-zone model."
+    end
+  end
+
+  defmodule NotOptedIn do
+    @moduledoc """
+    Raised when a call would reach a model sub-processor outside the zone and
+    nothing admits it: the tenant has not recorded an opt-in
+    (`reason: :not_opted_in`), or the call names no tenant and its caller is
+    not a declared tenantless caller (`reason: :no_tenant`). Raised before the
+    request is built: nothing was sent.
+    """
+    defexception [:label, :caller, :reason]
+
+    @type t :: %__MODULE__{
+            label: String.t() | nil,
+            caller: String.t() | nil,
+            reason: :not_opted_in | :no_tenant
+          }
+
+    @impl true
+    def message(%{label: label, caller: caller, reason: :no_tenant}) do
+      "#{caller}: refused to call #{label}: #{label} is a model sub-processor outside the zone, " <>
+        "the call names no tenant, and #{caller} is not a declared tenantless caller " <>
+        "(ADR 0026, ADR 0042). Use the in-zone generative profile, or make the call for a tenant " <>
+        "that has recorded a sub-processor opt-in."
+    end
+
+    def message(%{label: label, caller: caller}) do
+      "#{caller}: refused to call #{label}: #{label} is a model sub-processor outside the zone " <>
+        "and this organisation has not recorded a sub-processor opt-in (ADR 0026, ADR 0042). " <>
+        "Use the in-zone generative profile, or record the opt-in on the organisation."
     end
   end
 
@@ -201,17 +248,54 @@ defmodule AshEnterprise.AI.Models do
   def require_in_zone?, do: config()[:require_in_zone_models] == true
 
   @doc """
-  The refusal for `target` under the current guard, or `:ok`. For callers
-  that want to say why before they try (the helper console), not a
-  substitute for `call/6`.
+  The callers that may reach a model outside the zone with no tenant,
+  because what they send is no tenant's data:
+  `config :ash_enterprise, #{inspect(__MODULE__)}, tenantless_callers: [...]`.
+  Every other tenantless call outside the zone is refused.
   """
-  @spec check(Target.t(), String.t()) :: :ok | {:error, OutsideZone.t()}
-  def check(%Target{residency: :in_zone}, _caller), do: :ok
+  @spec tenantless_callers() :: [String.t()]
+  def tenantless_callers do
+    :ash_enterprise
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:tenantless_callers, [])
+  end
 
-  def check(%Target{} = target, caller) do
+  @doc """
+  The refusal for `target` under the current guard, or `:ok`. `opts` takes
+  `tenant:`, the tenant the call is made for (an organisation id or record).
+  For callers that want to say why before they try (the helper console), not
+  a substitute for `call/6`.
+
+  In-zone: `:ok`. Outside the zone: refused under `REQUIRE_IN_ZONE_MODELS`;
+  otherwise admitted only by the tenant's recorded opt-in
+  (`AshEnterprise.Zones.ResidencyPolicy`) or, with no tenant, by the
+  caller being a declared tenantless caller.
+  """
+  @spec check(Target.t(), String.t(), keyword()) ::
+          :ok | {:error, OutsideZone.t() | NotOptedIn.t()}
+  def check(target, caller, opts \\ [])
+
+  def check(%Target{residency: :in_zone}, _caller, _opts), do: :ok
+
+  def check(%Target{} = target, caller, opts) do
     if require_in_zone?(),
       do: {:error, %OutsideZone{label: target.label, caller: caller}},
-      else: :ok
+      else: sub_processor(target, caller, Keyword.get(opts, :tenant))
+  end
+
+  defp sub_processor(target, caller, nil) do
+    if caller in tenantless_callers(),
+      do: :ok,
+      else: {:error, %NotOptedIn{label: target.label, caller: caller, reason: :no_tenant}}
+  end
+
+  # The same single rule as the judgment path. It reads the organisation's
+  # recorded opt-in next to the client, never inside a policy check (law 3),
+  # and fails closed on a tenant it cannot resolve.
+  defp sub_processor(target, caller, tenant) do
+    if ResidencyPolicy.allow?(tenant, :sub_processor, :generative),
+      do: :ok,
+      else: {:error, %NotOptedIn{label: target.label, caller: caller, reason: :not_opted_in}}
   end
 
   @doc """
@@ -224,22 +308,27 @@ defmodule AshEnterprise.AI.Models do
   answered `{:error, %AshEnterprise.AI.SecretShape.Refused{}}` with no call
   record and `fun` never runs.
 
-  `fun` receives `transport_opts/2` of `opts`. Its `{:ok, response}` /
-  `{:error, reason}` result is returned unchanged. `operation` names the
-  ReqLLM function for the record.
+  `opts` may carry `tenant:`, the tenant the call is made for; it is removed
+  before `fun` sees the options, decides whether an outside-zone target may
+  be called (`check/3`) and is stamped on the record. `fun` receives
+  `transport_opts/2` of the rest. Its `{:ok, response}` / `{:error, reason}`
+  result is returned unchanged. `operation` names the ReqLLM function for the
+  record.
 
-  Raises `OutsideZone` (after recording the refusal) when the guard is on and
-  the target is not in-zone.
+  Raises `OutsideZone` or `NotOptedIn` (after recording the refusal) when the
+  target is outside the zone and nothing admits the call.
   """
   @spec call(Target.t(), String.t(), atom(), term(), keyword(), (keyword() -> result)) ::
           result | {:error, SecretShape.Refused.t()}
         when result: term()
   def call(%Target{} = target, caller, operation, request, opts, fun) when is_function(fun, 1) do
+    {tenant, opts} = Keyword.pop(opts, :tenant)
+
     with :ok <- paste_guard(request, caller) do
-      guard!(target, caller, operation)
+      guard!(target, caller, operation, tenant: tenant)
       started = System.monotonic_time()
       result = fun.(transport_opts(target, opts))
-      record_result(target, caller, operation, result, elapsed_ms(started))
+      record_result(target, caller, operation, result, elapsed_ms(started), tenant)
       result
     end
   end
@@ -259,18 +348,21 @@ defmodule AshEnterprise.AI.Models do
   end
 
   @doc """
-  The flow guard alone: `:ok`, or the refusal recorded and raised. For a
-  caller that records its own call (a stream, whose usage exists only once it
-  has been read).
+  The flow guard alone: `:ok`, or the refusal recorded and raised. `opts`
+  takes `tenant:` as `check/3` does. For a caller that records its own call
+  (a stream, whose usage exists only once it has been read).
   """
-  @spec guard!(Target.t(), String.t(), atom()) :: :ok
-  def guard!(%Target{} = target, caller, operation) do
-    case check(target, caller) do
+  @spec guard!(Target.t(), String.t(), atom(), keyword()) :: :ok
+  def guard!(%Target{} = target, caller, operation, opts \\ []) do
+    case check(target, caller, opts) do
       :ok ->
         :ok
 
       {:error, refusal} ->
-        record(target, caller, operation, :refused, nil, 0, nil)
+        record(target, caller, operation, :refused, nil, 0, error_class(refusal),
+          tenant: opts[:tenant]
+        )
+
         raise refusal
     end
   end
@@ -299,15 +391,34 @@ defmodule AshEnterprise.AI.Models do
 
   @doc """
   Records one call that `call/6` did not wrap — a stream, whose usage is only
-  known once it has been read. Never raises: a call record that cannot be
-  written is logged (structurally) rather than failing the call it describes.
+  known once it has been read. `opts` takes `tenant:`, stamped on the record
+  as its organisation. Never raises: a call record that cannot be written is
+  logged (structurally) rather than failing the call it describes.
   """
-  @spec record(Target.t(), String.t(), atom(), atom(), map() | nil, integer(), String.t() | nil) ::
-          :ok
-  def record(%Target{} = target, caller, operation, outcome, usage, duration_ms, error_class) do
+  @spec record(
+          Target.t(),
+          String.t(),
+          atom(),
+          atom(),
+          map() | nil,
+          integer(),
+          String.t() | nil,
+          keyword()
+        ) :: :ok
+  def record(
+        %Target{} = target,
+        caller,
+        operation,
+        outcome,
+        usage,
+        duration_ms,
+        error_class,
+        opts \\ []
+      ) do
     ModelCall.record!(
       %{
         caller: caller,
+        organization_id: tenant_id(opts[:tenant]),
         profile: target.profile,
         model: target.label,
         residency: target.residency,
@@ -341,17 +452,31 @@ defmodule AshEnterprise.AI.Models do
 
   # -- internals ---------------------------------------------------------------
 
-  defp record_result(target, caller, operation, {:ok, response}, duration) do
-    record(target, caller, operation, :ok, usage_of(response), duration, nil)
+  defp record_result(target, caller, operation, {:ok, response}, duration, tenant) do
+    record(target, caller, operation, :ok, usage_of(response), duration, nil, tenant: tenant)
   end
 
-  defp record_result(target, caller, operation, {:error, reason}, duration) do
-    record(target, caller, operation, :error, nil, duration, error_class(reason))
+  defp record_result(target, caller, operation, {:error, reason}, duration, tenant) do
+    record(target, caller, operation, :error, nil, duration, error_class(reason), tenant: tenant)
   end
 
-  defp record_result(target, caller, operation, _other, duration) do
-    record(target, caller, operation, :ok, nil, duration, nil)
+  defp record_result(target, caller, operation, _other, duration, tenant) do
+    record(target, caller, operation, :ok, nil, duration, nil, tenant: tenant)
   end
+
+  # The organisation a tenant names, for the record: an id or the record
+  # itself. Anything else (no tenant, a value that is not an id) is recorded
+  # as no organisation rather than failing the call it describes.
+  defp tenant_id(%{id: id}), do: tenant_id(id)
+
+  defp tenant_id(id) when is_binary(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> uuid
+      :error -> nil
+    end
+  end
+
+  defp tenant_id(_none), do: nil
 
   defp usage_of(%{usage: usage}) when is_map(usage), do: usage
   defp usage_of(_), do: nil

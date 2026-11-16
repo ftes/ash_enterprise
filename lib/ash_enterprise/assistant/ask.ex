@@ -164,7 +164,7 @@ defmodule AshEnterprise.Assistant.Ask do
   def retry(thread, %Turn{role: :user} = question, opts), do: start(thread, question, opts)
 
   defp start(thread, question, opts) do
-    with :ok <- zone(),
+    with :ok <- zone(opts[:tenant]),
          {:ok, run} <- start_run(thread, question, opts) do
       {:ok, %{question: question, run: run}}
     else
@@ -181,7 +181,7 @@ defmodule AshEnterprise.Assistant.Ask do
   # The run's model, in the canonical store's zone, or no run at all. A refusal is
   # recorded like the guard's, though the guard itself would let a hosted model through
   # with REQUIRE_IN_ZONE_MODELS off.
-  defp zone do
+  defp zone(tenant) do
     target = AgentRuntime.target()
 
     reason =
@@ -192,7 +192,10 @@ defmodule AshEnterprise.Assistant.Ask do
       end
 
     if reason do
-      Models.record(target, @caller, :stream_text, :refused, nil, 0, Atom.to_string(reason))
+      Models.record(target, @caller, :stream_text, :refused, nil, 0, Atom.to_string(reason),
+        tenant: tenant
+      )
+
       {:error, reason}
     else
       :ok

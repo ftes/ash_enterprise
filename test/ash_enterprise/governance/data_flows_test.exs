@@ -133,7 +133,7 @@ defmodule AshEnterprise.Governance.DataFlowsTest do
       by_id = Map.new(DataFlows.all(), &{&1.id, &1})
       assert by_id.integration_provider_proxy.gate == :none
       assert by_id.outbound_mail.gate == :none
-      assert by_id.model_calls_guarded.known_gap =~ "sub_processor_opt_in"
+      assert by_id.model_calls_guarded.gate.name =~ "sub_processor_opt_in"
     end
 
     test "rows are well formed" do

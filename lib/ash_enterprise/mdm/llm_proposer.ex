@@ -6,7 +6,8 @@ defmodule AshEnterprise.Mdm.LlmProposer do
 
   The manifest carries everything the model sees — target attributes,
   observed schema, field samples — and nothing else (no tenant ids, no row
-  values beyond the samples the operator attached). The output is field
+  values beyond the samples the operator attached). The tenant goes to the
+  model-call guard, never into the prompt. The output is field
   rules only; the proposal still drafts, validates and activates through
   the ordinary person gates.
 
@@ -68,12 +69,28 @@ defmodule AshEnterprise.Mdm.LlmProposer do
     with {:ok, spec, opts} <- safe_resolve(transport) do
       prompt = build_prompt(manifest)
 
-      # The transport returns the raw JSON the model produced.
+      # The transport returns the raw JSON the model produced. The manifest's
+      # tenant rides beside the options to the model-call guard
+      # (`AshEnterprise.AI.Models.call/6`): a model outside the zone is called
+      # only for a tenant that recorded a sub-processor opt-in, and the call
+      # record names the tenant.
       spec
-      |> transport.generate(opts, @schema, prompt)
+      |> generate(transport, Keyword.put(opts, :tenant, tenant(manifest)), prompt)
       |> decode_rules()
     end
   end
+
+  # A refusal by the model-call guard is the proposer's error, so the proposal
+  # keeps its deterministic floor and records why the model was not asked.
+  defp generate(spec, transport, opts, prompt) do
+    transport.generate(spec, opts, @schema, prompt)
+  rescue
+    refusal in [AshEnterprise.AI.Models.NotOptedIn, AshEnterprise.AI.Models.OutsideZone] ->
+      {:error, Exception.message(refusal)}
+  end
+
+  defp tenant(%{"tenant" => tenant}) when is_binary(tenant) and tenant != "", do: tenant
+  defp tenant(_manifest), do: nil
 
   defp decode_rules({:ok, raw_json}) when is_binary(raw_json) do
     with {:ok, %{"rules" => rules}} <- Jason.decode(raw_json) do

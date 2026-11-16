@@ -949,6 +949,10 @@ msgstr ""
 msgid "Discard"
 msgstr ""
 
+#: lib/ash_enterprise/canvas/registry.ex:2
+msgid "Disclosures"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/action_items_ui.ex:1
 msgid "Dismiss"
 msgstr ""

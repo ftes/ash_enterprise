@@ -125,20 +125,36 @@ defmodule AshEnterprise.AI.ModelsTest do
   end
 
   describe "the flow guard" do
-    test "off: a hosted call goes through and is recorded without content" do
+    test "off: a hosted call for an opted-in tenant goes through and is recorded without content" do
       configure([])
+
+      organization =
+        Organization
+        |> Ash.Changeset.for_create(
+          :create,
+          %{unique_name: "models-#{System.unique_integer([:positive])}", name: "Models probe"},
+          actor: AshEnterprise.Platform.SystemActor.seed()
+        )
+        |> Ash.create!()
+        |> Ash.Changeset.for_update(:update, %{sub_processor_opt_in: true},
+          actor: AshEnterprise.Platform.SystemActor.seed()
+        )
+        |> Ash.update!()
 
       assert {:ok, _} =
                GuardedReqLLM.generate_object("anthropic:claude-haiku-4-5-20251001", @prompt, %{},
                  caller: "test.hosted",
+                 tenant: organization.id,
                  downstream: FakeReqLLM
                )
 
       assert_received {:called, :generate_object, _, opts}
       refute Keyword.has_key?(opts, :caller)
+      refute Keyword.has_key?(opts, :tenant)
 
       assert [call] = calls()
       assert call.caller == "test.hosted"
+      assert call.organization_id == organization.id
       assert call.residency == :outside_zone
       assert call.outcome == :ok
       assert call.operation == :generate_object

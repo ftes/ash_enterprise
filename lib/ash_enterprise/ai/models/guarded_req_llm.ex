@@ -11,9 +11,13 @@ defmodule AshEnterprise.AI.Models.GuardedReqLLM do
   in-zone profile's transport options (host, key, reasoning effort), calls the real
   ReqLLM and records the call.
 
-  The caller's name rides in the options as `caller: "…"` and is removed
-  before ReqLLM sees them (ReqLLM rejects options it does not know). A call
-  without one is recorded as `"unnamed"` — still guarded, still recorded.
+  The caller's name rides in the options as `caller: "…"`, and the tenant the
+  call is made for as `tenant: …` (an AshAi prompt action puts it there with
+  `AshEnterprise.AI.Disclosure.stamp/2`). Both are removed before ReqLLM sees
+  the options (ReqLLM rejects options it does not know). A call without a
+  caller is recorded as `"unnamed"` — still guarded, still recorded. A call
+  without a tenant reaches a model outside the zone only from a declared
+  tenantless caller (`AshEnterprise.AI.Models.check/3`).
 
   `downstream: Module` substitutes the module that actually makes the request.
   Tests use it, and so does the showcase's recorded model mode
@@ -59,13 +63,14 @@ defmodule AshEnterprise.AI.Models.GuardedReqLLM do
   end
 
   defp open_stream(model, context, caller, downstream, opts) do
+    {tenant, opts} = Keyword.pop(opts, :tenant)
     target = Models.resolve(model)
-    :ok = Models.guard!(target, caller, :stream_text)
+    :ok = Models.guard!(target, caller, :stream_text, tenant: tenant)
     started = System.monotonic_time()
 
     case downstream.stream_text(model, context, Models.transport_opts(target, opts)) do
       {:ok, %StreamResponse{} = response} ->
-        {:ok, %{response | stream: recorded(response, target, caller, started)}}
+        {:ok, %{response | stream: recorded(response, {target, tenant}, caller, started)}}
 
       {:error, reason} = error ->
         Models.record(
@@ -75,7 +80,8 @@ defmodule AshEnterprise.AI.Models.GuardedReqLLM do
           :error,
           nil,
           Models.elapsed_ms(started),
-          Models.error_class(reason)
+          Models.error_class(reason),
+          tenant: tenant
         )
 
         error
@@ -91,7 +97,8 @@ defmodule AshEnterprise.AI.Models.GuardedReqLLM do
   # answering mid-stream (a timeout) fails: armed with `:raise`, the first
   # chunk's read raises as a transport error would, and the call is recorded
   # as an incomplete stream (`AshEnterprise.Faults`).
-  defp recorded(%StreamResponse{stream: stream} = response, target, caller, started) do
+  # `call` is `{target, tenant}`: what the record names.
+  defp recorded(%StreamResponse{stream: stream} = response, call, caller, started) do
     Stream.transform(
       stream,
       fn -> :reading end,
@@ -106,15 +113,15 @@ defmodule AshEnterprise.AI.Models.GuardedReqLLM do
       fn _acc -> {[], :finished} end,
       fn
         :finished ->
-          record_stream(target, caller, :ok, usage(response), started, nil)
+          record_stream(call, caller, :ok, usage(response), started, nil)
 
         _reading ->
-          record_stream(target, caller, :error, nil, started, "incomplete_stream")
+          record_stream(call, caller, :error, nil, started, "incomplete_stream")
       end
     )
   end
 
-  defp record_stream(target, caller, outcome, usage, started, error_class) do
+  defp record_stream({target, tenant}, caller, outcome, usage, started, error_class) do
     Models.record(
       target,
       caller,
@@ -122,7 +129,8 @@ defmodule AshEnterprise.AI.Models.GuardedReqLLM do
       outcome,
       usage,
       Models.elapsed_ms(started),
-      error_class
+      error_class,
+      tenant: tenant
     )
   end
 

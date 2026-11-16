@@ -8,8 +8,8 @@ defmodule AshEnterprise.Execution.AgentRuntime do
       until its lease expires and is tried again.
     * **The call.** Through `AshEnterprise.AI.Models.GuardedReqLLM`, so the flow guard
       applies and every call is an `AshEnterprise.AI.ModelCall` whose caller is
-      `run:<run id>:<step seq>`; a step repeated after its worker died shows as a second
-      call under the same name.
+      `run:<run id>:<step seq>`, stamped with the run's tenant; a step repeated after its
+      worker died shows as a second call under the same name.
     * **The request's context.** A run records the correlation id and W3C trace context
       it was started under (`correlation_id/0`, `traceparent/0`), and every step runs
       under them again (`around_step/2`), so a run's audited writes join the request
@@ -36,8 +36,11 @@ defmodule AshEnterprise.Execution.AgentRuntime do
   alias AshEnterprise.Showcase.RecordedModel
 
   @impl true
-  def loop_options(version, _run, caller) do
+  def loop_options(version, run, caller) do
     target = target()
+    # The run's tenant, beside the caller: the guard stamps every call record
+    # with it. A run only ever calls in-zone, which needs no opt-in.
+    tenant = Map.get(run, :organization_id)
 
     cond do
       version.model_profile != Models.in_zone_profile_name() ->
@@ -47,7 +50,12 @@ defmodule AshEnterprise.Execution.AgentRuntime do
         {:ok,
          model: RecordedModel.spec(version.key),
          req_llm: GuardedReqLLM,
-         req_llm_opts: Keyword.merge(configured_opts(), caller: caller, downstream: RecordedModel)}
+         req_llm_opts:
+           Keyword.merge(configured_opts(),
+             caller: caller,
+             tenant: tenant,
+             downstream: RecordedModel
+           )}
 
       target.residency != :in_zone ->
         {:error, :in_zone_profile_not_configured}
@@ -56,7 +64,7 @@ defmodule AshEnterprise.Execution.AgentRuntime do
         {:ok,
          model: target.spec,
          req_llm: GuardedReqLLM,
-         req_llm_opts: Keyword.put(configured_opts(), :caller, caller)}
+         req_llm_opts: Keyword.merge(configured_opts(), caller: caller, tenant: tenant)}
     end
   end
 

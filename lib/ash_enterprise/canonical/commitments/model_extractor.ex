@@ -66,7 +66,10 @@ defmodule AshEnterprise.Canonical.Commitments.ModelExtractor do
   @doc "The JSON schema the model answers in."
   def schema, do: @schema
 
-  @doc "Extracts the writer's commitments from `input` (`%{text:, sent_at:, system:}`)."
+  @doc """
+  Extracts the writer's commitments from `input` (`%{text:, sent_at:, system:,
+  tenant:}`). `tenant` is the message's organisation, for the call record.
+  """
   @spec extract(map(), Target.t()) :: {:ok, [map()]} | {:error, term()}
   def extract(%{text: text} = input, %Target{} = target) do
     with :ok <- ZoneGate.check(target),
@@ -74,7 +77,7 @@ defmodule AshEnterprise.Canonical.Commitments.ModelExtractor do
       prompt = prompt(text, input[:sent_at], input[:system])
 
       target
-      |> Models.call(@caller, :generate_object, prompt, [], fn opts ->
+      |> Models.call(@caller, :generate_object, prompt, [tenant: input[:tenant]], fn opts ->
         downstream().generate_object(target.spec, prompt, @schema, structured(opts))
       end)
       |> decode()

@@ -274,6 +274,28 @@ defmodule AshEnterprise.Assistant.AskTest do
       assert [%{outcome: :refused, residency: :outside_zone, caller: "assistant"}] = calls()
     end
 
+    test "an opted-in tenant still gets no hosted fallback in the assistant", ctx do
+      AshEnterprise.Accounts.Organization
+      |> Ash.get!(ctx.tenant, authorize?: false)
+      |> Ash.Changeset.for_update(:update, %{sub_processor_opt_in: true},
+        actor: AshEnterprise.Platform.SystemActor.seed()
+      )
+      |> Ash.update!()
+
+      Application.put_env(:ash_enterprise, :ai, [])
+      ScriptedModel.script!([{:text, "SYNTHETIC: must never be produced"}])
+
+      assert {:error, :not_configured, %Turn{status: :failed}} = ask(ctx, "SYNTHETIC: hello?")
+
+      refute_received {:model_request, _, _, _}
+      assert runs(ctx) == []
+
+      assert [%{outcome: :refused, residency: :outside_zone, organization_id: organization_id}] =
+               calls()
+
+      assert organization_id == ctx.tenant
+    end
+
     test "an in-zone profile outside the canonical store's zone is refused", ctx do
       F.in_zone!(profile_zone: "SYNTHETIC-OTHER-ZONE")
       ScriptedModel.script!([{:text, "SYNTHETIC: must never be produced"}])

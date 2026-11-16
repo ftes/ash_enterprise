@@ -9,9 +9,12 @@ defmodule AshEnterprise.L10n.Translator.ReqLLM do
   It sends only what is already in this repository: catalog msgids, their
   source references and the glossary. No tenant data, no record, no actor. So
   it calls ReqLLM directly rather than through
-  `AshEnterprise.AI.Models.GuardedReqLLM`, whose residency guard and call
-  record (ADR 0042) govern customer data and write to the application's
-  database, which a design-time task does not start.
+  `AshEnterprise.AI.Models.GuardedReqLLM`, whose call record (ADR 0042) is
+  written to the application's database, which a design-time task does not
+  start. It still asks the guard first (`AshEnterprise.AI.Models.check/3`,
+  which reads no database for a tenantless call): it names no tenant, so a
+  model outside the zone is reached only because `#{inspect("l10n.translate")}`
+  is a declared tenantless caller, and never under `REQUIRE_IN_ZONE_MODELS`.
 
   Never called from a test or from CI: tests pass a fake translator.
   """
@@ -38,11 +41,18 @@ defmodule AshEnterprise.L10n.Translator.ReqLLM do
     "required" => ["translations"]
   }
 
+  @caller "l10n.translate"
+
+  @doc "The name this translator gives the model-call guard."
+  @spec caller() :: String.t()
+  def caller, do: @caller
+
   @impl true
   def translate(request, opts) do
     model = Keyword.get(opts, :model) || AshEnterprise.AI.model()
 
-    with {:ok, response} <-
+    with :ok <- AshEnterprise.AI.Models.check(AshEnterprise.AI.Models.resolve(model), @caller),
+         {:ok, response} <-
            ReqLLM.generate_object(model, prompt(request), @schema,
              system_prompt: system_prompt(request),
              temperature: 0.0

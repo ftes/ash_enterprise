@@ -48,9 +48,11 @@ defmodule AshEnterprise.AI.RequestClassifier do
             tools: false,
             # The ADR 0042 flow guard and call record (AshEnterprise.AI.Models):
             # every request goes through it, and `caller` names this action in
-            # the record.
+            # the record. `stamp/2` adds the action's tenant, whose recorded
+            # opt-in decides whether a model outside the zone may be called.
             req_llm: AshEnterprise.AI.Models.GuardedReqLLM,
             req_llm_opts: [caller: "ai.interpret_request"],
+            transform_flow: &AshEnterprise.AI.Disclosure.stamp/2,
             prompt: """
             You classify administrative requests for an enterprise access-control
             system.
@@ -123,6 +125,7 @@ defmodule AshEnterprise.AI.RequestClassifier do
             tools: false,
             req_llm: AshEnterprise.AI.Models.GuardedReqLLM,
             req_llm_opts: [caller: "ai.compose_surface"],
+            transform_flow: &AshEnterprise.AI.Disclosure.stamp/2,
             prompt: """
             You compose declarative table specifications for an enterprise
             application. You do not write UI: you name a resource, the fields to

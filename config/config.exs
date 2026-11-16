@@ -561,6 +561,13 @@ config :ash_enterprise,
 # is off everywhere. `FLAGS_OFF` (config/runtime.exs) kills declared keys.
 config :ash_enterprise, AshEnterprise.Flags.Catalogue, flags: %{}
 
+# ADR 0026 as amended: a model outside the zone is a sub-processor, called only for a
+# tenant that has recorded an opt-in (`AshEnterprise.AI.Models.check/3`). A call that
+# names no tenant is refused there unless its caller is listed here, which a caller
+# earns by sending no tenant's data at all. The catalogue translator sends only this
+# repository's own strings.
+config :ash_enterprise, AshEnterprise.AI.Models, tenantless_callers: ["l10n.translate"]
+
 # ADR 0051: the business-event ledger. `region` partitions its chain, lock and
 # feed; `residency_tag` is what every row declares. Runtime overrides both from
 # BUSINESS_EVENTS_REGION / CANONICAL_ZONE (config/runtime.exs).

@@ -79,7 +79,7 @@ defmodule AshEnterprise.AI.Interpreter do
   @spec interpret(String.t(), term(), term(), String.t()) ::
           {:ok, plan()} | {:error, String.t()}
   def interpret(request, actor, tenant, locale \\ "en") do
-    with {:ok, intent} <- infer_intent(request) do
+    with {:ok, intent} <- infer_intent(request, tenant) do
       to_plan(intent, request, actor, tenant, locale)
     end
   end
@@ -123,8 +123,8 @@ defmodule AshEnterprise.AI.Interpreter do
     end
   end
 
-  defp to_plan(%{kind: :design_surface}, request, _actor, _tenant, locale) do
-    design(request, &compose(&1, &2, locale))
+  defp to_plan(%{kind: :design_surface}, request, _actor, tenant, locale) do
+    design(request, &compose(&1, &2, locale, tenant))
   end
 
   # The requester's own calendar, mail or tasks: not this console's to read.
@@ -244,8 +244,10 @@ defmodule AshEnterprise.AI.Interpreter do
   defp query_name(%{"name" => name}), do: name
   defp query_name(_query), do: nil
 
-  defp compose(request, feedback, locale) do
-    case RequestClassifier.compose_surface(request, %{feedback: feedback, locale: locale}) do
+  defp compose(request, feedback, locale, tenant) do
+    case RequestClassifier.compose_surface(request, %{feedback: feedback, locale: locale},
+           tenant: tenant
+         ) do
       {:ok, %AshEnterprise.AI.SurfaceSpec{spec: json}} when is_binary(json) ->
         decode_spec(json)
 
@@ -273,9 +275,9 @@ defmodule AshEnterprise.AI.Interpreter do
     end
   end
 
-  defp infer_intent(request) do
-    case key_status() do
-      :ok -> run_prompt(request)
+  defp infer_intent(request, tenant) do
+    case key_status(tenant) do
+      :ok -> run_prompt(request, tenant)
       {:error, message} -> {:error, message}
     end
   end
@@ -295,15 +297,25 @@ defmodule AshEnterprise.AI.Interpreter do
   # Before any of that, the ADR 0042 flow guard: under REQUIRE_IN_ZONE_MODELS a
   # model outside the zone is refused here with the guard's own message, and
   # the in-zone profile needs no provider key at all (its host and key come
-  # from the profile, `AshEnterprise.AI.Models`).
-  defp key_status do
+  # from the profile, `AshEnterprise.AI.Models`). A hosted model the tenant has
+  # not opted into is refused with the guard's message too, once a key is
+  # there to refuse: a checkout with no key hears about the key first.
+  defp key_status(tenant) do
     model = AshEnterprise.AI.model()
     target = Models.resolve(model)
 
-    case Models.check(target, "ai.interpret_request") do
-      {:error, refusal} -> {:error, Exception.message(refusal)}
-      :ok when target.residency == :in_zone -> :ok
-      :ok -> hosted_key_status(model)
+    case Models.check(target, "ai.interpret_request", tenant: tenant) do
+      {:error, %Models.OutsideZone{} = refusal} ->
+        {:error, Exception.message(refusal)}
+
+      {:error, refusal} ->
+        with :ok <- hosted_key_status(model), do: {:error, Exception.message(refusal)}
+
+      :ok when target.residency == :in_zone ->
+        :ok
+
+      :ok ->
+        hosted_key_status(model)
     end
   end
 
@@ -346,8 +358,8 @@ defmodule AshEnterprise.AI.Interpreter do
     """
   end
 
-  defp run_prompt(request) do
-    case RequestClassifier.interpret_request(request) do
+  defp run_prompt(request, tenant) do
+    case RequestClassifier.interpret_request(request, tenant: tenant) do
       {:ok, intent} -> {:ok, intent}
       {:error, error} -> {:error, "Could not interpret that request: #{Exception.message(error)}"}
     end

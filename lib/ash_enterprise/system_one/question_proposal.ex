@@ -248,7 +248,7 @@ defmodule AshEnterprise.SystemOne.QuestionProposal do
         Canonical.digest(%{"instructions" => prompt, "schema" => Schema.schema()})
     }
 
-    case draft(transport, profile, prompt) do
+    case draft(transport, profile, prompt, tenant) do
       {:ok, proposals, raw_output} ->
         create(
           base
@@ -286,11 +286,19 @@ defmodule AshEnterprise.SystemOne.QuestionProposal do
   # failure keeps the raw output for inspection. `{:fixed, raw}` injects a
   # fixed test instrument's output, skipping the call entirely — the tests'
   # "fixed test instrument".
-  defp draft({:fixed, raw}, _profile, _prompt), do: decode(raw)
+  # The tenant rides beside the transport options to the model-call guard
+  # (`AshEnterprise.AI.Models.call/6`), which stamps the call record with it.
+  defp draft({:fixed, raw}, _profile, _prompt, _tenant), do: decode(raw)
 
-  defp draft(transport, profile, prompt) do
+  defp draft(transport, profile, prompt, tenant) do
     with {:ok, spec, req_llm_opts} <- transport.resolve(profile),
-         {:ok, raw_output} <- transport.generate(spec, req_llm_opts, Schema.schema(), prompt) do
+         {:ok, raw_output} <-
+           transport.generate(
+             spec,
+             Keyword.put(req_llm_opts, :tenant, tenant),
+             Schema.schema(),
+             prompt
+           ) do
       decode(raw_output)
     end
   end

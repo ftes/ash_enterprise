@@ -318,7 +318,7 @@ defmodule AshEnterprise.SystemOne.FilterProposal do
       supersedes_id: nil
     }
 
-    case translate(transport, profile, prompt, schema) do
+    case translate(transport, profile, prompt, schema, Keyword.get(opts, :tenant)) do
       {:ok, document, raw_output} ->
         create(
           Map.merge(base, %{status: :proposed, document: document, raw_output: raw_output}),
@@ -354,11 +354,14 @@ defmodule AshEnterprise.SystemOne.FilterProposal do
   # shape: the transport returns the RAW textual output; every failure
   # keeps the raw output for inspection. `{:fixed, raw}` injects a fixed
   # test instrument's output, skipping the wire entirely.
-  defp translate({:fixed, raw}, _profile, _prompt, _schema), do: decode(raw)
+  # The tenant rides beside the transport options to the model-call guard
+  # (`AshEnterprise.AI.Models.call/6`), which stamps the call record with it.
+  defp translate({:fixed, raw}, _profile, _prompt, _schema, _tenant), do: decode(raw)
 
-  defp translate(transport, profile, prompt, schema) do
+  defp translate(transport, profile, prompt, schema, tenant) do
     with {:ok, spec, req_llm_opts} <- transport.resolve(profile),
-         {:ok, raw_output} <- transport.generate(spec, req_llm_opts, schema, prompt) do
+         {:ok, raw_output} <-
+           transport.generate(spec, Keyword.put(req_llm_opts, :tenant, tenant), schema, prompt) do
       decode(raw_output)
     end
   end

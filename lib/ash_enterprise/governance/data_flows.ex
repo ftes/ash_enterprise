@@ -111,15 +111,18 @@ defmodule AshEnterprise.Governance.DataFlows do
       ],
       gate: %{
         name:
-          "Deployment-wide in-zone flow guard (REQUIRE_IN_ZONE_MODELS) plus the paste guard, and a call record for every call",
+          "A model outside the zone only for a tenant that recorded sub_processor_opt_in (the residency " <>
+            "policy's rule), or with no tenant from a declared tenantless caller; refused for everyone " <>
+            "under REQUIRE_IN_ZONE_MODELS. Plus the paste guard, and a call record for every call",
         enforced_by: AshEnterprise.AI.Models
       },
       known_gap:
-        "The tenant's recorded sub_processor_opt_in is not consulted on this path: with the flow guard off, a " <>
-          "hosted model is called for any tenant. The opt-in is enforced on the judgment path " <>
-          "(model_calls_judgment), not here.",
+        "The opt-in is all-or-nothing per tenant: it admits every outside-zone model the deployment " <>
+          "configures, not a named vendor. What a call sends is whatever its caller builds; the guard " <>
+          "decides whether it may leave, not what is in it beyond the paste guard.",
       notes:
-        "The call record holds caller, profile, model, residency and counts, never a prompt or an output."
+        "The call record holds caller, tenant, profile, model, residency and counts, never a prompt or an output. " <>
+          "A tenant reads its own outside-zone calls through ModelCall's :disclosures read."
     },
     %{
       id: :model_calls_judgment,
@@ -163,9 +166,14 @@ defmodule AshEnterprise.Governance.DataFlows do
       recipient_class: :model_provider,
       data_classes: [:repository_text],
       modules: [AshEnterprise.L10n.Translator.ReqLLM],
-      gate: :none,
+      gate: %{
+        name:
+          "The model-call guard's check, as a declared tenantless caller: a model outside the zone is " <>
+            "allowed because no tenant's data is sent, and refused under REQUIRE_IN_ZONE_MODELS",
+        enforced_by: AshEnterprise.AI.Models
+      },
       known_gap:
-        "Calls the model client directly, outside the guarded client and its call record. It sends only catalogue " <>
+        "Calls the model client directly after the guard's check, so it leaves no call record. It sends only catalogue " <>
           "strings and a glossary from this repository, and is run by a person at a terminal, never by the application or CI.",
       notes: nil
     },
