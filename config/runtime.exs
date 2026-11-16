@@ -85,14 +85,19 @@ end
 # application's client id and secret there, and the callback it redirects to
 # (`<origin>/auth/user/oidc/callback`). Used only when the build declared the strategy
 # (OIDC_BASE_URL set at compile time, config/config.exs); a missing value refuses every
-# sign-in through it. Not read under test, which configures a provider of its own.
+# sign-in through it. OIDC_CA_FILE, optional, is a PEM bundle the provider's certificate is
+# verified against instead of the default trust store, for a provider whose certificate is
+# signed by a private certificate authority (`AshEnterprise.Accounts.OidcHttp`); a set but
+# unusable file refuses the sign-in, and verification is never turned off. Not read under
+# test, which configures a provider of its own.
 if config_env() != :test do
   oidc =
     for {key, variable} <- [
           base_url: "OIDC_BASE_URL",
           client_id: "OIDC_CLIENT_ID",
           client_secret: "OIDC_CLIENT_SECRET",
-          redirect_uri: "OIDC_REDIRECT_URI"
+          redirect_uri: "OIDC_REDIRECT_URI",
+          ca_file: "OIDC_CA_FILE"
         ],
         value = System.get_env(variable),
         value not in [nil, ""],

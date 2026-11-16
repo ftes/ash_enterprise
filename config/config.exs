@@ -776,6 +776,11 @@ config :ash_enterprise, self_registration?: false
 # config/test.exs turns it on.
 config :ash_enterprise, oidc_sign_in?: System.get_env("OIDC_BASE_URL", "") != ""
 
+# Every call the OIDC strategy makes to the provider (discovery, token, JWKS, userinfo) goes
+# through this client, which trusts OIDC_CA_FILE's bundle when one is set and the default
+# store otherwise, and never turns peer verification off (`AshEnterprise.Accounts.OidcHttp`).
+config :ash_authentication, :http_adapter, AshEnterprise.Accounts.OidcHttp
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

@@ -11,7 +11,7 @@ defmodule AshEnterprise.Security.AuthenticationEvent do
   | `:password_reset` | every reset that signs the user in (`:reset_password_with_token`) | none |
   | `:confirmation` | every confirmation that signs the user in (`:confirm`) | none |
   | `:api_key` | none: a request it admits is not an event, or the chain would hold one row per API call | every key it refuses (unknown, expired, revoked, malformed, or a deactivated owner's): `:api_key_rejected` |
-  | `:oidc` | every sign-in through the deployment's identity provider (`User :sign_in_with_oidc`, ADR 0071) | every one: `:unknown_identity`, `:inactive`, `:unconfirmed`, `:unverified_email`, `:identity_mismatch` |
+  | `:oidc` | every sign-in through the deployment's identity provider (`User :sign_in_with_oidc`, ADR 0071) | every one. Refused by the sign-in action: `:unknown_identity`, `:inactive`, `:unconfirmed`, `:unverified_email`, `:identity_mismatch`. Refused before it, in the protocol (recorded by the auth controller's failure callback): `:invalid_state`, `:invalid_nonce`, `:invalid_id_token`, `:code_rejected`, `:provider_error`, `:provider_unreachable`, `:not_configured`, `:protocol_error`, none with a user |
 
   A reset or confirmation link that does not verify, and a session bearer token that does
   not, identify nobody and reach the log only. Registration is refused in a deployment
@@ -56,7 +56,17 @@ defmodule AshEnterprise.Security.AuthenticationEvent do
     :api_key_rejected,
     :unconfirmed,
     :unverified_email,
-    :identity_mismatch
+    :identity_mismatch,
+    # The OIDC protocol's own refusals, before the sign-in action runs
+    # (`AuthenticationAudit.oidc_protocol_reason/1`).
+    :invalid_state,
+    :invalid_nonce,
+    :invalid_id_token,
+    :code_rejected,
+    :provider_error,
+    :provider_unreachable,
+    :not_configured,
+    :protocol_error
   ]
 
   @doc "The doors that record events."

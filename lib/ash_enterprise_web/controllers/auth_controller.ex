@@ -24,6 +24,8 @@ defmodule AshEnterpriseWeb.AuthController do
   end
 
   def failure(conn, activity, reason) do
+    record_protocol_refusal(activity, reason)
+
     message =
       case {activity, reason} do
         {_,
@@ -61,6 +63,8 @@ defmodule AshEnterpriseWeb.AuthController do
     |> redirect(to: ~p"/sign-in")
   end
 
+  # `clear_session/2` revokes the stored session token before it clears the cookie, so a
+  # page left open on it stops at its next event or navigation (`LiveUserAuth`).
   def sign_out(conn, _params) do
     return_to = get_session(conn, :return_to) || ~p"/"
 
@@ -69,4 +73,16 @@ defmodule AshEnterpriseWeb.AuthController do
     |> put_flash(:info, "You are now signed out")
     |> redirect(to: return_to)
   end
+
+  # An OIDC attempt the protocol refused before the sign-in action ran (a forged or missing
+  # state, a bad ID token or nonce, a refused code, a provider error or an unreachable
+  # provider) is recorded at the oidc door here, by its class only (ADR 0071). A refusal by
+  # the sign-in action arrives as `AuthenticationFailed` and was recorded by the action.
+  defp record_protocol_refusal({:oidc, _phase}, %AshAuthentication.Errors.AuthenticationFailed{}),
+    do: :ok
+
+  defp record_protocol_refusal({:oidc, _phase}, reason),
+    do: AshEnterprise.Security.AuthenticationAudit.oidc_protocol_refused(reason)
+
+  defp record_protocol_refusal(_activity, _reason), do: :ok
 end

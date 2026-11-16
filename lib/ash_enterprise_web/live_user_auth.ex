@@ -26,13 +26,15 @@ defmodule AshEnterpriseWeb.LiveUserAuth do
   is `AshEnterprise.Accounts.TokenPolicy`'s, which the session cookie shares.
 
   An expiry is not the only way a session ends: deactivating a person revokes their
-  tokens, and so does a password change. So before each event the page
+  tokens, a password change does, and so does signing out. So before each event, and
+  before each navigation within the page (a patch), the page
   also checks that its session is still good, as a new request would: the token verifies,
   is still stored for sign-in and not revoked, and its subject is still a user who may sign
   in (`get_by_subject` does not find a deactivated one). If not, the event is not handled
   and the page goes to sign-in. Only then is the context rebuilt. The check reads the
-  database, as the context's rebuild does; a page with no event in flight is not
-  interrupted until its next event or its token's expiry.
+  database, as the context's rebuild does; a page with no event or navigation in flight is
+  not interrupted until its next one or its token's expiry. Messages the page receives
+  (`handle_info`) are not checked.
   """
 
   import Phoenix.Component
@@ -182,7 +184,10 @@ defmodule AshEnterpriseWeb.LiveUserAuth do
 
   # Detached first: a LiveView that declares this on_mount itself, inside a
   # live_session that declares it too, mounts it twice. A session that has ended since the
-  # page connected (the person deactivated, the token revoked) handles nothing more.
+  # page connected (the person deactivated, the token revoked, signed out) handles nothing
+  # more: no event, and no navigation within the page (a patch, or the params a connected
+  # mount handles). The dead render is not checked here, because the request that made it
+  # was. A message to the page (`handle_info`) is not checked.
   defp refresh_before_events(socket, token) do
     socket
     |> Phoenix.LiveView.detach_hook(:actor_context, :handle_event)
@@ -190,10 +195,30 @@ defmodule AshEnterpriseWeb.LiveUserAuth do
       if session_live?(token) do
         {:cont, refresh_actor_context(socket)}
       else
-        {:halt, end_session(socket, gettext("Your session has ended. Sign in again."))}
+        {:halt, session_ended(socket)}
+      end
+    end)
+    |> check_before_navigation(token)
+  end
+
+  # Only a view mounted at the router navigates; a nested or isolated one cannot take a
+  # `:handle_params` hook at all.
+  defp check_before_navigation(%{router: nil} = socket, _token), do: socket
+
+  defp check_before_navigation(socket, token) do
+    socket
+    |> Phoenix.LiveView.detach_hook(:actor_context, :handle_params)
+    |> Phoenix.LiveView.attach_hook(:actor_context, :handle_params, fn _params, _uri, socket ->
+      cond do
+        not Phoenix.LiveView.connected?(socket) -> {:cont, socket}
+        session_live?(token) -> {:cont, socket}
+        true -> {:halt, session_ended(socket)}
       end
     end)
   end
+
+  defp session_ended(socket),
+    do: end_session(socket, gettext("Your session has ended. Sign in again."))
 
   defp assign_context(socket, context_for) do
     case socket.assigns[:current_user] do

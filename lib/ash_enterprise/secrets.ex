@@ -34,4 +34,18 @@ defmodule AshEnterprise.Secrets do
       _ -> :error
     end
   end
+
+  @doc """
+  The PEM bundle the identity provider's certificate is verified against
+  (`OIDC_CA_FILE`, under `config :ash_enterprise, :oidc`), or nil for the default trust
+  store. Read on every provider call by `AshEnterprise.Accounts.OidcHttp`, which refuses
+  the call when the file is set but cannot be used.
+  """
+  @spec oidc_ca_file() :: String.t() | nil
+  def oidc_ca_file do
+    case Application.get_env(:ash_enterprise, :oidc, []) |> Keyword.get(:ca_file) do
+      path when is_binary(path) and path != "" -> path
+      _ -> nil
+    end
+  end
 end

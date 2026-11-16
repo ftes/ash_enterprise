@@ -49,6 +49,12 @@ load, and the Ecto Sandbox pool would be missing.
 | `/api/json/swaggerui` | JSON:API explorer over the OpenAPI document (dev only) |
 | `/gql/playground` | GraphQL explorer (dev only) |
 
+"Dev only" is the `dev_routes` switch, on in `config/dev.exs` unless the build has
+`DEV_ROUTES=false`. The router reads it when it compiles, so set it for every mix command
+that builds or runs the instance; Mix recompiles the router when it changes. A deployment that runs the dev config for other people should build with it off: it then
+loses `/admin`, `/dev/dashboard`, `/dev/mailbox`, `/clarity`, `/canvas`, the two API explorers
+and `/ash_agent/mcp`. Pair it with `FIXED_SEED_PASSWORD=false` at runtime.
+
 ## Checks
 
 ```bash

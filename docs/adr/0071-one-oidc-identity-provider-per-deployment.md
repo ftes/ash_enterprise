@@ -1,6 +1,6 @@
 # ADR 0071 — One OpenID Connect identity provider per deployment, matched to verified accounts only
 
-- **Status:** accepted (2026-11-14)
+- **Status:** accepted (2026-11-14); decisions 8 and 9 added 2026-11-16
 - **Date:** 2026-11-14
 - **Related:** ADR 0066 (every way in shares one standard), 0024 (crypto-shredding), 0043 (automation principals)
 
@@ -44,6 +44,23 @@ or one that does not check addresses at all, could otherwise open the account th
    otherwise show one that cannot work. Turning it on or off needs a recompile, as the token lifetime does.
 7. **The second factor is the provider's.** No in-app second factor is added. A deployment that requires one requires
    it at its provider. Requiring the provider to assert one (an `amr` claim) is a later, separate decision.
+8. **The provider's certificate is always verified, against a CA file when one is given.** Every call the strategy
+   makes to the provider (discovery, the token exchange, the JWKS, userinfo) goes through one client,
+   `Accounts.OidcHttp`, set as `ash_authentication`'s HTTP adapter. With no `OIDC_CA_FILE` it uses the default trust
+   store. An identity provider whose certificate is signed by a private certificate authority is trusted by setting
+   `OIDC_CA_FILE` to a PEM bundle, read at runtime and on every call; only the certificates in that bundle are then
+   trusted for provider calls. There is no option that turns peer verification off, for tests included. A CA file
+   that is set but missing, unreadable or holds no certificate refuses the sign-in and logs which file; it never
+   falls back to the default store or to no verification.
+9. **A refusal by the protocol is an attempt too.** A callback can fail before the sign-in action runs: a state that
+   does not match the browser's session (or no session), an ID token whose nonce, signature, issuer, audience or
+   times fail, a code the provider refuses (replayed, or a PKCE verifier that does not match), an error the provider
+   returns, a provider that cannot be reached or verified, or a strategy that is not configured.
+   `AuthController.failure/3` records each at the `:oidc` door as `:invalid_state`, `:invalid_nonce`,
+   `:invalid_id_token`, `:code_rejected`, `:provider_error`, `:provider_unreachable`, `:not_configured` or
+   `:protocol_error`, with no user, email, subject or provider message: only its class. A refusal by the sign-in
+   action itself is recorded there, once. A refusal of a known user is also an `Automation.Occurrence`
+   (`user.sign_in_refused` with `door: oidc`), as at the password door, so a recipe can react to it.
 
 ## Consequences
 
@@ -55,8 +72,14 @@ or one that does not check addresses at all, could otherwise open the account th
 - Changing the provider's subject for a person (a new account at the provider) is refused until an operator deletes the
   old `UserIdentity` row.
 - A template user turns the strategy on by setting `OIDC_BASE_URL` when compiling, not only at runtime.
+- The protocol's own refusals carry no user, so a run of forged callbacks shows as volume at the `:oidc` door, not
+  against an account. Only the sign-in action's refusals name the user the asserted email belongs to.
+- A deployment that trusts its provider through `OIDC_CA_FILE` must keep that bundle current when the provider's
+  certificate authority changes; until then sign-in through the provider is refused, and password sign-in is not
+  affected.
 
 ## Reversal
 
 Remove the strategy and `:sign_in_with_oidc` from `User`, the `:oidc` entries from `AuthenticationEvent` and
-`Secrets`, and drop `Accounts.UserIdentity` with a generated migration. Password sign-in is untouched by any of it.
+`Secrets`, `Accounts.OidcHttp` and its `:http_adapter` setting, and drop `Accounts.UserIdentity` with a generated
+migration. Password sign-in is untouched by any of it.

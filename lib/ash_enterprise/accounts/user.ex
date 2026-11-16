@@ -351,6 +351,9 @@ defmodule AshEnterprise.Accounts.User do
       door. Unusable unless the deployment declares the strategy.
       """
 
+      # One user at most, as for the password sign-in: the email identity is unique.
+      get? true
+
       argument :user_info, :map, allow_nil?: false, sensitive?: true
       argument :oauth_tokens, :map, allow_nil?: false, sensitive?: true
 

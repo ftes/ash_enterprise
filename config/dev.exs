@@ -188,8 +188,15 @@ config :ash_enterprise, AshEnterpriseWeb.Endpoint,
 # configured to run both http and https servers on
 # different ports.
 
-# Enable dev routes for dashboard and mailbox
-config :ash_enterprise, dev_routes: true, token_signing_secret: "qaZQqvCZKqxY3RCtI+Ofq4CLfBwXHI+r"
+# The dev-only surfaces, on by default here: /admin (AshAdmin), /dev/dashboard and
+# /dev/mailbox, /clarity, /canvas, the API explorers (/gql/playground, /api/json/swaggerui)
+# and the in-app /ash_agent/mcp tools. The router reads this when it compiles, so
+# `DEV_ROUTES=false` (or 0) at COMPILE time builds the dev config without any of them, for an
+# instance that runs this configuration but is shown to other people. Set it for every mix
+# command that builds or runs that instance; Mix recompiles the router when it changes.
+config :ash_enterprise,
+  dev_routes: System.get_env("DEV_ROUTES") not in ~w(false 0),
+  token_signing_secret: "qaZQqvCZKqxY3RCtI+Ofq4CLfBwXHI+r"
 
 # A seed or demo run that names no password gives its people the fixed, public `password1234`
 # (`AshEnterprise.Platform.Seeder.default_password!/0`). Only here and in test; anywhere else the

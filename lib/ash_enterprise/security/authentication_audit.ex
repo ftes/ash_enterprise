@@ -86,8 +86,9 @@ defmodule AshEnterprise.Security.AuthenticationAudit do
     * `:unverified_email`: a first link the provider does not mark verified.
 
   Neither the email nor the subject is recorded, only the user the email belongs to.
+  Returns the reason and that user's id (nil when none), for the door's occurrence.
   """
-  @spec oidc_refused(map() | term()) :: :ok
+  @spec oidc_refused(map() | term()) :: {atom(), Ash.UUID.t() | nil}
   def oidc_refused(user_info) do
     email = MatchFederatedAccount.asserted_email(user_info)
 
@@ -100,7 +101,66 @@ defmodule AshEnterprise.Security.AuthenticationAudit do
       end
 
     refused(:oidc, reason, user_id)
+    {reason, user_id}
   end
+
+  @doc """
+  Records an OIDC sign-in the protocol refused before the sign-in action ran: the
+  callback's `state` did not match the session (or there was no session), the ID token
+  failed validation (its nonce, signature, issuer, audience or times), the provider
+  refused the code (a replayed code, or a PKCE verifier that does not match), the
+  provider returned an error, could not be reached or verified, or the strategy is not
+  configured. `error` is what the strategy returned; only its class is recorded, as one of
+  the reasons `oidc_protocol_reason/1` returns, with no user, email, subject or provider
+  message. A refusal the sign-in action made is recorded there and is not passed here.
+  Always `:ok`.
+  """
+  @spec oidc_protocol_refused(term()) :: :ok
+  def oidc_protocol_refused(error), do: refused(:oidc, oidc_protocol_reason(error))
+
+  @doc """
+  The closed reason for an OIDC protocol failure `error` (see `oidc_protocol_refused/1`):
+  `:invalid_state`, `:invalid_nonce`, `:invalid_id_token`, `:code_rejected`,
+  `:provider_error`, `:provider_unreachable`, `:not_configured`, or `:protocol_error` for
+  anything else.
+  """
+  @spec oidc_protocol_reason(term()) :: atom()
+  # No state stored for this browser: the callback was not started here.
+  def oidc_protocol_reason(nil), do: :invalid_state
+  def oidc_protocol_reason(%Assent.CallbackCSRFError{}), do: :invalid_state
+  def oidc_protocol_reason(%Assent.MissingParamError{key: "state"}), do: :invalid_state
+  def oidc_protocol_reason(%Assent.MissingParamError{}), do: :protocol_error
+  # The provider redirected back with an `error` instead of a code.
+  def oidc_protocol_reason(%Assent.CallbackError{}), do: :provider_error
+  # The token endpoint refused the code (OAuth 2.0's `invalid_grant`): replayed, expired,
+  # or a PKCE verifier that does not match its challenge.
+  def oidc_protocol_reason(%Assent.InvalidResponseError{
+        response: %{body: %{"error" => "invalid_grant"}}
+      }),
+      do: :code_rejected
+
+  def oidc_protocol_reason(%Assent.InvalidResponseError{}), do: :provider_error
+  def oidc_protocol_reason(%Assent.RequestError{}), do: :provider_error
+  def oidc_protocol_reason(%Assent.UnexpectedResponseError{}), do: :provider_error
+  # Includes a TLS handshake the provider's certificate failed, and a CA file that cannot
+  # be used (`AshEnterprise.Accounts.OidcHttp`).
+  def oidc_protocol_reason(%Assent.ServerUnreachableError{}), do: :provider_unreachable
+  def oidc_protocol_reason(%Assent.MissingConfigError{}), do: :not_configured
+  def oidc_protocol_reason(%AshAuthentication.Errors.MissingSecret{}), do: :not_configured
+  def oidc_protocol_reason(%Assent.CastClaimsError{}), do: :invalid_id_token
+  def oidc_protocol_reason(%Assent.JWTAdapter.AssentJWT.Error{}), do: :invalid_id_token
+
+  # Assent reports a failed ID token check as a message, not a struct.
+  def oidc_protocol_reason(message) when is_binary(message) do
+    cond do
+      message =~ ~r/nonce/i -> :invalid_nonce
+      message =~ ~r/OpenID configuration/i -> :provider_error
+      message =~ ~r/ID Token|JWT|Base64URL/i -> :invalid_id_token
+      true -> :protocol_error
+    end
+  end
+
+  def oidc_protocol_reason(_error), do: :protocol_error
 
   # The account was a candidate, so the strategy refused the link itself.
   defp link_refusal(user, user_info) do

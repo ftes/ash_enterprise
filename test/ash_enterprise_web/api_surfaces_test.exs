@@ -251,6 +251,95 @@ defmodule AshEnterpriseWeb.ApiSurfacesTest do
       assert conn.status == 401
       assert %{"error" => "unauthenticated"} = Jason.decode!(conn.resp_body)
     end
+
+    test "mcp responses carry nosniff, x-frame-options DENY and the API CSP", %{conn: conn} do
+      refused =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> post("/mcp", %{})
+
+      assert refused.status == 401
+      assert_api_headers(refused)
+
+      %{user: user} = DailyFixtures.tenant!()
+      {:ok, token, _claims} = AshAuthentication.Jwt.token_for_user(user)
+
+      for path <- ["/mcp", "/legacy/mcp"] do
+        listed =
+          build_conn()
+          |> put_req_header("content-type", "application/json")
+          |> put_req_header("authorization", "Bearer " <> token)
+          |> post(path, %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list"})
+
+        assert %{"result" => %{"tools" => [_ | _]}} = json_response(listed, 200)
+        assert_api_headers(listed)
+        refute Map.has_key?(listed.private, :plug_session)
+      end
+    end
+
+    # The streamable transport answers some requests with an event stream. The headers are
+    # set before it starts, and the stream still arrives whole.
+    test "an mcp event stream carries the same headers and still streams", %{conn: conn} do
+      %{user: user} = DailyFixtures.tenant!()
+      {:ok, token, _claims} = AshAuthentication.Jwt.token_for_user(user)
+      version = "2026-07-28"
+
+      streamed =
+        conn
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header("accept", "application/json, text/event-stream")
+        |> put_req_header("authorization", "Bearer " <> token)
+        |> put_req_header("mcp-protocol-version", version)
+        |> put_req_header("mcp-method", "subscriptions/listen")
+        |> post("/mcp", %{
+          "jsonrpc" => "2.0",
+          "id" => 7,
+          "method" => "subscriptions/listen",
+          "params" => %{
+            "_meta" => %{
+              "io.modelcontextprotocol/protocolVersion" => version,
+              "io.modelcontextprotocol/clientCapabilities" => %{}
+            }
+          }
+        })
+
+      assert streamed.status == 200
+      assert [content_type] = get_resp_header(streamed, "content-type")
+      assert content_type =~ "text/event-stream"
+      assert streamed.resp_body =~ "notifications/subscriptions/acknowledged"
+      assert streamed.resp_body =~ ~s("id":7)
+      assert_api_headers(streamed)
+    end
+  end
+
+  # The dev-only surfaces (/admin, /dev/dashboard, /clarity, /canvas, the explorers) are
+  # compiled in under `dev_routes`, which config/dev.exs turns on unless the build sets
+  # DEV_ROUTES=false: an instance that runs the dev configuration for other people builds
+  # without them.
+  describe "dev_routes" do
+    test "dev_routes is switchable at compile time and on by default in dev" do
+      dev = Config.Reader.read!("config/dev.exs", env: :dev)
+      assert get_in(dev, [:ash_enterprise, :dev_routes]) == true
+
+      for {value, expected} <- [{"false", false}, {"0", false}, {"true", true}, {"", true}] do
+        assert with_env("DEV_ROUTES", value, fn ->
+                 "config/dev.exs"
+                 |> Config.Reader.read!(env: :dev)
+                 |> get_in([:ash_enterprise, :dev_routes])
+               end) == expected,
+               "DEV_ROUTES=#{inspect(value)}"
+      end
+
+      # Read when the router compiles, not at runtime: every guard is a compile_env.
+      source = File.read!("lib/ash_enterprise_web/router.ex")
+      refute source =~ ~r/Application\.get_env\(:ash_enterprise, :dev_routes/
+      assert source =~ "if Application.compile_env(:ash_enterprise, :dev_routes) do"
+
+      # A release never reads config/dev.exs, so nothing else turns them on.
+      for file <- ["config/config.exs", "config/prod.exs", "config/runtime.exs"] do
+        refute File.read!(file) =~ "dev_routes", "#{file} sets dev_routes"
+      end
+    end
   end
 
   defp bearer(user) do
@@ -259,6 +348,17 @@ defmodule AshEnterpriseWeb.ApiSurfacesTest do
     build_conn()
     |> put_req_header("accept", "application/vnd.api+json")
     |> put_req_header("authorization", "Bearer " <> token)
+  end
+
+  defp with_env(name, value, fun) do
+    previous = System.get_env(name)
+    System.put_env(name, value)
+
+    try do
+      fun.()
+    after
+      if previous, do: System.put_env(name, previous), else: System.delete_env(name)
+    end
   end
 
   defp route_info(method, path),

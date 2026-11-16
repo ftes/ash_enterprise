@@ -17,6 +17,7 @@ defmodule AshEnterprise.Site.CryptographyClaimTest do
 
   # Each module that uses one, and the words both pages use for its job.
   @named %{
+    "lib/ash_enterprise/accounts/oidc_http.ex" => "verifying the identity provider's certificate",
     "lib/ash_enterprise/automation/alert_webhook.ex" => "checking signed provider webhooks",
     "lib/ash_enterprise/credentialing/registry_webhook.ex" => "checking signed provider webhooks",
     "lib/ash_enterprise/erasure/blind_index.ex" => "the blind index that finds a sealed address",

@@ -2,7 +2,9 @@ defmodule AshEnterprise.Accounts.Preparations.RecordOidcSignIn do
   @moduledoc """
   Records every OIDC sign-in at the `:oidc` door of the audit chain
   (`AshEnterprise.Security.AuthenticationAudit`): an admission with the user, or a
-  refusal with its reason. ADR 0071.
+  refusal with its reason. ADR 0071. A refusal of a known user is also an
+  `Automation.Occurrence` (`user.sign_in_refused`, `door: oidc`), as at the password
+  door, so a recipe can react to it.
 
   An admission the chain cannot hold is turned into a refusal, so no token leaves
   without the evidence of it, as at the password door. A refusal that cannot be
@@ -16,6 +18,7 @@ defmodule AshEnterprise.Accounts.Preparations.RecordOidcSignIn do
   use Ash.Resource.Preparation
 
   alias AshAuthentication.Errors.AuthenticationFailed
+  alias AshEnterprise.Automation.Occurrences
   alias AshEnterprise.Security.AuthenticationAudit
 
   @impl true
@@ -43,7 +46,10 @@ defmodule AshEnterprise.Accounts.Preparations.RecordOidcSignIn do
   end
 
   defp audit(query, result) do
-    query |> Ash.Query.get_argument(:user_info) |> AuthenticationAudit.oidc_refused()
+    {reason, user_id} =
+      query |> Ash.Query.get_argument(:user_info) |> AuthenticationAudit.oidc_refused()
+
+    Occurrences.oidc_sign_in_refused(user_id, reason)
     result
   end
 end

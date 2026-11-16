@@ -73,6 +73,48 @@ defmodule AshEnterpriseWeb.SessionBoundsTest do
     assert {:error, {:redirect, %{to: "/sign-in"}}} = filter(view)
   end
 
+  test "a live view whose token was revoked stops at its next patch navigation",
+       %{conn: conn, user: user} do
+    {view, token} = connected(conn, user)
+
+    :ok = AshAuthentication.TokenResource.Actions.revoke(AshEnterprise.Accounts.Token, token)
+
+    assert {:error, {:redirect, %{to: "/sign-in"}}} = render_patch(view, ~p"/app?for=everyone")
+    assert {"/sign-in", flash} = assert_redirect(view)
+    assert flash["error"] =~ "ended"
+  end
+
+  test "a live view whose session is still good follows its patch navigation",
+       %{conn: conn, user: user} do
+    {view, _token} = connected(conn, user)
+
+    assert is_binary(render_patch(view, ~p"/app?for=everyone"))
+  end
+
+  test "sign-out revokes the stored token and an open live view stops at its next event",
+       %{conn: conn, user: user} do
+    {:ok, token, _claims} = AshAuthentication.Jwt.token_for_user(user)
+    conn = conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session("user_token", token)
+    {:ok, view, _html} = live(conn, ~p"/app")
+
+    refute AshAuthentication.TokenResource.Actions.token_revoked?(
+             AshEnterprise.Accounts.Token,
+             token
+           )
+
+    signed_out = delete(conn, ~p"/sign-out")
+    assert redirected_to(signed_out) == ~p"/"
+
+    assert AshAuthentication.TokenResource.Actions.token_revoked?(
+             AshEnterprise.Accounts.Token,
+             token
+           )
+
+    refute LiveUserAuth.session_live?(token)
+
+    assert {:error, {:redirect, %{to: "/sign-in"}}} = filter(view)
+  end
+
   test "a live view whose session is still good handles its events", %{conn: conn, user: user} do
     {view, _token} = connected(conn, user)
 

@@ -9,10 +9,10 @@ defmodule AshEnterpriseWeb.Router do
   # mounted in the endpoint, ahead of `Plug.Parsers`, so a signature can cover the raw
   # bytes. See `AshEnterpriseWeb.Plugs.ProviderWebhooks` (ADR 0063).
 
-  # Response headers for the two JSON APIs (`:graphql` and `:api`). A JSON body
+  # Response headers for the JSON APIs (`:graphql`, `:api` and `:mcp`). A JSON body
   # is never a page, so its policy allows nothing to load, nothing to frame it
   # and no <base>; `nosniff` stops a browser reading it as anything but JSON.
-  # No session is touched: both pipelines are bearer only. Phoenix 1.8 no
+  # No session is touched: the pipelines are bearer only. Phoenix 1.8 no
   # longer sends `x-frame-options`, so it is set here for clients that ignore
   # `frame-ancestors`.
   @api_headers %{
@@ -524,8 +524,12 @@ defmodule AshEnterpriseWeb.Router do
   # the browser and JSON:API pipelines do. There is no agent-specific
   # authorization path, which is precisely why there is no agent-specific
   # authorization bug.
+  #
+  # The same headers as the other JSON APIs: an MCP response, a JSON body or an event
+  # stream, is never a page either.
   pipeline :mcp do
     plug :accepts, ["json"]
+    plug :put_api_headers
     plug AshEnterpriseWeb.Plugs.LoadFromBearer
     plug :set_actor, :user
     plug AshEnterpriseWeb.Plugs.LoadActorContext

@@ -102,8 +102,9 @@ Two gaps became visible only when the questions were mapped to controls:
 - **Cryptography is standard primitives for a few named jobs** — a SHA-256 hash chain over the audit log;
   AES-256-GCM sealing under per-scope keys for crypto-shredding (ADR 0024); HMAC-SHA256 for keyed digests
   (sub-keys of an erasure scope's key, invocation argument digests, master-data assertion digests, the
-  blind index that finds a sealed address) and for
-  checking signed provider webhooks; bcrypt password hashes; and the signed session tokens and cookies that
+  blind index that finds a sealed address) and for checking signed provider webhooks; TLS with peer
+  verification for verifying the identity provider's certificate, against the default trust store or a
+  configured CA file (ADR 0071); bcrypt password hashes; and the signed session tokens and cookies that
   ash_authentication and Phoenix provide. Encryption at rest, in transit, and custody of the master key are
   the deployment's, and this repository says nothing about them. That is a gap in the map rather than a
   strength of the system.

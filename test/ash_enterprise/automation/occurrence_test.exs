@@ -91,6 +91,19 @@ defmodule AshEnterprise.Automation.OccurrenceTest do
     })
   end
 
+  defp oidc_sign_in(email, verified?, subject \\ nil) do
+    strategy = AshAuthentication.Info.strategy!(User, :oidc)
+
+    AshAuthentication.Strategy.action(strategy, :sign_in, %{
+      "user_info" => %{
+        "sub" => subject || "oidc-subject-#{System.unique_integer([:positive])}",
+        "email" => to_string(email),
+        "email_verified" => verified?
+      },
+      "oauth_tokens" => %{"access_token" => "provider-access-token"}
+    })
+  end
+
   # Waits for the refusal tasks this test started to finish, by monitor and not by
   # sleeping. A task another module left running under the shared supervisor is not
   # one of them.
@@ -314,6 +327,52 @@ defmodule AshEnterprise.Automation.OccurrenceTest do
       assert {:ok, _} = sign_in(a.user.email, @password)
       await_tasks(ctx)
       assert occurrences(a.tenant) == []
+    end
+  end
+
+  # The OIDC door (ADR 0071) records its refusals of a known user the same way, typed by
+  # the door and its reason, with no address and no provider subject.
+  describe "a refused OIDC sign-in" do
+    test "for an address that is no account writes nothing", %{a: a} = ctx do
+      assert {:error, _} =
+               oidc_sign_in("nobody-#{System.unique_integer([:positive])}@example.test", true)
+
+      await_tasks(ctx)
+      assert occurrences(a.tenant) == []
+    end
+
+    test "for a known user writes one occurrence with the door and the reason, and no address or subject",
+         %{a: a, b: b} = ctx do
+      join_team_in!(a.user, b)
+      subject = "oidc-subject-#{System.unique_integer([:positive])}"
+
+      assert {:error, _} = oidc_sign_in(a.user.email, false, subject)
+      await_tasks(ctx)
+
+      for tenant <- [a.tenant, b.tenant] do
+        assert [row] = occurrences(tenant)
+        assert row.type == "user.sign_in_refused"
+        assert row.subject == a.user.id
+        assert row.data == %{"door" => "oidc", "reason" => "unverified_email"}
+
+        dumped = inspect(Map.from_struct(row))
+        refute dumped =~ to_string(a.user.email)
+        refute dumped =~ subject
+      end
+    end
+
+    test "a deactivated user's refusal reads as the password door's does", %{a: a} = ctx do
+      deactivate!(a.user)
+      await_tasks(ctx)
+      before = a.tenant |> occurrences() |> length()
+
+      assert {:error, _} = oidc_sign_in(a.user.email, true)
+      await_tasks(ctx)
+
+      assert [%{data: %{"door" => "oidc", "reason" => "deactivated"}}] =
+               a.tenant |> occurrences() |> Enum.filter(&(&1.type == "user.sign_in_refused"))
+
+      assert length(occurrences(a.tenant)) == before + 1
     end
   end
 

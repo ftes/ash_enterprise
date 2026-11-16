@@ -24,6 +24,7 @@ defmodule AshEnterprise.Automation.Occurrences do
   |---|---|---|---|
   | `user.deactivated` | after the `User` `:deactivate` action commits | the user's id | none |
   | `user.sign_in_refused` | after a password sign-in for a **known** user is refused | the user's id | `reason`: `bad_password`, `locked` or `deactivated`; `failures`: the consecutive failures the lockout counter holds for that identity, this one included, when it could be read |
+  | `user.sign_in_refused` | after an OIDC sign-in (ADR 0071) for a **known** user is refused by the sign-in action | the user's id | `door`: `oidc`; `reason`: `deactivated`, `unconfirmed`, `unverified_email` or `identity_mismatch`. A password refusal carries no `door` |
   | `security.break_glass_approved` | after a `BreakGlassSession` `:approve` commits, which is what makes it usable | the operator's id | `session_id`, `acting_as` (the subject's id), `approver_id`, `minutes` (how long it is live) |
   | `accounts.api_key_issued` | after an `ApiKey` `:issue` commits | the owner's id | `key_id`, `expires_at` |
   | `alert.firing`, `alert.resolved` | an inbound SigNoz or GlitchTip alert, signed and verified (`AshEnterprise.Automation.AlertWebhook`) | none: an alert is about no person (`rule_id` in `data` names the rule or issue) | `provider`, `alertname`, `severity`, `category`, `rule_id` |
@@ -258,6 +259,48 @@ defmodule AshEnterprise.Automation.Occurrences do
         write_all(organizations_of(user), attrs)
     end
   end
+
+  @doc """
+  Hands a refused OIDC sign-in of the user `user_id` to the task that records it, and
+  returns at once, as `sign_in_refused/3` does for the password door. `reason` is the
+  door's (`AshEnterprise.Security.AuthenticationAudit.oidc_refused/1`). A refusal that
+  resolved to no user (`nil`) writes nothing. The occurrence carries the door and the
+  reason, never the email or the provider's subject. Always `:ok`.
+  """
+  @spec oidc_sign_in_refused(Ash.UUID.t() | nil, atom()) :: :ok
+  def oidc_sign_in_refused(nil, _reason), do: :ok
+
+  def oidc_sign_in_refused(user_id, reason) when is_binary(user_id) do
+    config = Application.get_env(:ash_enterprise, __MODULE__, [])
+    supervisor = Keyword.get(config, :supervisor, AshEnterprise.TaskSupervisor)
+
+    try do
+      Task.Supervisor.start_child(supervisor, fn ->
+        safely(fn -> record_oidc_refusal(user_id, reason) end)
+      end)
+    catch
+      kind, _reason -> Logger.warning("Occurrences: refusal not recorded (#{kind})")
+    end
+
+    :ok
+  end
+
+  @doc false
+  @spec record_oidc_refusal(Ash.UUID.t(), atom()) :: :ok
+  def record_oidc_refusal(user_id, reason) do
+    attrs = %{
+      event_id: "#{@refused}:#{Ash.UUID.generate()}",
+      type: @refused,
+      subject: user_id,
+      data: %{"door" => "oidc", "reason" => oidc_reason(reason)}
+    }
+
+    write_all(organizations_of(user_id), attrs)
+  end
+
+  # The password door's word for a deactivated account, so a recipe matches both doors.
+  defp oidc_reason(:inactive), do: "deactivated"
+  defp oidc_reason(reason), do: Atom.to_string(reason)
 
   @doc """
   Records that a break-glass session was approved, which is what makes it usable, once
