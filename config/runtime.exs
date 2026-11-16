@@ -195,6 +195,13 @@ if config_env() != :test do
       declarations: declarations |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
   end
 
+  # `STORE_DECLARATIONS`: path of the JSON file mapping this deployment's stores
+  # and egress destinations to declared zone ids (`mix ash_enterprise.residency`,
+  # docs/runbooks/residency.md). Like a zone declaration it is deployment-private.
+  if stores = System.get_env("STORE_DECLARATIONS") do
+    config :ash_enterprise, AshEnterprise.Zones.ResidencyReport, stores: stores
+  end
+
   if zone = System.get_env("CANONICAL_ZONE") do
     config :ash_enterprise, AshEnterprise.Canonical.Projections.ZoneAdmission, zone: zone
 

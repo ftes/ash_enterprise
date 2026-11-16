@@ -236,7 +236,9 @@ defmodule AshEnterprise.Integration.Nango.Proxy do
     end
   end
 
-  defp base_url do
+  @doc "The broker's base URL as calls will use it (config, then `NANGO_BASE_URL`, then the loopback default)."
+  @spec base_url() :: String.t()
+  def base_url do
     config(:base_url) || System.get_env("NANGO_BASE_URL") || @default_base_url
   end
 

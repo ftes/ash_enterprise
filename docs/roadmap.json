@@ -179,9 +179,9 @@
       "id": "q15",
       "section": "tenancy",
       "question": "Where does the data physically live?",
-      "answer": "Partly. ADR 0042 declares zones: a jurisdiction, a classification ceiling and the residency restrictions a zone cannot satisfy. Data is admitted into a store only if its own tags are admissible there, and every unknown case (no zone, an untagged row, a malformed tag, a zone past its review date) is refused. The admission rule is built and used on the Gmail and Slack projection path. Nothing is declared by default, so a deployment that declares no zone fails closed; the rule is added per ingest action rather than inherited by every resource; and tenancy is still attribute-based in one database, so physical placement of the database itself is the deployment's.",
+      "answer": "Partly. ADR 0042 declares zones: a jurisdiction, a classification ceiling and the residency restrictions a zone cannot satisfy. Data is admitted into a store only if its own tags are admissible there, and every unknown case (no zone, an untagged row, a malformed tag, a zone past its review date) is refused. The admission rule is built and used on the Gmail and Slack projection path. Nothing is declared by default, so a deployment that declares no zone fails closed; the rule is added per ingest action rather than inherited by every resource; and tenancy is still attribute-based in one database, so physical placement of the database itself is the deployment's. The model is one deployment per jurisdiction: a deployment declares the zone its database is in and maps each store and egress destination it is configured with to a declared zone, and `mix ash_enterprise.residency --check` fails on an unmapped store, an egress host outside every zone, an undeclared zone or a zone past its review date (docs/runbooks/residency.md). The check reads configuration, so a hard-coded endpoint is not seen by it.",
       "status": "partial",
-      "proof": "test/ash_enterprise/zones/admission_test.exs"
+      "proof": "test/ash_enterprise/zones/residency_report_test.exs"
     },
     {
       "id": "q16",
