@@ -178,6 +178,13 @@ jobs:
       - name: Check the roadmap tables are rendered
         run: mix ash_enterprise.roadmap --check
 
+      # priv/api/ pins the public API (the OpenAPI document and the GraphQL schema).
+      # A resource change that moves what callers see fails here until the pin is
+      # moved on purpose, and a breaking one until it was announced
+      # (docs/runbooks/changing-the-api.md).
+      - name: Check the API contract is pinned
+        run: mix ash_enterprise.api.contract --check
+
       # docs/data-inventory.json is generated from the resource declarations and
       # the egress register. A resource added or changed without regenerating it
       # fails here, and so does a personal-looking attribute with no class.

@@ -281,10 +281,11 @@
       "id": "q25",
       "section": "change",
       "question": "How do API contracts change without breaking the callers you cannot see?",
-      "answer": "Version deltas declared as data on the resource — one schema, N presentation contracts, no second table or view — with `render`/`parse` invertibility checked at compile time and sunset proposed from real traffic.",
-      "status": "planned",
+      "answer": "Partly: a change is detected and announced, not yet presented as several versions at once. The public API (the JSON:API routes and the GraphQL schema, both generated from the Accounts domain) is pinned under `priv/api/` as a canonical OpenAPI document and an SDL file with a sha-256 lock, and `mix ash_enterprise.api.contract --check` fails CI on any drift between that pin and what the resources generate. A breaking change (a removed route, property, field or argument, a changed type, an input newly required of a caller) can be re-pinned only when `priv/api/deprecations.json` announced it at least 90 days before a sunset that has now passed; an additive change re-pins freely. While an announcement is live, a request for a deprecated route or the GraphQL endpoint is answered with `Deprecation` (RFC 9745), `Sunset` (RFC 8594) and a `Link` to the notice (docs/runbooks/changing-the-api.md). Not provided: a caller cannot pin a version and be served that version's shape (`ash_api_versioning`, ADR 0019, is still proposed), GraphQL field-level deprecation is announced in the notice rather than on the response, and nothing yet proposes a sunset from real traffic.",
+      "status": "partial",
       "adr": "0019",
-      "item": "api-versioning"
+      "item": "api-versioning",
+      "proof": "test/ash_enterprise_web/api_contract_test.exs"
     },
     {
       "id": "q26",

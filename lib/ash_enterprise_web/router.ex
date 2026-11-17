@@ -32,6 +32,7 @@ defmodule AshEnterpriseWeb.Router do
   # `AshGraphql.Plug` must run last; it reads the actor these plugs installed.
   pipeline :graphql do
     plug :put_api_headers
+    plug AshEnterpriseWeb.Plugs.ApiDeprecation
     plug AshEnterpriseWeb.Plugs.LoadFromBearer
     plug :set_actor, :user
     plug AshEnterpriseWeb.Plugs.LoadActorContext
@@ -100,6 +101,7 @@ defmodule AshEnterpriseWeb.Router do
   pipeline :api do
     plug :accepts, ["json"]
     plug :put_api_headers
+    plug AshEnterpriseWeb.Plugs.ApiDeprecation
     plug AshEnterpriseWeb.Plugs.LoadFromBearer
     plug :set_actor, :user
     plug AshEnterpriseWeb.Plugs.LoadActorContext
@@ -552,6 +554,7 @@ defmodule AshEnterpriseWeb.Router do
   pipeline :mcp do
     plug :accepts, ["json"]
     plug :put_api_headers
+    plug AshEnterpriseWeb.Plugs.ApiDeprecation
     plug AshEnterpriseWeb.Plugs.LoadFromBearer
     plug :set_actor, :user
     plug AshEnterpriseWeb.Plugs.LoadActorContext
