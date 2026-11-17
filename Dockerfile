@@ -8,11 +8,33 @@
 # disagree, "works locally" stops being evidence of anything.
 
 ARG ELIXIR_VERSION=1.20.4
-ARG OTP_VERSION=27.3.4
-ARG DEBIAN_VERSION=bookworm-20250520-slim
+ARG OTP_VERSION=27.3.4.19
+ARG DEBIAN_VERSION=bookworm-20261027-slim
 
-ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
-ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
+# Both images are pinned by digest as well as tag: the tag says what was meant,
+# the digest is what is pulled. hexpm publishes four-part OTP versions (27.3.4.19,
+# not 27.3.4), and the earlier tag here named an image that does not exist, which
+# nothing noticed because nothing built this file. The supply-chain workflow's
+# docker job now builds it. Refresh a digest with
+#   docker pull <image:tag> && docker image inspect --format '{{index .RepoDigests 0}}' <image:tag>
+# The apt packages installed below (build-essential, git, curl, the runtime
+# libraries, libxml2-utils) are NOT pinned: they follow the Debian repository
+# at build time.
+ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}@sha256:774e7999a0cc99f0f793c63b1c45ad2fc9d3d8da21cb6e71bdd3e0223d221da0"
+ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3"
+# The npm tree is installed by the Node release devenv and CI use, not by
+# Debian's packaged npm (9.2), which refuses this lockfile.
+ARG NODE_IMAGE="node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9"
+
+# --- assets (npm) ------------------------------------------------------------
+FROM ${NODE_IMAGE} AS npm
+
+WORKDIR /app/assets
+COPY assets/package.json assets/package-lock.json ./
+COPY assets/vendor vendor
+# Only what the browser bundle ships: the dev dependencies are the browser
+# test tooling.
+RUN npm ci --omit=dev
 
 # --- build -------------------------------------------------------------------
 FROM ${BUILDER_IMAGE} AS builder
@@ -44,17 +66,14 @@ COPY priv priv
 COPY lib lib
 COPY assets assets
 
-# Node is needed only if the A2UI client packages are in play. esbuild and
-# tailwind are fetched as binaries by their mix tasks, so a full Node toolchain
-# is not otherwise required.
-RUN if [ -f assets/package.json ]; then \
-      apt-get update -y && apt-get install -y nodejs npm \
-      && npm --prefix assets ci \
-      && apt-get clean && rm -rf /var/lib/apt/lists/*; \
-    fi
+# The npm packages come from the npm stage. esbuild and tailwind are fetched
+# as binaries by their mix tasks, so the builder needs no Node toolchain.
+COPY --from=npm /app/assets/node_modules assets/node_modules
 
-RUN mix assets.deploy
+# Compile before the asset build: compiling writes the colocated hooks and CSS
+# (phoenix-colocated) that the tailwind and esbuild entry points import.
 RUN mix compile
+RUN mix assets.deploy
 
 COPY config/runtime.exs config/
 COPY rel rel

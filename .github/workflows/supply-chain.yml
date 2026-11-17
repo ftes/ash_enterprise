@@ -1,0 +1,156 @@
+name: Supply chain
+
+# What this workflow answers: which dependencies does this repository ship, are
+# they all in a bill of materials, and does any of them have a published
+# advisory today. ci.yml runs only when someone pushes, so an advisory published
+# after the last push went unseen; the daily schedule here closes that gap.
+#
+# What it does not claim: git dependencies follow whatever mix.lock pins, apt
+# packages in the image are not pinned, there is no reproducible-build check,
+# and nothing is published, so there is no artefact to carry provenance. Only
+# the SBOM file itself is attested.
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  schedule:
+    # Daily: SBOM and advisories.
+    - cron: "17 5 * * *"
+    # Weekly (Monday): the image build too.
+    - cron: "43 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    name: SBOM covers every locked dependency
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write       # sign the SBOM attestation (main only; see below)
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: beam
+        uses: ./.github/actions/setup-beam
+
+      - uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-sbom-deps-${{ hashFiles('mix.lock') }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: mix deps.get
+
+      # The production dependency names, from a prod-env resolution: the BOM is
+      # held to what the release ships, not to dev and test tooling.
+      - name: Production dependency names
+        run: |
+          MIX_ENV=prod mix deps | sed -n 's/^\* \([a-z0-9_]*\) .*/\1/p' | sort -u > prod-deps.txt
+          test -s prod-deps.txt
+          wc -l prod-deps.txt
+
+      # The Elixir SBOM comes from the sbom Hex package's escript, pinned here
+      # and installed in the job, so it adds nothing to mix.lock and runs in a
+      # VM of its own. It is chosen over Syft because it records a git
+      # dependency at its locked commit (in the purl); Syft reads the
+      # repository URL as the version, which would make the coverage check
+      # below meaningless for the first-party git packages.
+      - name: Generate the Elixir SBOM (CycloneDX)
+        run: |
+          mix escript.install hex sbom 0.12.0 --force
+          ~/.mix/escripts/mix_sbom cyclonedx --format json --only prod --force \
+            --no-vulnerabilities --no-enhance-metadata --output sbom-elixir.cdx.json .
+
+      - name: Generate the npm SBOM (CycloneDX)
+        working-directory: assets
+        run: |
+          npm ci --ignore-scripts
+          npx --yes @cyclonedx/cyclonedx-npm@6.0.1 --omit dev --ignore-npm-errors \
+            --output-format JSON --output-file ../sbom-npm.cdx.json package.json
+
+      # The drift check. The script proves its own refusals first (a BOM missing
+      # a dependency, a git dependency at another commit, a package at another
+      # version), then holds the real BOMs to the locks.
+      - name: Gate self-test
+        run: elixir scripts/sbom-covers-lock.exs --self-test
+
+      - name: Elixir BOM covers mix.lock
+        run: elixir scripts/sbom-covers-lock.exs sbom-elixir.cdx.json --lock mix.lock --only prod-deps.txt
+
+      - name: npm BOM covers package-lock.json
+        run: elixir scripts/sbom-covers-lock.exs sbom-npm.cdx.json --npm-lock assets/package-lock.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom-elixir.cdx.json
+            sbom-npm.cdx.json
+          retention-days: 90
+
+      # Only the SBOM file is attested: nothing is published, so there is no
+      # image or release to attest. `gh attestation verify` checks the file.
+      - name: Attest the Elixir SBOM
+        if: github.event_name != 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        uses: actions/attest@v4
+        with:
+          subject-path: sbom-elixir.cdx.json
+          sbom-path: sbom-elixir.cdx.json
+
+  advisories:
+    name: Advisories (hex.audit + OSV) on a schedule
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: beam
+        uses: ./.github/actions/setup-beam
+
+      - run: mix deps.get
+        env:
+          MIX_ENV: dev
+
+      # Retired Hex packages. ci.yml runs the same on a push; this one runs daily.
+      - run: mix hex.audit
+        env:
+          MIX_ENV: dev
+
+      # Published advisories for Hex and npm, from the lockfiles alone.
+      - name: OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2.7.0
+        with:
+          scan-args: |-
+            --config=.github/osv-scanner.toml
+            --lockfile=mix.lock
+            --lockfile=assets/package-lock.json
+
+  image:
+    name: Image builds from the Dockerfile
+    # Weekly and on demand, not on every push: an uncached build is 20+ minutes.
+    # It is the only thing that proves the digest pins, the apt installs and
+    # `mix release` still work together.
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '43 5 * * 1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

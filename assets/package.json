@@ -15,7 +15,8 @@
     "zod": "^3.25.76"
   },
   "overrides": {
-    "@a2ui/web_core": "file:vendor/a2ui/a2ui-web_core-0.15.0-main.8bf644a.tgz"
+    "@a2ui/web_core": "file:vendor/a2ui/a2ui-web_core-0.15.0-main.8bf644a.tgz",
+    "dompurify": "3.4.17"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.0",

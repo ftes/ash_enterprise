@@ -1,0 +1,25 @@
+# Advisories the supply-chain workflow's OSV-Scanner step accepts for now.
+#
+# Every entry expires: on its ignoreUntil date the advisory fails the daily
+# scan again, so an accepted finding is re-decided rather than forgotten. Any
+# advisory not listed here fails the scan on the day it is published.
+
+[[IgnoredVulns]]
+id = "GHSA-238p-pmpm-9mq7"
+ignoreUntil = 2026-12-17T00:00:00Z
+reason = """
+katex 0.16 arrives through mermaid 11, which requires ^0.16. The fix is in katex
+0.18.2, which mermaid takes only from its 12.x major. The advisory needs a
+prototype pollution that already exists in the page. Clears when the assets
+move to mermaid 12.
+"""
+
+[[IgnoredVulns]]
+id = "GHSA-mrhx-c7xc-m3w5"
+ignoreUntil = 2026-12-17T00:00:00Z
+reason = """
+zod is fixed only in 4.6.6, a major version on. The vendored @a2ui packages and
+the assets require zod ^3.25. It validates, in the browser, payloads this
+server rendered; an oversized collection would exhaust the viewer's own tab.
+Clears when the @a2ui packages and the assets move to zod 4.
+"""
