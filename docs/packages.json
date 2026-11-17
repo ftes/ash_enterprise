@@ -345,6 +345,31 @@
       "carry": "Declared with `branch: \"main\"`; mix.lock pins the commit."
     },
     {
+      "name": "ash_greenmask",
+      "module": "AshGreenmask",
+      "repo": "https://github.com/lukegalea/ash_greenmask",
+      "purpose": "Declares on each resource how its columns may leave production, and generates the greenmask config for a pseudonymised copy from those declarations; in strict mode a sensitive attribute with no position fails generation.",
+      "used_for": "The committed greenmask.yml, its drift check, and the pseudonymised-copy drill.",
+      "adr": "0032",
+      "declared": "direct",
+      "only": null,
+      "ref": "24b0c882cbb109a10e40215bcde3b1f0add0fd5b",
+      "version": "0.2.0",
+      "stated_status": null,
+      "maturity": "used-and-tested-here",
+      "battery": false,
+      "distribution": "git only",
+      "builds_on": [
+        "ash",
+        "ash_postgres",
+        "spark",
+        "yaml_elixir"
+      ],
+      "hex_name": "free",
+      "hex_path": "No git dependencies of its own.",
+      "carry": "A compile-time extension on the platform base: every resource carries an empty greenmask section, and greenmask.yml must be regenerated when a block changes. The greenmask binary itself is not a dependency; CI installs it pinned by sha256."
+    },
+    {
       "name": "ash_judgments",
       "module": "AshJudgments",
       "repo": "https://github.com/lukegalea/ash_judgments",

@@ -219,4 +219,13 @@ defmodule AshEnterprise.Integration.Outbound.Endpoint do
       change Changes.NoteOutcome
     end
   end
+
+  greenmask do
+    # Without production's scope keys (Erasure.Key.wrapped_key is replaced) a copy cannot
+    # open the secret, so its endpoints cannot sign and nothing is sent from it.
+    keep(:sealed_secret,
+      because:
+        "the signing secret sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there"
+    )
+  end
 end

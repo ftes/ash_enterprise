@@ -571,10 +571,12 @@
       "id": "q55",
       "section": "flow",
       "question": "How does production data reach an environment where the rules that protect it do not run?",
-      "answer": "A dump pipeline, not the action layer: greenmask transforms a pg_dump in flight, and its config is generated from the resource declarations by a proposed first-party extension — a `sensitive?` attribute with no declared transform fails generation rather than passing through, and referential continuity comes from greenmask's hash engine with an env-injected salt. The extension is built and public (`lukegalea/ash_greenmask`); this app has not adopted it yet.",
-      "status": "planned",
+      "answer": "A dump pipeline, not the action layer: greenmask (v0.2.23, pinned by sha256 in CI) transforms a pg_dump in flight, with a config generated from the resource declarations by `ash_greenmask` (ADR 0032). The platform base carries the extension and 35 resources declare how their columns may leave production: an address becomes a hashed address at example.com, names, provider ids and credential numbers a salted hash, every password hash one bcrypt hash of a discarded secret, and the erasure keys' wrapped keys a byte that unwraps nothing, so no sealed value opens in a copy. Generation is strict: a stored resource with a `sensitive?` attribute and no position fails `mix ash_greenmask.gen.config --check` in CI, and a test holds every personal-looking column in the data inventory to the same rule. The hash-chained ledgers, the compliance event log and the credential tables are copied empty, and large objects are not copied. A CI drill (`scripts/greenmask-drill`) plants a sentinel in every transformed column of the seeded database, validates the config against the schema, copies and restores through greenmask, and fails if a sentinel survives anywhere but its control. What it makes is pseudonymised, not anonymised: ids and timestamps are copied, and the salt is key material the operator keeps (docs/runbooks/production-copy.md). Partial: no copy of a deployment we operate has been made or drilled, and scoping a copy to one tenant is not built.",
+      "status": "partial",
       "adr": "0032",
-      "item": "anonymization"
+      "item": "anonymization",
+      "proof": "test/ash_enterprise/anonymization/greenmask_config_test.exs",
+      "test": "every sensitive? attribute across the domains has a transform or a keep with a reason"
     }
   ],
   "items": [
@@ -836,10 +838,10 @@
       "id": "anonymization",
       "title": "Pseudoanonymization of production data",
       "priority": 2,
-      "choice": "ash_greenmask — config generated from the resource declarations (greenmask, Apache-2.0, adopted not written). The package is built and public at lukegalea/ash_greenmask; this app has not adopted it yet",
+      "choice": "ash_greenmask — config generated from the resource declarations (greenmask, Apache-2.0, adopted not written). Adopted here: greenmask.yml is generated, gated by --check, and drilled in CI",
       "adr": "0032",
-      "status": "planned",
-      "effort": "A first-party extension in the ash_api_versioning shape: a `greenmask` block on the resource is the single declaration of what may leave production and how, `mix ash_greenmask.gen.config` emits greenmask's YAML from it plus what the model already knows (`sensitive?`, types, the ash_postgres table mapping), and CI gates both the drift between declarations and config and greenmask's own `validate --strict`. No database objects, nothing running in the application itself.",
+      "status": "partial",
+      "effort": "A first-party extension in the ash_api_versioning shape: a `greenmask` block on the resource is the single declaration of what may leave production and how, `mix ash_greenmask.gen.config` emits greenmask's YAML from it plus what the model already knows (`sensitive?`, types, the ash_postgres table mapping), and CI gates both the drift between declarations and config and greenmask's own `validate` in a CI drill that fails when a planted value survives the copy. No database objects, nothing running in the application itself.",
       "bar": "Cleanly, by construction: greenmask is handed a thin generated declaration and holds no authorization model — it never serves a query. The control that stands in for ActorContext is the pipeline itself, the only door production bytes leave through, transformed before anything person-like sees them. The residuals are stated rather than wrapped away: the salt is load-bearing key material, hashed keys are not guaranteed unique, and what the config does not name passes through — which is why generation is refuse-by-default over `sensitive?`."
     }
   ]

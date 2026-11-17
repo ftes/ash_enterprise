@@ -251,6 +251,13 @@ config :ash_events_projections,
 # routed here by `AshStrangler.Listener`; the worker's own cron entry in the
 # Oban config above is the sweep that guarantees a missed wake costs delay,
 # not delivery.
+# ADR 0032: `mix ash_greenmask.gen.config` reads this app's `ash_domains`. Strict: a
+# stored resource with a `sensitive?` attribute and no `greenmask` block refuses
+# generation. The `config` layout is the `dump` section greenmask reads, with the
+# excluded tables and `no-blobs`; scripts/greenmask-drill supplies the rest. A resource
+# whose postgres block names no schema is in the repo's default, `public`.
+config :ash_greenmask, strict?: true, layout: :config, default_schema: "public"
+
 config :ash_strangler, ledger_drain: {AshEnterprise.Ledger.UserDrainWorker, :nudge}
 
 # ADR 0012: the lineage runId IS the audit correlation id, so
