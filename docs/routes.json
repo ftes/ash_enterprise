@@ -496,6 +496,20 @@
     },
     {
       "action": null,
+      "kind": "live",
+      "module": "AshEnterpriseWeb.SurfaceLive.WebhookDeliveries",
+      "path": "/app/webhook-deliveries",
+      "verb": "GET"
+    },
+    {
+      "action": null,
+      "kind": "live",
+      "module": "AshEnterpriseWeb.SurfaceLive.WebhookEndpoints",
+      "path": "/app/webhook-endpoints",
+      "verb": "GET"
+    },
+    {
+      "action": null,
       "kind": "forward",
       "module": "AshAuthentication.Phoenix.StrategyRouter",
       "path": "/auth",

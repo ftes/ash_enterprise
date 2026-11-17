@@ -106,6 +106,7 @@ The concrete exit: which files change, and how much work it is.
 | [0072](0072-ash-native-tenant-flags.md) | Feature flags are tenant rows, resolved once into the actor's context; a deployment kill switch; never authorization | accepted (2026-11-14) |
 | [0073](0073-secured-columns-are-grants.md) | Secured columns are grants: a column a row grant does not hand over | accepted (2026-11-14), built for reads |
 | [0074](0074-signatures-are-a-package.md) | Signatures are a package (`ash_signatures`): a request over hashed document versions, signed in-platform, with providers behind one asynchronous seam | accepted, not built (2026-11-16) |
+| [0075](0075-outbound-webhooks-are-a-declared-operation.md) | Outbound webhooks are a declared operation: a signed CloudEvent nudge per audited write | accepted (2026-11-17), built |
 
 Records 0001–0005, 0007–0009, 0020–0023, 0026 (as amended 2026-11-16: a metadata-only call record and the tenant's opt-in at the one model-call guard), 0027–0031, 0033–0037, 0050–0054, 0059 and 0061 are `accepted` and describe code that exists. 0006 is superseded by 0050, and 0016 by 0072. 0049 is accepted and in progress: Phase 0 (PostgreSQL 18) and the System One fact cut-over have landed. 0060 is accepted and in progress: its phases 1 (ash_a2ui) and 2 (this repository) have landed; the downstream host's phases and CLDR formatting are not built.
 **0038–0047 are `accepted, not built (2026-09-28)`:** the decision is taken and none of it is built. A record with that

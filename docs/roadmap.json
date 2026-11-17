@@ -444,8 +444,10 @@
       "id": "q41",
       "section": "flow",
       "question": "How do other systems find out that something happened here?",
-      "answer": "Open. Events land in the audit log and go nowhere else. There is no outbound webhook, no subscription, and no delivery guarantee for anyone who needs to react to a change rather than poll for it.",
+      "answer": "Built, not yet running in a deployment we operate (ADR 0075). A person registers an outbound webhook endpoint for their organization: a public HTTPS URL on port 443 and the event types it wants, chosen from a catalogue derived from the code (the create, update and destroy of every audited resource with a public API type). Every minute the organization's own audit log is read from the endpoint's cursor, which starts where the log stood at registration, so history is never replayed. Each matching event is sent once as a CloudEvents 1.0 nudge naming the record and carrying nothing else of it; the receiver reads the record through the API with its own key, so it learns only what its grants allow. Each send is a declared operation (`ash_operations`) behind a disclosure gate, signed per Standard Webhooks v1 with the endpoint's own secret (shown once, sealed under its own erasure scope), and sent only to an address the egress guard vetted as public, without following redirects. Delivery is at least once with a stable `webhook-id`: retried after 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours, then dead-lettered, and three dead letters in a row disable the endpoint until a person re-enables it. The thin payload and the catalogue's scope are the design, not a gap. Not built: registering and rotating from the web surface (code interface only), and per-tenant rate limits.",
       "status": "open",
+      "proof": "test/ash_enterprise/integration/outbound/outbound_webhook_test.exs",
+      "test": "the Standard Webhooks signature verifies over id.timestamp.body",
       "item": "webhooks"
     },
     {

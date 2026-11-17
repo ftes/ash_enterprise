@@ -66,7 +66,8 @@ config :ash_enterprise, Oban,
     execution: 10,
     agent_runs: 5,
     quality: 2,
-    planning: 3
+    planning: 3,
+    webhooks: 5
   ],
   repo: AshEnterprise.Repo,
   plugins: [
