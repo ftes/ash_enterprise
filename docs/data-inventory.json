@@ -2,10 +2,10 @@
   "format": "ash_enterprise.data_inventory/1",
   "note": "Generated from the resource declarations by `mix ash_enterprise.data_inventory`; do not edit. It describes the code, names no data steward, and attests nothing about a running deployment.",
   "summary": {
-    "resources": 174,
+    "resources": 175,
     "global_tables": 44,
     "egress_paths": 15,
-    "tenant_scoped": 99,
+    "tenant_scoped": 100,
     "unclassified_personal_attributes": 0,
     "with_sealed_attributes": 15,
     "with_sensitive_attributes": 33
@@ -1830,6 +1830,24 @@
         "fingerprint",
         "wrapped_key"
       ],
+      "sealed_attributes": [],
+      "personal_looking_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Erasure.PersonErasure",
+      "domain": "AshEnterprise.Erasure",
+      "data_layer": "AshPostgres.DataLayer",
+      "table": "erasure_person_erasures",
+      "platform_resource": true,
+      "ownership": "none",
+      "tenancy": "attribute",
+      "tenant_option": true,
+      "audit": true,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [],
       "sealed_attributes": [],
       "personal_looking_attributes": []
     },

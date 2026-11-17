@@ -35,8 +35,9 @@ defmodule AshEnterprise.Canonical.Person do
 
   `name` stays plaintext and `sensitive?` (kept out of the audit log), so the
   MDM name blocking and name search still run in the database; erasing the
-  person (not built yet) is to blank it on the row. `merge_provenance` is
-  `sensitive?` too, and holds the prior address only sealed.
+  person (`AshEnterprise.Erasure.PersonErasure`) shreds their scope and blanks
+  it on the row (`erase`). `merge_provenance` is `sensitive?` too, and holds
+  the prior address only sealed.
 
   The plaintext `email` column from before the seal is still in the table,
   read as `legacy_email` and blanked as each row is sealed
@@ -58,7 +59,9 @@ defmodule AshEnterprise.Canonical.Person do
     ownership: :user_owned,
     tenant?: true,
     lifecycle?: false,
-    archival?: false
+    archival?: false,
+    # Only the erase-person act calls it, inside its own authorized transaction.
+    machinery_only: [:erase]
 
   postgres do
     table "canonical_people"
@@ -86,8 +89,7 @@ defmodule AshEnterprise.Canonical.Person do
 
     # `sensitive?` (ADR 0024): ash_events records a sensitive input as nil,
     # so the immutable audit log never holds a correspondent's name. The row
-    # holds it in plaintext; erasing the person (not built yet) is to blank
-    # it there.
+    # holds it in plaintext; erasing the person (`:erase`) blanks it there.
     attribute :name, :string do
       public? true
       sensitive? true
@@ -446,6 +448,22 @@ defmodule AshEnterprise.Canonical.Person do
 
       argument :email, :ci_string, sensitive?: true, constraints: [max_length: 320]
       accept [:name, :owner_id, :owning_business_unit_id]
+    end
+
+    update :erase do
+      description """
+      Blanks what a shred does not reach on an erased person: the name, the blind
+      index, the plaintext column from before the seal and the merge provenance. The
+      sealed address stays as ciphertext no key opens, and reads as shredded. Only
+      `AshEnterprise.Erasure.PersonErasure`'s `erase` calls it, after authorizing the
+      person who asked.
+      """
+
+      accept []
+      change set_attribute(:name, nil)
+      change set_attribute(:email_bidx, nil)
+      change set_attribute(:legacy_email, nil)
+      change set_attribute(:merge_provenance, nil)
     end
 
     update :seal_legacy do

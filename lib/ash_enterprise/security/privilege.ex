@@ -142,9 +142,9 @@ defmodule AshEnterprise.Security.Privilege do
   # Resources whose rows belong to no tenant yet carry tenants' content, or
   # whose writes reach across tenants: raw provider landings (every tenant's
   # users' mailboxes, calendars and Slack, sealed but decrypted on read) and
-  # erasure scopes (a shred is irreversible). A `:global` grant on an
-  # untenanted resource is the filter `true`, so a tenant's role holding one
-  # reaches every tenant's rows. These are therefore the platform operator's,
+  # erasure scopes (a shred is irreversible), with the person erasures that
+  # shred them. A `:global` grant on an untenanted resource is the filter
+  # `true`, so a tenant's role holding one reaches every tenant's rows. These are therefore the platform operator's,
   # never a tenant role's: the Administrator auto-grant skips them, and a
   # grant of one can only be made by a system actor
   # (`AshEnterprise.Security.Validations.OperatorPrivilegeNeedsSystemActor`,
@@ -158,6 +158,7 @@ defmodule AshEnterprise.Security.Privilege do
   @operator_only [
     "AshEnterprise.Credentialing.RegistryApi",
     "AshEnterprise.Erasure.Key",
+    "AshEnterprise.Erasure.PersonErasure",
     "AshEnterprise.Erasure.Scope",
     "AshEnterprise.Ingestion.SourceObject"
   ]

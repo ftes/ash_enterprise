@@ -90,6 +90,16 @@ defmodule AshEnterprise.Canonical.PersonSeal do
     end
   end
 
+  @doc """
+  Takes the lock on one address (its blind index) in `tenant` for the rest of the
+  transaction: the projectors' upsert holds it while it finds or creates the address's
+  person, and erasing the person holds it while it finds and blanks them
+  (`AshEnterprise.Erasure.PersonErasure`). Take the tenant's audit-log lock first.
+  """
+  @spec lock_address!(term(), binary()) :: :ok
+  def lock_address!(tenant, bidx) when is_binary(bidx),
+    do: AdvisoryLock.xact_lock!(@address_lock, to_string(tenant) <> ":" <> Base.encode16(bidx))
+
   # An upsert: the address's lock, then the person it already belongs to.
   # The audit-log lock first, as every MDM path takes it
   # (`AshEnterprise.Mdm.Refold.lock!/2`), so the two are always ordered the
@@ -98,7 +108,7 @@ defmodule AshEnterprise.Canonical.PersonSeal do
     if Keyword.get(opts, :upsert?, false) do
       tenant = to_string(changeset.tenant)
       AdvisoryLock.xact_lock_audit_log!(Person, changeset.tenant)
-      AdvisoryLock.xact_lock!(@address_lock, tenant <> ":" <> Base.encode16(bidx))
+      lock_address!(tenant, bidx)
 
       case existing(changeset, bidx, Keyword.fetch!(opts, :email)) do
         {:ok, %Person{} = person} -> person_scope(changeset, person)

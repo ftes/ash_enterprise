@@ -60,6 +60,15 @@ defmodule AshEnterprise.Erasure do
   connection (the Nango connection and the linked account) as well; a shredded
   scope then refuses anything that still lands under it, loudly.
 
+  ## For an operator: erase a person by their address
+
+      mix ash_enterprise.erasure.erase_person --tenant <organization uuid> \\
+        --email person@example.com --as you@example.com --reason "erasure request"
+
+  prints what the address reaches (counts only) and changes nothing; `--apply`
+  erases it (`AshEnterprise.Erasure.PersonErasure`): shreds the person's own
+  scopes, blanks and deletes what the shreds do not reach, and writes a receipt.
+
   See `docs/runbooks/crypto-shredding.md` for the full procedure and for what a
   key destroy does **not** reach.
   """
@@ -78,5 +87,10 @@ defmodule AshEnterprise.Erasure do
     end
 
     resource AshEnterprise.Erasure.Key
+
+    resource AshEnterprise.Erasure.PersonErasure do
+      define :erase_person, action: :erase, args: [:email, :confirm, :reason]
+      define :list_person_erasures, action: :read
+    end
   end
 end

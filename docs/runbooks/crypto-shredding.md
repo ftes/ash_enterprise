@@ -6,7 +6,8 @@ again the same day when Gmail and Slack projection went live behind zone admissi
 Code: `AshEnterprise.Erasure` (`lib/ash_enterprise/erasure.ex` and `lib/ash_enterprise/erasure/`), and
 `AshEnterprise.Integration.Landing` / `Landing.Scoped` for the provider syncs. Tests:
 `test/ash_enterprise/erasure_test.exs`, `test/ash_enterprise/integration/erasure_e2e_test.exs` (one end-to-end shred per
-vertical) and `test/ash_enterprise/integration/landing_scoped_test.exs`.
+vertical) and `test/ash_enterprise/integration/landing_scoped_test.exs`. Updated 2026-11-17 with erasing a person by
+their address (`AshEnterprise.Erasure.PersonErasure`, `test/ash_enterprise/erasure/erase_person_test.exs`).
 
 ## What a shred does
 
@@ -197,6 +198,53 @@ Administrator cannot shred, and cannot grant itself the privilege. No system act
 and not `ai`. The shred is audited on the scope (`action: shred`, the person's
 `user_id`, the reason, `shredded_at`). The key itself is never audited, so nothing in the log can bring it back.
 
+## Erase a person by their address
+
+A connection shred erases what came in through one account. Erasing a *person* starts from their address and works in
+one tenant:
+
+```bash
+devenv shell -- mix ash_enterprise.erasure.erase_person --tenant <organization uuid> \
+  --email person@example.com --as you@example.com --reason "erasure request"            # dry run: counts only
+devenv shell -- mix ash_enterprise.erasure.erase_person --tenant <organization uuid> \
+  --email person@example.com --as you@example.com --reason "erasure request" --apply    # erase
+```
+
+The dry run writes nothing, opens no scope and prints counts, never an address or a name, and whether `--as` may erase
+there. `--apply` runs `AshEnterprise.Erasure.PersonErasure`'s `erase` as that person. In **one transaction** it:
+
+1. finds the address's people (`AshEnterprise.Erasure.PersonErasure.Subject`): the `Canonical.Person` whose blind index
+   is the address's (or, before `seal_people` has run, whose old plaintext column holds it), any person an MDM
+   attribute statement says had this address (which is how a record merged away is found), and every record merged into
+   one of those;
+2. deletes their derived joins (attendances, conversation participations), their MDM attribute statements and any
+   statement spelling the address (`ash_mdm`'s `erase`), and the MDM staged rows whose mapped address is this one
+   (`StagedRecord`'s `erase`);
+3. blanks each person (`Person`'s `erase`): name, blind index, the old plaintext column and the merge provenance. Their
+   rows stay, so every message's `sender_id` and every event's `organizer_id` still resolves, to a blank person;
+4. refolds any golden that absorbed one of them and is not itself the address's, without the erased statements, so it
+   loses a value it took from them;
+5. shreds each person's own scope (`canonical_person:<id>`), and, when a sign-in account in the tenant has the address,
+   the scopes that account's own content is sealed under (its requests, `invocation_requester:<user id>`, and each
+   assistant thread). Each shred is the scope's own `shred`, run as you;
+6. writes the receipt: counts per class, the ids of the scopes shredded, your reason and what was not reached. Never
+   the address, its blind index or a key. The address and its confirmation are `sensitive?`, so the audit log records
+   them as `null`.
+
+Any failure rolls all of it back. Holding the address's lock for the whole transaction means a projection of the same
+address waits, then creates a **new** person under a new scope: the erased row is never brought back.
+
+**Who can erase:** a person, never a system actor, an engine or an automation principal, holding `write` on
+`AshEnterprise.Erasure.PersonErasure` and on `AshEnterprise.Erasure.Scope` at `global` depth. Both are operator-only, so
+`mix ash_enterprise.platform.grant_operator` gives them (run `mix ash_enterprise.seed --privileges-only` after deploying,
+so the new privilege exists). Like every tenant-scoped act, it runs only in the tenant the operator's own authority
+comes from.
+
+What it does not reach is printed on the receipt and listed under "Not reached" below: backups and WAL, the MDM raw
+landings (`mdm_source_records`), audit events written before the seal and the audit events of MDM staging, the sign-in
+account's own row (offboarding is its own act), and the request itself: there is no intake or 30-day clock, only the
+receipt's own time.
+
 ## Verify
 
 ```bash
@@ -224,9 +272,9 @@ Be honest with whoever asked for the erasure about these. Each is a real copy of
   tables hold rows, because `erasure_scope_id` is `NOT NULL`. Those rows are reconstructible (re-run the tap, then
   `Projection.replay`), so empty them first. Their old audit events are the plaintext caveat above.
 - **`Mdm.AttributeAssertion` rows.** One row per statement of a person's name or address, in plaintext, in
-  `mdm_attribute_assertions`. There is no foreign key to the person and a shred does not reach them: remove a person's
-  rows there (`golden_id`) before removing the person: a read goes through the Person row, so afterwards they are
-  reachable only by SQL.
+  `mdm_attribute_assertions`. There is no foreign key to the person and a shred does not reach them. Erasing the person
+  ("Erase a person by their address" above) deletes them, with any statement elsewhere that spells the address. Do not
+  delete a Person row by hand first: a read goes through the Person row, so afterwards they are reachable only by SQL.
 - **`Canonical.Person` rows (sealed).** A person's address is sealed under a `data_subject` scope of
   their own (`canonical_person:<id>`, an opaque ref; `AshEnterprise.Canonical.PersonSeal`) and found by a blind index
   (`email_bidx`, `AshEnterprise.Erasure.BlindIndex`), which is also the upsert identity. A **connection** shred does
@@ -234,10 +282,10 @@ Be honest with whoever asked for the erasure about these. Each is a real copy of
   connection's key. Shredding the person's own scope makes their address unreadable on the row, in the loser's merge
   provenance and in the audit copies, which hold only ciphertext. What still stays:
   - **The name.** `name` stays plaintext on the row (`sensitive?`, so the audit log records it as `null`), so the MDM
-    name blocking and name search keep running in the database. Erasing a person (not built yet) is to blank it on the row; backups keep it
-    until they age out, the same window as the wrapped keys above.
+    name blocking and name search keep running in the database. Erasing the person blanks it on the row; backups keep
+    it until they age out, the same window as the wrapped keys above.
   - **The blind index.** It is keyed by a subkey of the master key, not by the person's scope, so a shred does not
-    make it unreadable. Alone it is a keyed hash and names nobody without the master key; erasing a person (not built yet) is to clear it
+    make it unreadable. Alone it is a keyed hash and names nobody without the master key; erasing the person clears it
     on the row. Rotating the master key (not built) must recompute every index value.
   - **Rows from before the seal.** The expand migration keeps the old plaintext `email` column (read as
     `legacy_email`) until every row is sealed: run `mix ash_enterprise.erasure.seal_people` (below), then the contract
@@ -255,16 +303,20 @@ Be honest with whoever asked for the erasure about these. Each is a real copy of
   person's name and email are also copied, once per source and linked account they were seen in, into
   `mdm_source_records` (source `canonical`, stream `people`) and the staged rows in `mdm_staged_records`. Like the
   CSV landings beside them they are outside any erasure scope; raw landings are machinery-only (no person reads
-  them). A shred does not reach them, and deleting a Person row does not either: remove that person's rows there by
-  hand (`raw_payload->>'person_id'`, `mapped->>'person_id'`). The source identities (`mdm_source_identities`) hold
-  only ids.
+  them). A shred does not reach them. Erasing the person deletes the staged rows whose mapped address is theirs, but
+  not the landings: `SourceRecord` is temporal, an Ash destroy only ends its period and ADR 0049 bans raw writes, so
+  remove a person's rows in `mdm_source_records` by hand (`raw_payload->>'person_id'`), as an exception, until the
+  package ships an erase action. Two copies no erase reaches: `StagedRecord` is audited and `mapped` is not
+  `sensitive?`, so the audit event of every staging holds the mapped name and address in plaintext, forever
+  (`erase_person_test` asserts it, so a fix flips the test); and the receipt says so. The source identities
+  (`mdm_source_identities`) hold only ids.
 - **Correspondence metadata.** A shred destroys content, not the shape of who talked to whom. Every shredded `Message`
   keeps `sender_id` (a link to a Person with a readable name and address), `sent_at`, `direction` and its
   `conversation_id`. Every shredded `CalendarEvent` keeps `organizer_id`, `starts_at`, `ends_at` and `status`. Together
   with the Person rows these still show, message by message and meeting by meeting, who wrote to or met the account
-  holder and when. Tell whoever asked for the erasure. To remove it as well, delete the account's canonical
-  `Message` and `CalendarEvent` rows (they carry the scope's `erasure_scope_id`) and the Person rows only that account
-  produced. Nothing does that automatically yet.
+  holder and when. Tell whoever asked for the erasure. Erasing a correspondent blanks their Person row, so the links
+  then point at a blank person. To remove the rows themselves, delete the account's canonical `Message` and
+  `CalendarEvent` rows (they carry the scope's `erasure_scope_id`). Nothing does that automatically yet.
 - **Calendar history (since 2026-10-22, PROD-47).** `CalendarEvent` is temporal (ADR 0049): a reschedule, rename or
   cancellation keeps the version before it. Every version is sealed under the same scope key, so a shred reaches the
   title and location of all of them (`test/ash_enterprise/canonical/calendar_time_travel_test.exs`). Each version also

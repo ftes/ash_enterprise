@@ -157,7 +157,7 @@ a regression test in `erasure_test.exs` or `ingestion_test.exs`:
   key, never `secret_key_base`, whose routine rotation would orphan every identity). The upsert takes an advisory lock
   on the address's index and seals under the scope of the person it finds, so two concurrent projections of one
   address end with one row and one scope. `name` stays plaintext and `sensitive?`, so MDM name blocking and name
-  search keep running in the database; erasing the person (not built yet) is to blank it. `merge_provenance` is now `sensitive?` and holds
+  search keep running in the database; erasing the person blanks it. `merge_provenance` is now `sensitive?` and holds
   the loser's prior address only sealed under the loser's scope, and no merged values: audit events of merges written
   before this change keep those values in plaintext. A page of sealed people opens their keys in one query
   (`Erasure.Keyring.open_many!/1`). Addresses are matched only whole: substring search on an address is gone. The
@@ -167,8 +167,20 @@ a regression test in `erasure_test.exs` or `ingestion_test.exs`:
   `InvalidArgument`/`InvalidAttribute` for sensitive fields before errors reach tracers, Oban or BPMN incidents would
   close the class.
 
-`Canonical.Person` addresses are sealed under `data_subject` scopes; erasing a person (shredding their scope and
-blanking the rest) is not built yet. Per-person erasure (q14) is therefore partial, not shipped.
+**Erasing a person (2026-11-17).** `Erasure.PersonErasure`'s `erase` takes an address and, in one transaction in one
+tenant, shreds the `data_subject` scopes of the people it reaches (by blind index, by an MDM statement of the address,
+and every record merged into one of those) through `Scope.shred` run as the person asking; blanks their name, blind
+index, legacy column and merge provenance; deletes their MDM attribute statements, the staged rows whose mapped address
+is theirs and their derived joins; refolds any survivor without what was erased; and, when a sign-in account in the
+tenant has the address, shreds the scopes its own requests and assistant threads are sealed under. It writes a receipt
+that holds counts, the shredded scope ids, the reason and the residuals, never the address, its index or a key. It is
+`human_only`, operator-only and refused to every system actor, engine and automation principal
+(`Erasure.Checks.HumanRoleGrant`); `mix ash_enterprise.erasure.erase_person` is its dry run (counts only) and, with
+`--apply`, its operator path. What it does not reach: backups and WAL; the MDM raw landings (`mdm_source_records`,
+temporal, so an Ash destroy only ends a period); audit events written before the seal (merge provenance) and the audit
+event of every MDM staging, because `StagedRecord.mapped` is audited and not `sensitive?`; the sign-in account's row;
+and the request itself, since there is no intake or deadline clock. Per-person erasure (q14) is therefore still
+partial, not shipped.
 
 **Wired to the Nango adapters (2026-10-12).** Each `Integration.LinkedAccount` gets its own `connection` scope
 (`connection:<linked account id>`), and everything its sync brings in is sealed under it: raw provider records,

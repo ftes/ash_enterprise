@@ -620,9 +620,9 @@
       "applicability": "applicable",
       "frequency": "annual",
       "owner_role": "Privacy Lead",
-      "evidence_producer": "mix:ash_enterprise.erasure.shred",
-      "test_ref": "file:test/ash_enterprise/erasure_test.exs",
-      "rationale": "Crypto-shredding covers content that arrives through a connection. People and core platform resources are not sealed, so per-person erasure is partial (q14)."
+      "evidence_producer": "mix:ash_enterprise.erasure.erase_person",
+      "test_ref": "file:test/ash_enterprise/erasure/erase_person_test.exs",
+      "rationale": "Crypto-shredding covers content that arrives through a connection, and a correspondent can be erased by their address with a receipt. Backups, the MDM source landings, audit events written before the seal, sign-in account rows and core platform resources are not reached, and there is no request intake, so per-person erasure is partial (q14)."
     },
     {
       "id": "P5.1",

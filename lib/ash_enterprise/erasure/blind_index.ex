@@ -23,9 +23,9 @@ defmodule AshEnterprise.Erasure.BlindIndex do
 
     * an erased person's index value does not become unreadable when their
       scope is shredded, because the key is not the scope's. Erasing the
-      person (not built yet) is therefore to clear the column (`email_bidx`)
-      on the row; the index alone is a keyed
-      hash and names nobody without the master key;
+      person (`AshEnterprise.Erasure.PersonErasure`) therefore also clears
+      the column (`email_bidx`) on the row; the index alone is a keyed hash
+      and names nobody without the master key;
     * master-key rotation is not built. When it is, it must recompute every
       index value, because the derived key changes with the master key.
 

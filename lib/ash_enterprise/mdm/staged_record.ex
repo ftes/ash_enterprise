@@ -5,13 +5,24 @@ defmodule AshEnterprise.Mdm.StagedRecord do
   read. One per (batch, SourceRecord); re-running a batch re-derives
   nothing that already exists (bizev's temporal idempotency handles the
   landing side, this identity the staging side).
+
+  ## Personal data (ADR 0024)
+
+  `mapped` holds the row's canonical values, a person's name and address among
+  them, in plaintext, and it is audited: the audit event of each staging keeps
+  them, and the audit log is immutable. Erasing a person
+  (`AshEnterprise.Erasure.PersonErasure`) deletes the staged rows whose mapped
+  address is theirs (`erase`), but not those audit events.
+  `docs/runbooks/crypto-shredding.md` lists them as a residual.
   """
 
   use AshEnterprise.Platform.Resource,
     domain: AshEnterprise.Mdm,
     ownership: :organization_owned,
     lifecycle?: false,
-    archival?: false
+    archival?: false,
+    # Only the erase-person act calls it, inside its own authorized transaction.
+    machinery_only: [:erase]
 
   postgres do
     table "mdm_staged_records"
@@ -98,6 +109,13 @@ defmodule AshEnterprise.Mdm.StagedRecord do
 
     update :update do
       accept [:mapped, :validation_findings, :status]
+    end
+
+    destroy :erase do
+      description """
+      Removes a staged row for the erase-person act (`AshEnterprise.Erasure.PersonErasure`).
+      Never part of ordinary staging. A real delete: staged rows are not archived.
+      """
     end
   end
 
