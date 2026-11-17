@@ -69,9 +69,15 @@ defmodule AshEnterprise.Security.AuthenticationEvent do
     :protocol_error
   ]
 
+  @outcomes [:signed_in, :refused]
+
   @doc "The doors that record events."
   @spec doors() :: [atom()]
   def doors, do: @doors
+
+  @doc "The two outcomes an event records."
+  @spec outcomes() :: [atom()]
+  def outcomes, do: @outcomes
 
   @doc "Every refusal reason an event can carry."
   @spec reasons() :: [atom()]
@@ -94,7 +100,7 @@ defmodule AshEnterprise.Security.AuthenticationEvent do
     attribute :outcome, :atom do
       allow_nil? false
       public? true
-      constraints one_of: [:signed_in, :refused]
+      constraints one_of: @outcomes
     end
 
     attribute :reason, :atom do

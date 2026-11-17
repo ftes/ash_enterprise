@@ -1,10 +1,10 @@
 {
   "alert": "Security: an API key was issued",
-  "alertType": "TRACES_BASED_ALERT",
-  "description": "An API key was issued somewhere in the deployment.",
+  "alertType": "LOGS_BASED_ALERT",
+  "description": "An API key was issued somewhere in the deployment. Read from the audit chain.",
   "annotations": {
     "summary": "{{$service.name}}: {{$value}} API key(s) issued",
-    "description": "An API key was issued somewhere in the deployment."
+    "description": "An API key was issued somewhere in the deployment. Read from the audit chain."
   },
   "condition": {
     "compositeQuery": {
@@ -15,14 +15,14 @@
           "type": "builder_query",
           "spec": {
             "name": "A",
-            "signal": "traces",
+            "signal": "logs",
             "aggregations": [
               {
                 "expression": "count()"
               }
             ],
             "filter": {
-              "expression": "name = 'accounts:api_key.issue' AND ash.error.class NOT EXISTS"
+              "expression": "audit.resource = 'AshEnterprise.Accounts.ApiKey' AND audit.action = 'issue'"
             },
             "groupBy": [
               {

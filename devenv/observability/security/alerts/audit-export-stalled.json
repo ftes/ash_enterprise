@@ -1,0 +1,76 @@
+{
+  "alert": "Audit: export to the log endpoint is 15 minutes behind",
+  "alertType": "METRIC_BASED_ALERT",
+  "description": "The oldest committed audit event not yet exported is more than fifteen minutes old: the OTLP log endpoint refuses or cannot be reached, or the export is not keeping up. The security rules read the export, so they are blind for that long. Each audit export cursor's last_error says why.",
+  "annotations": {
+    "summary": "audit export {{$value}}s behind",
+    "description": "The oldest committed audit event not yet exported is more than fifteen minutes old: the OTLP log endpoint refuses or cannot be reached, or the export is not keeping up. The security rules read the export, so they are blind for that long. Each audit export cursor's last_error says why."
+  },
+  "condition": {
+    "compositeQuery": {
+      "queryType": "builder",
+      "panelType": "graph",
+      "queries": [
+        {
+          "type": "builder_query",
+          "spec": {
+            "name": "A",
+            "signal": "metrics",
+            "aggregations": [
+              {
+                "metricName": "ash_enterprise.audit.export.lag_seconds",
+                "spaceAggregation": "max",
+                "timeAggregation": "latest"
+              }
+            ],
+            "filter": {
+              "expression": ""
+            },
+            "groupBy": [],
+            "legend": "",
+            "stepInterval": 60
+          }
+        }
+      ],
+      "unit": "s"
+    },
+    "selectedQueryName": "A",
+    "thresholds": {
+      "kind": "basic",
+      "spec": [
+        {
+          "name": "warning",
+          "op": "above",
+          "target": 900,
+          "matchType": "all_the_times",
+          "channels": []
+        }
+      ]
+    }
+  },
+  "evaluation": {
+    "kind": "rolling",
+    "spec": {
+      "evalWindow": "5m",
+      "frequency": "1m"
+    }
+  },
+  "labels": {
+    "severity": "warning",
+    "category": "audit",
+    "provisioned": "ash_enterprise"
+  },
+  "notificationSettings": {
+    "usePolicy": true,
+    "renotify": {
+      "enabled": false,
+      "interval": "30m",
+      "alertStates": [
+        "firing"
+      ]
+    }
+  },
+  "ruleType": "threshold_rule",
+  "schemaVersion": "v2alpha1",
+  "version": "v5"
+}

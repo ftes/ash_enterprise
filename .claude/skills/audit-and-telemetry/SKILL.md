@@ -82,6 +82,30 @@ Requires a **global read grant** on the event log — reading the audit trail is
 itself privileged, because it reveals the existence and history of records the
 reader may not otherwise see.
 
+### Shipping the log to SigNoz
+
+`AshEnterprise.Audit.ExportWorker` (Oban cron, every minute) sends every committed
+event to the OTLP log endpoint as one log record, each chain from its own
+`AshEnterprise.Audit.ExportCursor`. It is on wherever `OTEL_EXPORTER_OTLP_ENDPOINT`
+is set and does nothing otherwise (`{:ok, :not_configured}`). What a record may carry
+is the allowlist in `AshEnterprise.Audit.OtlpExport`: structural fields only, never
+`record_id`, `data`, `changed_attributes` or other metadata. Adding a field there is a
+disclosure decision, not a refactor; a resource whose rows are closed sets (like
+`AuthenticationEvent`'s door, outcome and reason) may add those, checked against the set.
+
+When it fails: the cursor stays, `failing_since` and `last_error` say since when and
+why (`AshEnterprise.Audit.list_export_cursors!/1` as the `oban` system actor or an
+operator with a read grant), `[:ash_enterprise, :audit, :export, :failed]` fires, and
+the next run retries. Delivery is at least once; `(audit.tenant_id, audit.sequence,
+audit.hash)` dedupes. The chain with no tenant is best effort (a settle window, 60 s).
+The `ash_enterprise.audit.export.lag_seconds` metric and the `audit-export-stalled`
+rule are how someone notices; retention archives hot rows after ninety days, and the
+export reads only the hot table, so a lag that long would skip events.
+
+The security rules in `devenv/observability/security/alerts/` filter these records.
+A rule may name only attributes the exporter emits
+(`test/ash_enterprise/observability/security_rules_test.exs`).
+
 ## Telemetry
 
 `Ash.Tracer` → `OpentelemetryAsh` → OTLP, configured once. Every action, query,
@@ -100,7 +124,10 @@ there is no switch for it; req_llm's bridge is attached with `content: :none`.
 
 Metrics are declared **per domain** in `AshEnterpriseWeb.Telemetry`, which is the
 granularity Ash emits at. Adding a resource needs no change here; **adding a
-domain does**. That is the one place this is not automatic.
+domain does**. That is the one place this is not automatic. With an OTLP endpoint
+set, `config/runtime.exs` adds a metric reader and `AshEnterpriseWeb.Telemetry`
+starts the OTLP reporter over `exported_metrics/0`: the telemetry package's standard
+set plus the trigger sweep, audit retention and audit export metrics.
 
 ## Known gaps
 

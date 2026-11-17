@@ -8,15 +8,31 @@ defmodule AshEnterpriseWeb.Telemetry do
 
   @impl true
   def init(_arg) do
-    children = [
-      # Telemetry poller will execute the given period measurements
-      # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
-      {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
-      # Add reporters as children of your supervision tree.
-      # {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
-    ]
+    children =
+      [
+        # Telemetry poller will execute the given period measurements
+        # every 10_000ms. Learn more here: https://telemetry-metrics.hexdocs.pm
+        {:telemetry_poller, measurements: periodic_measurements(), period: 10_000}
+      ] ++ otlp_reporter(Application.get_env(:ash_enterprise, :otlp_metrics?, false))
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  # The OTLP metrics export (ADR 0065), only where `config/runtime.exs` turned it on beside a
+  # metric reader: with an OTLP endpoint set. Off, nothing is reported, as before.
+  defp otlp_reporter(true), do: [{AshEnterprise.Telemetry.Metrics, metrics: exported_metrics()}]
+  defp otlp_reporter(_off), do: []
+
+  @doc """
+  The metrics exported over OTLP when an endpoint is configured: the telemetry package's
+  standard set, under the names its provisioned dashboards read, and this application's own
+  (the trigger sweep, audit retention and the audit export).
+  """
+  def exported_metrics do
+    AshEnterprise.Telemetry.Metrics.standard(
+      repos: [[:ash_enterprise, :repo]],
+      ash_domains: Application.get_env(:ash_enterprise, :ash_domains, [])
+    ) ++ bpmn_metrics() ++ retention_metrics() ++ audit_export_metrics()
   end
 
   def metrics do
@@ -24,6 +40,7 @@ defmodule AshEnterpriseWeb.Telemetry do
       operations_metrics() ++
       bpmn_metrics() ++
       retention_metrics() ++
+      audit_export_metrics() ++
       [
         # Phoenix Metrics
         summary("phoenix.endpoint.start.system_time",
@@ -175,6 +192,25 @@ defmodule AshEnterpriseWeb.Telemetry do
       ),
       last_value("ash_enterprise.audit.retention.failed",
         description: "Archive moves the last retention run recorded as failed"
+      )
+    ]
+  end
+
+  # The audit export's run (`AshEnterprise.Audit.ExportWorker`), every minute: how old the
+  # oldest event not yet exported is, how many chains failed, and how many events went. No
+  # tags: one series for the deployment, so a tenant id never becomes a metric attribute.
+  @doc "The metrics the audit export feeds."
+  def audit_export_metrics do
+    [
+      last_value("ash_enterprise.audit.export.lag_seconds",
+        unit: :second,
+        description: "Age of the oldest committed audit event not yet exported, across chains"
+      ),
+      last_value("ash_enterprise.audit.export.failed",
+        description: "Audit chains whose export failed in the last run"
+      ),
+      sum("ash_enterprise.audit.export.exported",
+        description: "Audit events the OTLP log endpoint acknowledged"
       )
     ]
   end

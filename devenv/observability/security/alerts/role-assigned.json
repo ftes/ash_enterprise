@@ -1,10 +1,10 @@
 {
   "alert": "Security: a role was assigned",
-  "alertType": "TRACES_BASED_ALERT",
-  "description": "A security role was assigned somewhere in the deployment. Each tenant's security_alerts recipe opens a review only for an Administrator or Platform Operator; this counts every assignment, for the deployment's operator.",
+  "alertType": "LOGS_BASED_ALERT",
+  "description": "A security role was assigned somewhere in the deployment, read from the audit chain. Each tenant's security_alerts recipe opens a review only for an Administrator or Platform Operator; this counts every assignment, for the deployment's operator.",
   "annotations": {
     "summary": "{{$service.name}}: {{$value}} role assignment(s)",
-    "description": "A security role was assigned somewhere in the deployment. Each tenant's security_alerts recipe opens a review only for an Administrator or Platform Operator; this counts every assignment, for the deployment's operator."
+    "description": "A security role was assigned somewhere in the deployment, read from the audit chain. Each tenant's security_alerts recipe opens a review only for an Administrator or Platform Operator; this counts every assignment, for the deployment's operator."
   },
   "condition": {
     "compositeQuery": {
@@ -15,14 +15,14 @@
           "type": "builder_query",
           "spec": {
             "name": "A",
-            "signal": "traces",
+            "signal": "logs",
             "aggregations": [
               {
                 "expression": "count()"
               }
             ],
             "filter": {
-              "expression": "name IN ('security:user_role.assign', 'security:user_role.assign_governed') AND ash.error.class NOT EXISTS"
+              "expression": "audit.resource = 'AshEnterprise.Security.UserRole' AND audit.action IN ('assign', 'assign_governed')"
             },
             "groupBy": [
               {

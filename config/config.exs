@@ -147,6 +147,10 @@ config :ash_enterprise, Oban,
          # store, verified before any hot row is deleted (AshEnterprise.Audit.Retention).
          {"5 3 * * *", AshEnterprise.Audit.ChainVerifyWorker},
          {"40 3 * * *", AshEnterprise.Audit.RetentionWorker},
+         # Committed audit events to the deployment's OTLP log endpoint, each chain from its
+         # own cursor (AshEnterprise.Audit.ExportWorker). Without an endpoint (config/runtime.exs)
+         # a run does nothing and says so in its result.
+         {"* * * * *", AshEnterprise.Audit.ExportWorker},
          # `ash_compliance`'s freshness sweep, hourly, for every organization: stale or
          # missing evidence becomes an `:unknown` finding.
          {"15 * * * *", AshEnterprise.Compliance.FreshnessSweepWorker},

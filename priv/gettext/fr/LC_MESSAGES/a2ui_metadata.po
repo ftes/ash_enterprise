@@ -1159,12 +1159,20 @@ msgid "Export"
 msgstr "Exporter"
 
 #: lib/ash_enterprise/canvas/registry.ex:2
+msgid "Export cursor"
+msgstr "Curseur d’export"
+
+#: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Expunge expired"
 msgstr "Purger les éléments expirés"
 
 #: lib/ash_enterprise_web/a2ui/judgments/facts_ui.ex:1
 msgid "Facts"
 msgstr "Faits"
+
+#: lib/ash_enterprise/canvas/registry.ex:2
+msgid "Fail"
+msgstr "Signaler un échec"
 
 #: lib/ash_enterprise_web/a2ui/lineage_ui.ex:1
 msgid "Failed"
@@ -1230,6 +1238,10 @@ msgstr "Suivi"
 #: lib/ash_enterprise_web/a2ui/deliveries_ui.ex:1
 msgid "Followed up"
 msgstr "Suivie"
+
+#: lib/ash_enterprise/canvas/registry.ex:2
+msgid "For chain"
+msgstr "Par chaîne"
 
 #: lib/ash_enterprise_web/a2ui/deliveries_ui.ex:1
 msgctxt "one_of:state"
@@ -2877,6 +2889,10 @@ msgstr "Bloqué"
 #: lib/ash_enterprise_web/a2ui/stalled_reviews_ui.ex:1
 msgid "Stalled reviews"
 msgstr "Revues bloquées"
+
+#: lib/ash_enterprise/canvas/registry.ex:2
+msgid "Start"
+msgstr "Démarrer"
 
 #: lib/ash_enterprise_web/a2ui/flight_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/flight_ui.ex:121

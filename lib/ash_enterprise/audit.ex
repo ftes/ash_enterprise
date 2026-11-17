@@ -42,5 +42,14 @@ defmodule AshEnterprise.Audit do
       define :record_archive_run, action: :record
       define :list_archive_runs, action: :read
     end
+
+    # How far each chain has been shipped to the OTLP log endpoint (`ExportWorker`).
+    resource AshEnterprise.Audit.ExportCursor do
+      define :export_cursor, action: :for_chain, args: [:organization_id], not_found_error?: false
+      define :list_export_cursors, action: :read
+      define :start_export_cursor, action: :start, args: [:chain_organization_id]
+      define :advance_export_cursor, action: :advance, args: [:last_sequence, :exported]
+      define :fail_export_cursor, action: :fail, args: [:reason]
+    end
   end
 end

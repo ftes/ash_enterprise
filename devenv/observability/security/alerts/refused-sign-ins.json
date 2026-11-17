@@ -1,10 +1,10 @@
 {
   "alert": "Security: refused sign-ins above 20 in 5 minutes",
-  "alertType": "TRACES_BASED_ALERT",
-  "description": "More than 20 password sign-ins were refused across the deployment in five minutes, including for addresses that belong to no account, which no tenant records.",
+  "alertType": "LOGS_BASED_ALERT",
+  "description": "More than 20 password or identity-provider sign-ins were refused across the deployment in five minutes, read from the audit chain, including for addresses that belong to no account, which no tenant records. Those events are in the chain with no tenant, which is exported best effort.",
   "annotations": {
     "summary": "{{$service.name}}: {{$value}} refused sign-ins in 5 minutes",
-    "description": "More than 20 password sign-ins were refused across the deployment in five minutes, including for addresses that belong to no account, which no tenant records."
+    "description": "More than 20 password or identity-provider sign-ins were refused across the deployment in five minutes, read from the audit chain, including for addresses that belong to no account, which no tenant records. Those events are in the chain with no tenant, which is exported best effort."
   },
   "condition": {
     "compositeQuery": {
@@ -15,14 +15,14 @@
           "type": "builder_query",
           "spec": {
             "name": "A",
-            "signal": "traces",
+            "signal": "logs",
             "aggregations": [
               {
                 "expression": "count()"
               }
             ],
             "filter": {
-              "expression": "name = 'accounts:user.sign_in_with_password' AND ash.error.class = 'forbidden'"
+              "expression": "audit.resource = 'AshEnterprise.Security.AuthenticationEvent' AND audit.authentication.outcome = 'refused' AND audit.authentication.door IN ('password', 'oidc')"
             },
             "groupBy": [
               {

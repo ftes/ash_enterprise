@@ -1,0 +1,75 @@
+{
+  "alert": "Audit: an archive move did not verify",
+  "alertType": "METRIC_BASED_ALERT",
+  "description": "The last daily retention run recorded an archive move that did not verify, so it deleted nothing. Its archive run's reason says why; a chain that cannot be archived stays hot until it can.",
+  "annotations": {
+    "summary": "{{$value}} archive move(s) failed",
+    "description": "The last daily retention run recorded an archive move that did not verify, so it deleted nothing. Its archive run's reason says why; a chain that cannot be archived stays hot until it can."
+  },
+  "condition": {
+    "compositeQuery": {
+      "queryType": "builder",
+      "panelType": "graph",
+      "queries": [
+        {
+          "type": "builder_query",
+          "spec": {
+            "name": "A",
+            "signal": "metrics",
+            "aggregations": [
+              {
+                "metricName": "ash_enterprise.audit.retention.failed",
+                "spaceAggregation": "max",
+                "timeAggregation": "latest"
+              }
+            ],
+            "filter": {
+              "expression": ""
+            },
+            "groupBy": [],
+            "legend": "",
+            "stepInterval": 60
+          }
+        }
+      ]
+    },
+    "selectedQueryName": "A",
+    "thresholds": {
+      "kind": "basic",
+      "spec": [
+        {
+          "name": "warning",
+          "op": "above",
+          "target": 0,
+          "matchType": "all_the_times",
+          "channels": []
+        }
+      ]
+    }
+  },
+  "evaluation": {
+    "kind": "rolling",
+    "spec": {
+      "evalWindow": "15m",
+      "frequency": "1m"
+    }
+  },
+  "labels": {
+    "severity": "warning",
+    "category": "audit",
+    "provisioned": "ash_enterprise"
+  },
+  "notificationSettings": {
+    "usePolicy": true,
+    "renotify": {
+      "enabled": false,
+      "interval": "30m",
+      "alertStates": [
+        "firing"
+      ]
+    }
+  },
+  "ruleType": "threshold_rule",
+  "schemaVersion": "v2alpha1",
+  "version": "v5"
+}

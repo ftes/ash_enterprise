@@ -264,6 +264,25 @@ defmodule AshEnterprise.Governance.DataFlows do
       notes: "Configured in config/runtime.exs; there is no Elixir call site to scan."
     },
     %{
+      id: :audit_log_export,
+      name: "Audit events as OpenTelemetry log records (ADR 0025's internal half)",
+      recipient_class: :observability_collector,
+      data_classes: [:audit_events, :structural_names, :operational_metadata],
+      modules: [AshEnterprise.Audit.OtlpExport.Client, AshEnterprise.Audit.ExportWorker],
+      gate: %{
+        name:
+          "No export runs unless OTEL_EXPORTER_OTLP_ENDPOINT is set; a record carries only the allowlisted " <>
+            "structural fields, never a record id or a value of what was written",
+        enforced_by: AshEnterprise.Audit.OtlpExport
+      },
+      known_gap:
+        "One deployment-wide stream to the operator's collector, not per tenant: each record names its tenant " <>
+          "and, when a person acted, that person's user id.",
+      notes:
+        "The same collector as the trace export, so the residency report's telemetry_exporter target covers its " <>
+          "host. At least once: a batch can repeat, deduplicable by tenant, sequence and hash."
+    },
+    %{
       id: :mdm_egress_export,
       name: "Golden-record export to a customer's system",
       recipient_class: :tenant_customer_system,

@@ -1,0 +1,75 @@
+{
+  "alert": "Audit: retention left events past the hot window",
+  "alertType": "METRIC_BASED_ALERT",
+  "description": "The last daily retention run left audit events past the ninety-day hot window for the next run: more were eligible than one run may move. It drains over the following runs; a backlog that persists is a retention run that cannot keep up.",
+  "annotations": {
+    "summary": "{{$value}} audit event(s) left past the hot window",
+    "description": "The last daily retention run left audit events past the ninety-day hot window for the next run: more were eligible than one run may move. It drains over the following runs; a backlog that persists is a retention run that cannot keep up."
+  },
+  "condition": {
+    "compositeQuery": {
+      "queryType": "builder",
+      "panelType": "graph",
+      "queries": [
+        {
+          "type": "builder_query",
+          "spec": {
+            "name": "A",
+            "signal": "metrics",
+            "aggregations": [
+              {
+                "metricName": "ash_enterprise.audit.retention.backlog",
+                "spaceAggregation": "max",
+                "timeAggregation": "latest"
+              }
+            ],
+            "filter": {
+              "expression": ""
+            },
+            "groupBy": [],
+            "legend": "",
+            "stepInterval": 60
+          }
+        }
+      ]
+    },
+    "selectedQueryName": "A",
+    "thresholds": {
+      "kind": "basic",
+      "spec": [
+        {
+          "name": "info",
+          "op": "above",
+          "target": 0,
+          "matchType": "all_the_times",
+          "channels": []
+        }
+      ]
+    }
+  },
+  "evaluation": {
+    "kind": "rolling",
+    "spec": {
+      "evalWindow": "15m",
+      "frequency": "1m"
+    }
+  },
+  "labels": {
+    "severity": "info",
+    "category": "audit",
+    "provisioned": "ash_enterprise"
+  },
+  "notificationSettings": {
+    "usePolicy": true,
+    "renotify": {
+      "enabled": false,
+      "interval": "30m",
+      "alertStates": [
+        "firing"
+      ]
+    }
+  },
+  "ruleType": "threshold_rule",
+  "schemaVersion": "v2alpha1",
+  "version": "v5"
+}

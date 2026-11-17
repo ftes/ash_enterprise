@@ -13,11 +13,11 @@ defmodule AshEnterprise.Bpmn.AlertReviewTest do
   another category or one resolving) opens nothing. Then each alarm opens exactly one
   review, which goes to an administrator other than the people involved.
 
-  The SigNoz rules for the same signals (`devenv/observability/security/alerts/`) are
-  checked against the spans the application emits: every span name a rule filters on is one
-  this application's actions produce, and the refused sign-in carries the error class the
-  rule counts. That proves the rules watch real spans; it does not run SigNoz.
-  SYNTHETIC data only.
+  The SigNoz rules for the same signals (`devenv/observability/security/alerts/`) read the
+  audit chain's OTLP log records (`AshEnterprise.Audit.ExportWorker`): the watched actions
+  are performed, exported to a stub endpoint, and each rule's filter matches the records
+  they produced and no other. That proves the rules watch real records; it does not run
+  SigNoz. SYNTHETIC data only.
   """
 
   use AshEnterprise.DataCase, async: false
@@ -26,7 +26,6 @@ defmodule AshEnterprise.Bpmn.AlertReviewTest do
   import AshEnterprise.Test.AssistantFixtures, only: [tenant!: 0, colleague!: 1, colleague!: 2]
 
   require Ash.Query
-  require OpenTelemetry.Tracer, as: Tracer
 
   alias AshEnterprise.Accounts.{ApiKey, Team, TeamMembership, User}
   alias AshEnterprise.Automation.{Occurrence, Occurrences}
@@ -42,7 +41,6 @@ defmodule AshEnterprise.Bpmn.AlertReviewTest do
 
   alias AshEnterprise.Platform.SystemActor
   alias AshEnterprise.Security.{ActorContext, BreakGlassSession, Role, TeamRole, UserRole}
-  alias AshEnterprise.Telemetry.TraceSink
   alias AshEnterprise.Test.DailyFixtures
 
   @pack "security_alerts"
@@ -662,92 +660,120 @@ defmodule AshEnterprise.Bpmn.AlertReviewTest do
              Path.expand("../../../devenv/observability/security/alerts/*.json", __DIR__)
            )
 
-    defp rules do
+    defp security_rules do
       assert @rules != [], "the security alert rules are where the test looks for them"
-      Enum.map(@rules, &(&1 |> File.read!() |> Jason.decode!()))
+
+      for path <- @rules,
+          rule = path |> File.read!() |> Jason.decode!(),
+          rule["labels"]["category"] == "security",
+          do: rule
     end
 
-    defp filter(rule),
-      do:
-        get_in(rule, [
-          "condition",
-          "compositeQuery",
-          "queries",
-          Access.at(0),
-          "spec",
-          "filter",
-          "expression"
-        ])
-
-    defp span_names(rule) do
-      ~r/'([a-z_]+:[a-z_]+\.[a-z_]+)'/
-      |> Regex.scan(filter(rule))
-      |> Enum.map(fn [_, name] -> name end)
+    # `key = 'v'` and `key IN ('a', 'b')` clauses joined by AND, against one record's
+    # attributes: the only shapes the rules use (`AshEnterprise.Observability.SecurityRulesTest`).
+    defp matches?(rule, attributes) do
+      rule
+      |> get_in([
+        "condition",
+        "compositeQuery",
+        "queries",
+        Access.at(0),
+        "spec",
+        "filter",
+        "expression"
+      ])
+      |> String.split(" AND ", trim: true)
+      |> Enum.all?(fn clause ->
+        [_, key, values] = Regex.run(~r/^\s*([a-z_.]+)\s+(?:=|IN)\s+(.+?)\s*$/, clause)
+        values = ~r/'([^']*)'/ |> Regex.scan(values) |> Enum.map(fn [_, value] -> value end)
+        attributes[key] in values
+      end)
     end
 
-    defp in_request(fun) do
-      Tracer.with_span "test request" do
-        fun.()
-        OpenTelemetry.Span.trace_id(Tracer.current_span_ctx())
+    defp exported!(fun) do
+      test = self()
+
+      Req.Test.stub(AshEnterprise.Audit.OtlpExport.Client, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(test, {:posted, Jason.decode!(body)})
+        Req.Test.json(conn, %{})
+      end)
+
+      fun.()
+
+      assert {:ok, %{failed: []}} =
+               AshEnterprise.Audit.ExportWorker.run(
+                 endpoint: "http://collector.test:4318",
+                 settle_seconds: 0
+               )
+
+      collect_records([])
+    end
+
+    defp collect_records(acc) do
+      receive do
+        {:posted, body} ->
+          records =
+            for resource_logs <- body["resourceLogs"],
+                scope_logs <- resource_logs["scopeLogs"],
+                record <- scope_logs["logRecords"] do
+              Map.new(record["attributes"], fn %{"key" => key, "value" => value} ->
+                {key, value["stringValue"] || value["intValue"]}
+              end)
+            end
+
+          collect_records(acc ++ records)
+      after
+        0 -> acc
       end
     end
 
-    test "each rule is a security trace rule naming spans the application's actions produce" do
-      produced =
-        MapSet.new([
-          Ash.Domain.Info.span_name(AshEnterprise.Accounts, User, :sign_in_with_password),
-          Ash.Domain.Info.span_name(AshEnterprise.Security, UserRole, :assign),
-          Ash.Domain.Info.span_name(AshEnterprise.Security, UserRole, :assign_governed),
-          Ash.Domain.Info.span_name(AshEnterprise.Accounts, ApiKey, :issue),
-          Ash.Domain.Info.span_name(AshEnterprise.Security, BreakGlassSession, :approve)
-        ])
-
-      named = rules() |> Enum.flat_map(&span_names/1) |> MapSet.new()
-
-      assert named == produced
-
-      for rule <- rules() do
-        assert rule["alertType"] == "TRACES_BASED_ALERT"
-        assert rule["labels"]["category"] == "security"
-      end
-    end
-
-    test "the spans they count are emitted, and a refused sign-in carries the class it counts",
+    test "each rule matches the audit records the actions it watches export, and only those",
          env do
       ctx = installed!()
       operator = break_glass_member!(ctx, "Operator")
       approver = break_glass_member!(ctx, "Approver")
 
-      trace_id =
-        in_request(fn ->
+      # A first export, so what follows is only the watched actions and their neighbours.
+      _ = exported!(fn -> :ok end)
+
+      records =
+        exported!(fn ->
           assign!(ctx, ctx.newcomer.user, administrator_role!(ctx))
           issue_key!(ctx.newcomer.user)
           ctx |> open_session!(operator, approver, ctx.newcomer) |> approve!(approver)
           refuse!(ctx.newcomer, 1)
+          await_tasks(env)
         end)
 
-      await_tasks(env)
+      matched =
+        Map.new(security_rules(), fn rule ->
+          {rule["alert"], Enum.filter(records, &matches?(rule, &1))}
+        end)
 
-      spans = TraceSink.trace(trace_id).spans
-      class = AshEnterprise.Telemetry.Attributes.error_class()
+      assert map_size(matched) == 4
 
-      attributes = fn name ->
-        for span <- spans, span.name == name do
-          Map.new(span.attributes, fn {key, value} -> {to_string(key), value} end)
-        end
+      for {alert, hits} <- matched do
+        assert hits != [], "#{alert} matches no exported record"
       end
 
-      assert [refused | _] = attributes.("accounts:user.sign_in_with_password")
-      assert refused[class] == "forbidden"
-
-      for name <- [
-            "security:user_role.assign",
-            "accounts:api_key.issue",
-            "security:break_glass_session.approve"
-          ] do
-        assert [ok | _] = attributes.(name), "#{name} is in the trace"
-        refute Map.has_key?(ok, class)
+      # Each rule counts its own action and nothing next to it: the session opened is not
+      # the session approved, and the role assigned is not every other write that day.
+      for {_alert, hits} <- matched, hit <- hits do
+        assert {hit["audit.resource"], hit["audit.action"]} in [
+                 {"AshEnterprise.Security.UserRole", "assign"},
+                 {"AshEnterprise.Accounts.ApiKey", "issue"},
+                 {"AshEnterprise.Security.BreakGlassSession", "approve"},
+                 {"AshEnterprise.Security.AuthenticationEvent", "record"}
+               ]
       end
+
+      assert [refusal] = matched["Security: refused sign-ins above 20 in 5 minutes"]
+      assert refusal["audit.authentication.door"] == "password"
+      refute Map.has_key?(refusal, "audit.tenant_id")
+
+      assert [role | _] = matched["Security: a role was assigned"]
+      assert role["audit.tenant_id"] == ctx.tenant
     end
   end
 end

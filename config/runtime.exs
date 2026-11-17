@@ -679,4 +679,28 @@ if otlp_endpoint = System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT") do
       name: System.get_env("OTEL_SERVICE_NAME", "ash_enterprise"),
       namespace: "ash_enterprise"
     }
+
+  # Metrics, beside the traces: a reader that exports every fifteen seconds, and the
+  # reporter that feeds it (`AshEnterpriseWeb.Telemetry.exported_metrics/0`). The
+  # endpoint and headers are read from the same OTEL_EXPORTER_OTLP_* variables.
+  config :opentelemetry_experimental,
+    readers: [
+      %{
+        module: :otel_metric_reader,
+        config: %{
+          exporter: {:otel_exporter_metrics_otlp, %{protocol: :http_protobuf}},
+          export_interval_ms: 15_000
+        }
+      }
+    ]
+
+  config :ash_enterprise, :otlp_metrics?, true
+
+  # The audit chain itself, as OTLP log records (AshEnterprise.Audit.ExportWorker): the
+  # same collector, one cursor per chain, at least once with a dedupe key. Unset, the
+  # worker exports nothing.
+  config :ash_enterprise, AshEnterprise.Audit.ExportWorker,
+    endpoint: otlp_endpoint,
+    headers: System.get_env("OTEL_EXPORTER_OTLP_HEADERS"),
+    service_name: System.get_env("OTEL_SERVICE_NAME", "ash_enterprise")
 end

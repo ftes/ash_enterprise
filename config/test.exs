@@ -24,6 +24,11 @@ config :ash_enterprise, AshEnterprise.Integration.Nango,
   base_backoff_ms: 1,
   max_retry_delay_ms: 5_000
 
+# The audit export (AshEnterprise.Audit.ExportWorker) has no endpoint in tests, so a cron
+# run exports nothing. A test that passes one is answered by this `Req.Test` stub.
+config :ash_enterprise, AshEnterprise.Audit.ExportWorker,
+  req_options: [plug: {Req.Test, AshEnterprise.Audit.OtlpExport.Client}]
+
 config :ash_enterprise, token_signing_secret: "2W7xIBrAeWb/GPoe4MBvPxA6NFwqqjl0"
 
 # The suite registers its users through `:register_with_password`, the way a developer does

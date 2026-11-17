@@ -2,9 +2,9 @@
   "format": "ash_enterprise.data_inventory/1",
   "note": "Generated from the resource declarations by `mix ash_enterprise.data_inventory`; do not edit. It describes the code, names no data steward, and attests nothing about a running deployment.",
   "summary": {
-    "resources": 175,
-    "global_tables": 44,
-    "egress_paths": 15,
+    "resources": 176,
+    "global_tables": 45,
+    "egress_paths": 16,
     "tenant_scoped": 100,
     "unclassified_personal_attributes": 0,
     "with_sealed_attributes": 15,
@@ -1168,6 +1168,25 @@
         "data",
         "metadata"
       ],
+      "sealed_attributes": [],
+      "personal_looking_attributes": [],
+      "secured_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Audit.ExportCursor",
+      "domain": "AshEnterprise.Audit",
+      "data_layer": "AshPostgres.DataLayer",
+      "table": "audit_export_cursors",
+      "platform_resource": true,
+      "ownership": "none",
+      "tenancy": "global",
+      "tenant_option": false,
+      "audit": false,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [],
       "sealed_attributes": [],
       "personal_looking_attributes": [],
       "secured_attributes": []
@@ -3685,6 +3704,7 @@
     "AshEnterprise.Accounts.UserIdentity",
     "AshEnterprise.Audit.ArchiveRun",
     "AshEnterprise.Audit.ArchivedEvidence",
+    "AshEnterprise.Audit.ExportCursor",
     "AshEnterprise.Compliance.EventLog",
     "AshEnterprise.Erasure.Key",
     "AshEnterprise.Erasure.Scope",
@@ -3895,6 +3915,26 @@
         "AshEnterprise.Telemetry.GenAI.ContentFreeAdapter"
       ],
       "notes": "Configured in config/runtime.exs; there is no Elixir call site to scan."
+    },
+    {
+      "id": "audit_log_export",
+      "name": "Audit events as OpenTelemetry log records (ADR 0025's internal half)",
+      "recipient_class": "observability_collector",
+      "data_classes": [
+        "audit_events",
+        "structural_names",
+        "operational_metadata"
+      ],
+      "gate": {
+        "name": "No export runs unless OTEL_EXPORTER_OTLP_ENDPOINT is set; a record carries only the allowlisted structural fields, never a record id or a value of what was written",
+        "enforced_by": "AshEnterprise.Audit.OtlpExport"
+      },
+      "known_gap": "One deployment-wide stream to the operator's collector, not per tenant: each record names its tenant and, when a person acted, that person's user id.",
+      "modules": [
+        "AshEnterprise.Audit.ExportWorker",
+        "AshEnterprise.Audit.OtlpExport.Client"
+      ],
+      "notes": "The same collector as the trace export, so the residency report's telemetry_exporter target covers its host. At least once: a batch can repeat, deduplicable by tenant, sequence and hash."
     },
     {
       "id": "mdm_egress_export",
