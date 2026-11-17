@@ -1,6 +1,6 @@
 # ADR 0074 — Signatures are a package (`ash_signatures`): a request over hashed document versions, signed in-platform, with providers behind one asynchronous seam
 
-- **Status:** accepted (2026-11-16), not built
+- **Status:** accepted (2026-11-16); package built 2026-11-17, not yet instantiated here
 - **Date:** 2026-11-16
 - **Related:** [ADR 0020](0020-tamper-evident-audit-log.md) (tamper-evident audit),
   [0024](0024-audit-retention-and-erasure.md) (crypto-shredding),
@@ -56,7 +56,8 @@ provider behaviour and two providers that make no network call. The host owns ev
    - **Signer.** Role (a host key), order, status, and the signer's name, email, IP address and user agent.
    - **Signer event.** Append-only: `viewed`, `consented`, `signed`, `declined`, `changes_requested`, `reminded`,
      `withdrawn`. Each carries the time, the route (`:in_platform` or `:upload`) and, for a signature, the SHA-256 of
-     the version that signer was shown.
+     the version that signer was shown. An uploaded signed copy is a `signed` event on the `:upload` route with no
+     signer.
    - **Completion.** A canonical record of the request, its signers by reference, the hash of every event, the source
      and signed hashes, and the tenant chain's head at completion. `record_hash` covers it.
 2. **States.** A request is `draft`, `sent`, `partially_signed`, `completed`, `returned` (a decline or a change
@@ -89,8 +90,12 @@ provider behaviour and two providers that make no network call. The host owns ev
 
 ### Gap map
 
-Checked against the code on 2026-11-16 by reading it. No probe has run yet, so every row is unverified until the
-package's first pull request calls each one in a test (ADR 0070 section 3).
+Checked against the code on 2026-11-16 by reading it. The package's first pull request
+([lukegalea/ash_signatures#1](https://github.com/lukegalea/ash_signatures/pull/1)) checks the package's rows in
+`test/ash_signatures/gap_map_test.exs`: the source hash copied from the version, the link from draft to signed
+version, the states, the fields marked for sealing, the append-only event log and the provider behaviour. The host
+rows (the audit chain, governed invocations and sealing) stay unverified until this repository instantiates the
+fragments (ADR 0070 section 3).
 
 | Part | Expressible | Needs a host swap | Missing upstream | Evidence |
 |---|---|---|---|---|

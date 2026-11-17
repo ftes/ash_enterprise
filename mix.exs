@@ -170,6 +170,7 @@ defmodule AshEnterprise.MixProject do
         # through ash_compliance, and no code here configures or calls it.
         {:ash_acp, link: :markdown},
         {:ash_agent, link: :markdown},
+        {:ash_signatures, link: :markdown},
         {:ash_compliance, link: :markdown},
         {:ash_discrete_business_events, link: :markdown},
         {:ash_evidence, link: :markdown},
@@ -431,6 +432,13 @@ defmodule AshEnterprise.MixProject do
       # project, so there is no path to a Hex release (docs/BLEEDING-EDGE.md).
       # mix.lock pins the SHA.
       {:ash_agent, github: "lukegalea/ash_agent"},
+
+      # --- Signatures (ADR 0074) -------------------------------------------------
+      # Fragments for a signing request over hashed document versions, its
+      # signers, an append-only event log and a completion record, with a
+      # provider behaviour and in-platform and upload providers. The host
+      # instantiates them on its own platform base. mix.lock pins the SHA.
+      {:ash_signatures, github: "lukegalea/ash_signatures"},
 
       # --- Observability -------------------------------------------------------
       # Ash.Tracer -> OpenTelemetry -> OTLP. opentelemetry_ash is thin (0.1.x);

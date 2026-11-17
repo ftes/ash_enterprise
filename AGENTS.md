@@ -2771,6 +2771,15 @@ resource, data layer, tenancy, policies and triggers._
 ## ash_agent:triggers usage
 [ash_agent:triggers usage rules](deps/ash_agent/usage-rules/triggers.md)
 <!-- ash_agent:triggers-end -->
+<!-- ash_signatures-start -->
+## ash_signatures usage
+_Signature requests for Ash Framework hosts: Spark fragments for a request over hashed
+document versions, its signers, their events and one completion record, with providers
+behind one asynchronous behaviour. The host supplies the base resource, data layer,
+relationships, tenancy, policies and every decision._
+
+[ash_signatures usage rules](deps/ash_signatures/usage-rules.md)
+<!-- ash_signatures-end -->
 <!-- ash_compliance-start -->
 ## ash_compliance usage
 _The compliance control plane and data plane on Ash: OSCAL-flavored catalogs,
