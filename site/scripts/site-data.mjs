@@ -178,7 +178,7 @@ export function testFileCount(root = REPO_ROOT) {
 // ---------------------------------------------------------------------------
 
 const PACKAGE_FIELDS = ['name', 'module', 'repo', 'purpose', 'used_for', 'declared', 'maturity', 'distribution', 'hex_name', 'hex_path', 'carry'];
-export const MATURITIES = ['used-and-tested-here', 'wired-not-tested-here', 'tooling'];
+export const MATURITIES = ['used-and-tested-here', 'wired-not-tested-here', 'declared-not-used-here', 'tooling'];
 const DECLARED = ['direct', 'transitive', 'path'];
 
 /** Shape problems in docs/packages.json. Agreement with mix.exs and mix.lock is ExUnit's job. */

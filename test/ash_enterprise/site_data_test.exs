@@ -142,6 +142,9 @@ defmodule AshEnterprise.SiteDataTest do
               is_nil(only) and mentions?(ctx.lib_sources, module) and
                 not mentions?(ctx.test_sources, module)
 
+            "declared-not-used-here" ->
+              is_nil(only) and not mentions?(ctx.lib_sources, module)
+
             "tooling" ->
               only != nil and not Enum.member?(List.wrap(only), :prod)
 

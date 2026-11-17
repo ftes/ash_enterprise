@@ -40,6 +40,10 @@ const maturity: Record<Maturity, { label: string; means: string }> = {
     means:
       'lib/ wires it, but no test file names its modules. It runs underneath code that is tested, and is tested in its own repository.',
   },
+  'declared-not-used-here': {
+    label: 'Declared, not used yet',
+    means: 'mix.exs declares it, but nothing in lib/ uses its modules yet. It is tested in its own repository.',
+  },
   tooling: {
     label: 'Tooling',
     means: 'A dev and test dependency. It is not in a release.',

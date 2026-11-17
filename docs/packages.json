@@ -22,7 +22,8 @@
     "                           runs underneath code that is tested, and is tested in",
     "                           its own repository.",
     "  tooling               -- a dev and test dependency. Not in a release.",
-    "The test checks the first two against lib/ and test/ by module name (`module`).",
+    "  declared-not-used-here -- declared in mix.exs, but nothing in lib/ uses it yet.",
+    "The test checks all but tooling against lib/ and test/ by module name (`module`).",
     "`battery` is true when battery/mix.exs declares the package, so CI's",
     "cross-substrate battery job exercises its seams with the others.",
     "",
@@ -106,6 +107,31 @@
       "hex_name": "taken: an unrelated package of the same name (hex.pm/packages/ash_agent).",
       "hex_path": "None planned: reaching Hex would mean renaming the package (ADR 0056).",
       "carry": "The host instantiates every resource on its own base, so a fragment change upstream is a host migration here. lib/ names it in more files than any other first-party package."
+    },
+    {
+      "name": "ash_signatures",
+      "module": "AshSignatures",
+      "repo": "https://github.com/lukegalea/ash_signatures",
+      "purpose": "Signature requests: Spark fragments for a request over hashed document versions, its signers, an append-only event log and one completion record, with providers behind one asynchronous behaviour. The host supplies the base resource, data layer, tenancy, policies and every decision.",
+      "used_for": "Nothing yet. The first planned use is the soc2 pack's policy acknowledgement.",
+      "adr": "0074",
+      "declared": "direct",
+      "only": null,
+      "ref": "a854b7281726cd4b157770518243ff5b42aa26d5",
+      "version": "0.1.0",
+      "stated_status": null,
+      "maturity": "declared-not-used-here",
+      "battery": false,
+      "distribution": "git only",
+      "builds_on": [
+        "ash",
+        "spark",
+        "ash_state_machine",
+        "jcs"
+      ],
+      "hex_name": "free (checked on hex.pm 2026-11-17).",
+      "hex_path": "No git dependencies of its own.",
+      "carry": "Nothing until a resource here instantiates a fragment; from then on, a fragment change upstream is a host migration here."
     },
     {
       "name": "ash_agent_tools",

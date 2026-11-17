@@ -23,7 +23,7 @@ import { withBase } from './roadmap';
 // ---------------------------------------------------------------------------
 
 /** How a package's maturity was derived; see the `$comment` in docs/packages.json. */
-export type Maturity = 'used-and-tested-here' | 'wired-not-tested-here' | 'tooling';
+export type Maturity = 'used-and-tested-here' | 'wired-not-tested-here' | 'declared-not-used-here' | 'tooling';
 
 export interface Package {
   name: string;
