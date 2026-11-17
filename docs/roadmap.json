@@ -226,10 +226,12 @@
       "id": "q20",
       "section": "flow",
       "question": "How do people get reports out of it?",
-      "answer": "Superset over views already filtered by the same actor context, so the BI tool's row-level security is a formality rather than a duplicate authorization model. Metabase loses because its RLS is paywalled.",
+      "answer": "As CSV, under the same policies as every other read; built, and not yet running in a deployment we operate. The business units, teams, users and audit trail surfaces each offer an Export CSV button that re-reads the table as the signed-in person, with the current search and filters, so the file holds exactly the rows their grants reach and only the columns the surface declares (up to 10,000 rows). A whole exposed collection comes out of `GET /api/exports/:type` with an API key, streamed (see q42). Dashboards and ad-hoc analysis are not provided: Superset over views filtered by the same actor context (ADR 0014) is still the plan for those, and Metabase loses because its row-level security is paywalled.",
       "status": "planned",
       "adr": "0014",
-      "item": "bi"
+      "item": "bi",
+      "proof": "test/ash_enterprise_web/a2ui/surface_export_test.exs",
+      "test": "a surface export carries only the rows the reader's grants reach"
     },
     {
       "id": "q21",
@@ -450,9 +452,11 @@
       "id": "q42",
       "section": "flow",
       "question": "How does a customer get fifty thousand rows in, or out?",
-      "answer": "Open. JSON:API and GraphQL paginate, and neither is a bulk path. Import exists only as a Meltano-shaped plan; export exists only for the audit log.",
+      "answer": "Out: built, and not yet running in a deployment we operate. `GET /api/exports/:type` streams one exposed collection (business units, teams, positions) as CSV to a person holding the export privilege (the seeded Administrator role, and anyone a tenant grants it), with a bearer API key. The rows are read as that person, in their tenant, through the resource's own policies, in keyset pages of 250 sent as they are read, so the set is never held in memory; a column a field policy withholds is written empty. The `scale` CI job exports 50,000 teams this way on every run: 5.7 s for 10.7 MB in 201 reads, the reading process never above 1.5 MB (the fixture on a CI runner, not a deployment). Exports are recorded as telemetry (type, row count, duration), not as rows. The audit log has its own export with its chain columns. In: open. JSON:API and GraphQL paginate and neither is a bulk path; import exists only as a Meltano-shaped plan.",
       "status": "open",
-      "item": "bulk"
+      "item": "bulk",
+      "proof": "test/ash_enterprise_web/controllers/export_controller_test.exs",
+      "test": "a reader sees only the rows their grants reach (a :local grant exports its business unit only)"
     },
     {
       "id": "q43",

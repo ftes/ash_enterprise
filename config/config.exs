@@ -556,7 +556,8 @@ config :ash_enterprise,
     AshEnterprise.Automation,
     AshEnterprise.Quality,
     AshEnterprise.Planning,
-    AshEnterprise.Flags
+    AshEnterprise.Flags,
+    AshEnterprise.Exports
   ],
   base_resources: [AshEnterprise.Platform.Resource]
 

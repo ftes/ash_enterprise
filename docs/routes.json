@@ -19,6 +19,13 @@
       "verb": "GET"
     },
     {
+      "action": "show",
+      "kind": "controller",
+      "module": "AshEnterpriseWeb.ExportController",
+      "path": "/api/exports/:type",
+      "verb": "GET"
+    },
+    {
       "action": null,
       "kind": "forward",
       "module": "AshEnterpriseWeb.AshJsonApiRouter",

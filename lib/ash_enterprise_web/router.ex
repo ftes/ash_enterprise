@@ -106,6 +106,20 @@ defmodule AshEnterpriseWeb.Router do
     plug AshEnterpriseWeb.Plugs.PutLocale
   end
 
+  # Mirrors :api for the CSV export (`AshEnterpriseWeb.ExportController`), which
+  # answers `text/csv` rather than JSON. Its refusals are still JSON, and a request
+  # with no actor is refused at the door (401) rather than answered with an empty
+  # file, as on :mcp.
+  pipeline :api_csv do
+    plug :accepts, ["csv"]
+    plug :put_api_headers
+    plug AshEnterpriseWeb.Plugs.LoadFromBearer
+    plug :set_actor, :user
+    plug AshEnterpriseWeb.Plugs.LoadActorContext
+    plug AshEnterpriseWeb.Plugs.PutLocale
+    plug AshEnterpriseWeb.Plugs.RequireActor
+  end
+
   # The interactive explorers, GraphiQL at `/gql/playground` and Swagger UI at
   # `/api/json/swaggerui`, are mounted only under `dev_routes`: a release does
   # not serve them. Each sits ahead of its scope's catch-all `forward "/"`,
@@ -151,6 +165,14 @@ defmodule AshEnterpriseWeb.Router do
     end
 
     forward "/", AshEnterpriseWeb.AshJsonApiRouter
+  end
+
+  # Bulk export out: one exportable resource as CSV, as the key's owner, behind the
+  # export privilege (docs/runbooks/exports.md).
+  scope "/api/exports", AshEnterpriseWeb do
+    pipe_through [:api_csv]
+
+    get "/:type", ExportController, :show
   end
 
   scope "/", AshEnterpriseWeb do
