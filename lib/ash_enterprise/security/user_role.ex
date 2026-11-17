@@ -42,10 +42,11 @@ defmodule AshEnterprise.Security.UserRole do
 
   ## What the audit row says
 
-  An assignment's audit row carries the assigned role's name in its metadata
-  (`role_name`, `AshEnterprise.Security.Changes.StampRoleName`), because `role_id` alone
-  means a different role in every tenant. The `security_alerts` pack's recipe reads it to
-  open a review when an Administrator or a Platform Operator is made.
+  An assignment's audit row carries whether the assigned role is privileged and its name in
+  its metadata (`privileged`, `role_name`, `AshEnterprise.Security.Changes.StampRoleName`),
+  because `role_id` alone means a different role in every tenant. The `security_alerts`
+  pack's recipe reads `privileged` to open a review when a privileged role is assigned,
+  whatever it is called (`AshEnterprise.Security.Privilege.privileged?/3`).
   """
 
   use AshEnterprise.Platform.Resource,
