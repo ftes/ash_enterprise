@@ -532,6 +532,22 @@ config :ash_mdm, :allowed_targets, %{
 # instrument call. Tests inject a fake MFA instead.
 config :ash_enterprise, :mdm_proposal_llm, {AshEnterprise.Mdm.LlmProposer, :generate, []}
 
+# The MDM bulk import (`AshEnterprise.Mdm.BulkImport`, docs/runbooks/bulk-import.md).
+# `max_rows` refuses a larger file before anything lands; `max_file_size` is the
+# upload limit in bytes (50,000 rows of about ten short columns fit in 30 MB);
+# rows land `chunk_size` at a time, in slices of `slice_ms` with the job snoozed
+# between them, so no execution outlives Oban's Lifeline `rescue_after` above.
+# `upload_dir` holds an upload between the wizard and the batch worker, and
+# defaults to a directory under the system temp dir. A row whose
+# `residency_column` value names a residency the landing region does not admit
+# is refused and reported, never landed.
+config :ash_enterprise, AshEnterprise.Mdm.BulkImport,
+  max_rows: 50_000,
+  max_file_size: 30_000_000,
+  chunk_size: 1_000,
+  slice_ms: 60_000,
+  residency_column: "residency"
+
 config :ash_enterprise,
   ecto_repos: [AshEnterprise.Repo, AshEvidence.Repo],
   generators: [timestamp_type: :utc_datetime],
