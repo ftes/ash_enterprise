@@ -351,6 +351,82 @@ defmodule AshEnterprise.Mdm.BulkImportTest do
     assert length(landed(org, "five")) == 5_000
   end
 
+  test "the last attempt's crash ends the batch as failed and removes the stored upload", %{
+    org: org,
+    admin: admin,
+    mapping: mapping
+  } do
+    upload_id = upload!(people_csv(3))
+
+    {:ok, batch, job} =
+      BulkImport.start(upload_id, %{mapping_id: mapping.id, source_slug: "last-attempt"},
+        actor: admin,
+        tenant: org
+      )
+
+    # The stored file loses its header: landing cannot start, on any attempt.
+    {:ok, path} = BulkImport.upload_path(upload_id)
+    File.write!(path, "")
+
+    # Not the last attempt: the batch is left for the retry, and so is the file.
+    assert_raise AshEnterprise.Mdm.MatchError, fn ->
+      BatchWorker.perform(%{job | attempt: 1, max_attempts: 3})
+    end
+
+    refute batch!(org, batch.id).status == :failed
+    assert {:ok, ^path} = BulkImport.upload_path(upload_id)
+
+    # The last attempt: nothing retries, so the batch fails and the file goes.
+    assert_raise AshEnterprise.Mdm.MatchError, fn ->
+      BatchWorker.perform(%{job | attempt: 3, max_attempts: 3})
+    end
+
+    failed = batch!(org, batch.id)
+    assert failed.status == :failed
+    assert failed.failure_reason =~ "could not be landed"
+    assert {:error, :unknown_upload} = BulkImport.upload_path(upload_id)
+    assert landed(org, "last-attempt") == []
+  end
+
+  test "an execution that crashes partway does not end the import: the retry carries on from the cursor to staged",
+       %{org: org, admin: admin, mapping: mapping} do
+    put_bulk_config(chunk_size: 2, slice_ms: 0)
+    upload_id = upload!(people_csv(5))
+
+    {:ok, batch, _job} =
+      BulkImport.start(upload_id, %{mapping_id: mapping.id, source_slug: "resume"},
+        actor: admin,
+        tenant: org
+      )
+
+    # One execution lands a chunk, then snoozes.
+    assert %{snoozed: 1} = Oban.drain_queue(queue: :mdm, with_scheduled: false)
+    assert batch!(org, batch.id).counts["land_cursor"] == 2
+
+    # The next execution crashes: the stored file is gone for a moment.
+    {:ok, path} = BulkImport.upload_path(upload_id)
+    content = File.read!(path)
+    File.rm!(path)
+
+    assert %{failure: 1} =
+             Oban.drain_queue(queue: :mdm, with_scheduled: true, with_safety: true)
+
+    crashed = batch!(org, batch.id)
+    refute crashed.status == :failed
+    assert crashed.counts["land_cursor"] == 2
+
+    # The file is back: the retry carries on from the cursor, lands the rest
+    # once, stages every row and removes the file.
+    File.write!(path, content)
+    assert %{success: 1, failure: 0} = run_queue()
+
+    done = batch!(org, batch.id)
+    refute done.status == :failed
+    assert %{"land_cursor" => 5, "landed" => 5, "staged" => 5} = done.counts
+    assert length(landed(org, "resume")) == 5
+    assert {:error, :unknown_upload} = BulkImport.upload_path(upload_id)
+  end
+
   test "the job runs in slices: it snoozes and carries on landing, staging and matching, and a retry lands nothing twice",
        %{org: org, admin: admin, mapping: mapping} do
     # Two rows a chunk, and every execution past its deadline at once: landing

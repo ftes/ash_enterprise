@@ -105,8 +105,12 @@ defmodule AshEnterprise.Durability.BulkImportTest do
 
     await_job(job.id, :success, :timer.minutes(60))
 
+    # The job subscription sees every job on the node, and other tests' jobs fail on
+    # purpose; only an attempt of this import's job counts.
+    job_id = job.id
+
     receive do
-      {:oban_job, _id, :failure, meta} ->
+      {:oban_job, ^job_id, :failure, meta} ->
         flunk("an attempt failed: #{inspect(meta[:error] || meta[:reason], limit: 20)}")
     after
       0 -> :ok

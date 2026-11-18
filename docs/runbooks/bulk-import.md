@@ -33,6 +33,11 @@ longer than that for an orphan and starts it again. One execution that lands 50,
 copies then write the same batch (measured: the batch failed on a stale write). A slice stays well inside it. A retried job never lands a file twice: once
 `landed_at` is set, landing is skipped and the file is not needed.
 
+An execution that raises (a deadlock, a dropped connection, a row that fails matching) is retried by Oban, up to three
+attempts, and the retry carries on from the cursor the batch records: the batch keeps its status, landed rows stay
+landed, and staged rows are not staged again. A snooze between slices is not an attempt. Only the last attempt's
+failure ends the batch: it is marked failed with the reason, its lineage run fails, and the stored file is removed.
+
 The wizard polls the job and shows the landed, refused and staged counts. The batch board (`/app/mdm/batches`, then
 the batch) shows the same counters.
 

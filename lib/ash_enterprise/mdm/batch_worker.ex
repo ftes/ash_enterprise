@@ -10,9 +10,13 @@ defmodule AshEnterprise.Mdm.BatchWorker do
 
   Idempotent by construction: re-running a batch re-lands nothing (bizev's
   temporal landing is a no-op on identical content) and re-stages nothing
-  (StagedRecord's `one_per_source_record` identity). A crash marks the
-  batch :failed, emits the lineage :fail event, and re-raises for Oban's
-  retry machinery.
+  (StagedRecord's `one_per_source_record` identity). A crash re-raises for
+  Oban's retry machinery, and the retry carries on where the failed execution
+  stopped: the batch keeps its status and its landing cursor. Only the last
+  attempt's crash ends the batch: it is marked :failed, the lineage :fail
+  event is emitted, and the stored upload is removed, since nothing will read
+  it again. A snooze is not an attempt (Oban gives it back), so the slices of
+  a long import do not use up the retries.
 
   A bulk upload (`AshEnterprise.Mdm.BulkImport`) arrives as an `"upload_id"`
   argument: the worker lands the file first, a chunk at a time, in slices of
@@ -34,7 +38,7 @@ defmodule AshEnterprise.Mdm.BatchWorker do
   require Ash.Query
 
   @impl true
-  def perform(%Oban.Job{args: %{"batch_id" => batch_id, "tenant" => tenant} = args}) do
+  def perform(%Oban.Job{args: %{"batch_id" => batch_id, "tenant" => tenant} = args} = job) do
     batch = AshEnterprise.Mdm.ImportBatch.by_id!(batch_id, tenant: tenant, authorize?: false)
     upload_id = args["upload_id"]
     deadline = System.monotonic_time(:millisecond) + AshEnterprise.Mdm.BulkImport.slice_ms()
@@ -73,23 +77,32 @@ defmodule AshEnterprise.Mdm.BatchWorker do
       end)
     rescue
       reason ->
-        AshEnterprise.Lineage.ingestion_event(:fail, "mdm", "batch:#{batch.id}",
-          run_id: batch.correlation_id,
-          inputs: ["bizev:#{batch.source_slug}"]
-        )
-
-        # The batch as it now stands: staging may already have written it, and
-        # `version_number` is an optimistic lock (ADR 0059).
-        batch_id
-        |> AshEnterprise.Mdm.ImportBatch.by_id!(tenant: tenant, authorize?: false)
-        |> Ash.Changeset.for_update(:fail, %{failure_reason: inspect(reason)},
-          tenant: batch.organization_id,
-          authorize?: false
-        )
-        |> Ash.update!(tenant: batch.organization_id, authorize?: false)
-
+        if last_attempt?(job), do: fail!(batch, upload_id, reason)
         reraise reason, __STACKTRACE__
     end
+  end
+
+  defp last_attempt?(%Oban.Job{attempt: attempt, max_attempts: max}), do: attempt >= max
+
+  # No retry follows: the batch ends as :failed, the lineage run fails, and the
+  # stored file goes, since nothing will land from it again.
+  defp fail!(batch, upload_id, reason) do
+    AshEnterprise.Lineage.ingestion_event(:fail, "mdm", "batch:#{batch.id}",
+      run_id: batch.correlation_id,
+      inputs: ["bizev:#{batch.source_slug}"]
+    )
+
+    # The batch as it now stands: staging may already have written it, and
+    # `version_number` is an optimistic lock (ADR 0059).
+    batch.id
+    |> AshEnterprise.Mdm.ImportBatch.by_id!(tenant: batch.organization_id, authorize?: false)
+    |> Ash.Changeset.for_update(:fail, %{failure_reason: inspect(reason)},
+      tenant: batch.organization_id,
+      authorize?: false
+    )
+    |> Ash.update!(tenant: batch.organization_id, authorize?: false)
+
+    AshEnterprise.Mdm.BulkImport.discard(upload_id)
   end
 
   # No upload: the rows landed before the batch opened.
