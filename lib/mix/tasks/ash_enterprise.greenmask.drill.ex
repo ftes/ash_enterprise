@@ -17,10 +17,13 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
 
   1. **A scratch source.** `<database>_gm_source` is created from the configured database as
      a template, so the configured database is never written.
-  2. **Plant sentinels.** Every column `greenmask.yml` transforms gets a sentinel value (one
-     random token per run) in every row; a large object gets one; and a control table that
-     no position names gets one, because it must pass through and prove the scan sees what
-     survives.
+  2. **Plant sentinels.** A transformed table with no rows first gets one synthetic row (each
+     column that must be set and has no default gets a placeholder of its type; foreign keys
+     are not checked while planting), so no transform goes unexercised because the seeded
+     database had nothing there. Then every column `greenmask.yml` transforms gets a
+     sentinel value (one random token per run) in every row; a large object gets one; and a
+     control table that no position names gets one, because it must pass through and prove
+     the scan sees what survives.
   3. **Validate.** `greenmask validate --warnings` against the scratch source: a config whose
      transformer cannot target a column, or that names a column the schema lacks, stops here.
      It never prints row data.
@@ -39,8 +42,10 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
   never printed; the report carries counts only. The copy is restored into the configured
   database's server, as `<database>_gm_copy`.
 
-  Exits non-zero on any leak, an excluded table with rows, a missing `--require`d column, a
-  failed validate, dump or restore, or a control that did not survive. The copy is dropped
+  Exits non-zero on any leak, an excluded table with rows, a transformed column the drill
+  planted nothing in (in sentinel mode; `--allow-empty schema.table.column` names one that
+  may stay empty, and is reported), a missing `--require`d column, a failed validate, dump
+  or restore, or a control that did not survive. The copy is dropped
   unless `--keep` or the drill failed; the dump directory is always deleted.
 
   Needs the `greenmask` binary (`GREENMASK` overrides the path), `pg_dump` and
@@ -58,6 +63,7 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
     keep: :boolean,
     json: :string,
     require: :keep,
+    allow_empty: :keep,
     known_values: :boolean,
     source_url: :string
   ]
@@ -95,7 +101,7 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
     try do
       known_values? = opts[:known_values] == true
 
-      {source, planted, samples} =
+      {source, planted, samples, seeded} =
         if known_values?,
           do: known_values_source(opts[:source_url], plan),
           else: sentinel_source(admin, conn, plan, token)
@@ -127,6 +133,7 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
         copy_kept: keep?,
         steps: steps,
         planted: Map.new(planted, fn {{t, c}, n} -> {"#{t}.#{c}", n} end),
+        seeded: seeded,
         excluded_tables: plan.excluded,
         findings: Map.delete(findings, :problems),
         problems: findings.problems
@@ -185,6 +192,7 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
     _ = Postgrex.query(scratch, "SET session_replication_role = replica", [])
     types = column_types(scratch)
     lengths = max_lengths(scratch)
+    seeded = seed_empty_tables(scratch, plan)
 
     planted =
       for {table, column, _name} <- plan.columns, into: %{} do
@@ -201,8 +209,174 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
     ])
 
     GenServer.stop(scratch)
-    {Keyword.put(conn, :database, source), planted, %{}}
+    {Keyword.put(conn, :database, source), planted, %{}, seeded}
   end
+
+  # One synthetic row in each transformed table that has none, so its transforms are
+  # exercised. Returns `%{"seeded" => tables, "refused" => %{table => reason}}`: a table
+  # whose row the schema refused stays empty, and its columns then fail the drill unless
+  # allowed to be empty. A refusal names an error code or a constraint, never a value.
+  defp seed_empty_tables(conn, plan) do
+    tables = plan.columns |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
+
+    {seeded, refused} =
+      Enum.reduce(tables, {[], %{}}, fn table, acc ->
+        if rows(conn, table) == 0, do: seed_into(conn, table, acc, 0), else: acc
+      end)
+
+    %{"seeded" => Enum.reverse(seeded), "refused" => refused}
+  end
+
+  # Seeds `table`, first seeding any table a required foreign key points at that is empty
+  # too, so the restored copy's constraints hold. `depth` stops a cycle.
+  defp seed_into(_conn, table, {seeded, refused}, depth) when depth > 6,
+    do: {seeded, Map.put(refused, table, "foreign keys nest too deep")}
+
+  defp seed_into(conn, table, {seeded, refused} = acc, depth) do
+    if table in seeded or Map.has_key?(refused, table) do
+      acc
+    else
+      required = required_columns(conn, table)
+
+      fks =
+        required_foreign_keys(conn, table, Map.new(required, fn [name | _] -> {name, true} end))
+
+      {seeded, refused} =
+        fks
+        |> Enum.map(& &1.parent)
+        |> Enum.uniq()
+        |> Enum.reject(&(&1 == table or rows(conn, &1) > 0))
+        |> Enum.reduce({seeded, refused}, &seed_into(conn, &1, &2, depth + 1))
+
+      case insert_row(conn, table, required, fks) do
+        :ok -> {[table | seeded], refused}
+        {:error, reason} -> {seeded, Map.put(refused, table, reason)}
+      end
+    end
+  end
+
+  # Columns a row must set: NOT NULL, no default, not an identity or generated column.
+  defp required_columns(conn, table) do
+    %{rows: columns} =
+      Postgrex.query!(
+        conn,
+        """
+        SELECT a.attname::text, format_type(a.atttypid, a.atttypmod), t.typtype::text,
+               t.typcategory::text
+        FROM pg_attribute a JOIN pg_type t ON t.oid = a.atttypid
+        WHERE a.attrelid = to_regclass($1) AND a.attnum > 0 AND NOT a.attisdropped
+          AND a.attnotnull AND NOT a.atthasdef AND a.attidentity = '' AND a.attgenerated = ''
+        ORDER BY a.attnum
+        """,
+        [quote_table(table)]
+      )
+
+    columns
+  end
+
+  # Foreign keys with a required column: their columns are taken from one parent row, so
+  # the key (and a temporal key's period) holds.
+  defp required_foreign_keys(conn, table, required) do
+    %{rows: rows} =
+      Postgrex.query!(
+        conn,
+        """
+        SELECT c.oid::text, pn.nspname || '.' || p.relname,
+               array_agg(ca.attname::text ORDER BY k.ord), array_agg(pa.attname::text ORDER BY k.ord)
+        FROM pg_constraint c
+        JOIN pg_class p ON p.oid = c.confrelid
+        JOIN pg_namespace pn ON pn.oid = p.relnamespace
+        CROSS JOIN LATERAL unnest(c.conkey, c.confkey) WITH ORDINALITY AS k(con, ref, ord)
+        JOIN pg_attribute ca ON ca.attrelid = c.conrelid AND ca.attnum = k.con
+        JOIN pg_attribute pa ON pa.attrelid = c.confrelid AND pa.attnum = k.ref
+        WHERE c.conrelid = to_regclass($1) AND c.contype = 'f'
+        GROUP BY c.oid, pn.nspname, p.relname
+        """,
+        [quote_table(table)]
+      )
+
+    for [_oid, parent, columns, parent_columns] <- rows,
+        Enum.any?(columns, &Map.has_key?(required, &1)) do
+      %{parent: parent, columns: columns, parent_columns: parent_columns}
+    end
+  end
+
+  defp insert_row(conn, table, required, fks) do
+    from_parent =
+      fks
+      |> Enum.with_index()
+      |> Enum.flat_map(fn {fk, i} ->
+        fk.columns
+        |> Enum.zip(fk.parent_columns)
+        |> Enum.map(fn {column, parent_column} -> {column, ~s[p#{i}."#{parent_column}"]} end)
+      end)
+      |> Map.new()
+
+    values =
+      Map.merge(Map.new(required, fn [name | type] -> {name, placeholder(type)} end), from_parent)
+
+    sources =
+      fks
+      |> Enum.with_index()
+      |> Enum.map(fn {fk, i} ->
+        cols = Enum.map_join(fk.parent_columns, ", ", &~s["#{&1}"])
+        "(SELECT #{cols} FROM #{quote_table(fk.parent)} LIMIT 1) AS p#{i}"
+      end)
+
+    statement =
+      cond do
+        values == %{} ->
+          "INSERT INTO #{quote_table(table)} DEFAULT VALUES"
+
+        sources == [] ->
+          "INSERT INTO #{quote_table(table)} (#{names(values)}) VALUES (#{exprs(values)})"
+
+        true ->
+          "INSERT INTO #{quote_table(table)} (#{names(values)}) " <>
+            "SELECT #{exprs(values)} FROM #{Enum.join(sources, ", ")}"
+      end
+
+    case Postgrex.query(conn, statement, []) do
+      {:ok, %{num_rows: 1}} -> :ok
+      {:ok, _none} -> {:error, "a required foreign key's table has no rows"}
+      {:error, %Postgrex.Error{postgres: %{code: code} = pg}} -> {:error, refusal(code, pg)}
+      {:error, _other} -> {:error, "unknown"}
+    end
+  end
+
+  defp names(values), do: values |> Map.keys() |> Enum.map_join(", ", &~s["#{&1}"])
+  defp exprs(values), do: values |> Map.values() |> Enum.join(", ")
+
+  defp refusal(code, %{constraint: constraint}) when is_binary(constraint),
+    do: "#{code} (#{constraint})"
+
+  defp refusal(code, _pg), do: to_string(code)
+
+  # A value of the column's type that satisfies NOT NULL and nothing else in particular.
+  # Ranges start in the past and stay open, so a temporal row is current.
+  defp placeholder([format, _typtype, "A"]), do: "'{}'::#{format}"
+
+  defp placeholder([format, "e", _category]),
+    do:
+      "(SELECT enumlabel FROM pg_enum WHERE enumtypid = '#{format}'::regtype " <>
+        "ORDER BY enumsortorder LIMIT 1)::#{format}"
+
+  defp placeholder([format, "r", _category]) do
+    if format in ["tstzrange", "tsrange", "daterange"],
+      do: "'[2000-01-01,)'::#{format}",
+      else: "'empty'::#{format}"
+  end
+
+  defp placeholder([format, _typtype, _category]) when format in @json_types,
+    do: "'{}'::#{format}"
+
+  defp placeholder(["uuid", _typtype, _category]), do: "gen_random_uuid()"
+  defp placeholder(["bytea", _typtype, _category]), do: "'\\x00'::bytea"
+  defp placeholder([format, _typtype, "S"]), do: "('drill-' || md5(random()::text))::#{format}"
+  defp placeholder([format, _typtype, "N"]), do: "0::#{format}"
+  defp placeholder([format, _typtype, "B"]), do: "false::#{format}"
+  defp placeholder([format, _typtype, "D"]), do: "now()::#{format}"
+  defp placeholder([format, _typtype, _category]), do: "NULL::#{format}"
 
   defp column_types(conn) do
     %{rows: rows} =
@@ -298,7 +472,7 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
       end
 
     GenServer.stop(conn)
-    {source, Map.new(samples, fn {key, values} -> {key, length(values)} end), samples}
+    {source, Map.new(samples, fn {key, values} -> {key, length(values)} end), samples, %{}}
   end
 
   defp parse_url(url) do
@@ -406,12 +580,28 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
           Map.get(planted, {"#{schema}.#{table}", column}, 0) == 0,
           do: required
 
+    allowed_empty = Keyword.get_values(opts, :allow_empty)
+
+    # A transform the drill never exercised proves nothing, so it fails the drill. Only in
+    # sentinel mode: a deployment's own database may simply have no rows there.
+    unplanted =
+      if opts[:known_values],
+        do: [],
+        else:
+          for(
+            {{table, column}, 0} <- planted,
+            "#{table}.#{column}" not in allowed_empty,
+            do: "#{table}.#{column}"
+          )
+          |> Enum.sort()
+
     dump = if opts[:known_values], do: %{leaks: 0, control: 1}, else: dump_scan(work, token)
 
     problems =
       Enum.map(leaks, &"value survived in #{&1}") ++
         Enum.map(excluded_with_rows, &"excluded table has rows in the copy: #{&1}") ++
         Enum.map(missing, &"required column had no rows to plant: #{&1}") ++
+        Enum.map(unplanted, &"transformed column had no rows to plant: #{&1}") ++
         dump_problems(dump) ++
         if(opts[:known_values] != true and control == 0,
           do: ["the control sentinel did not survive: the scan cannot be trusted"],
@@ -422,6 +612,8 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
       leaks: leaks,
       control_hits: control,
       excluded_with_rows: excluded_with_rows,
+      unplanted: unplanted,
+      allowed_empty: allowed_empty,
       dump_files_with_sentinel: dump.leaks,
       dump_files_with_control: dump.control,
       problems: problems
@@ -557,6 +749,18 @@ defmodule Mix.Tasks.AshEnterprise.Greenmask.Drill do
 
     planted = Enum.count(report.planted, fn {_, n} -> n > 0 end)
     Mix.shell().info("  planted in #{planted} of #{map_size(report.planted)} transformed columns")
+
+    if seeded = report.seeded["seeded"] do
+      Mix.shell().info("  seeded a row into #{length(seeded)} empty transformed tables")
+    end
+
+    for {table, reason} <- report.seeded["refused"] || %{} do
+      Mix.shell().info("  could not seed a row into #{table}: #{reason}")
+    end
+
+    for column <- report.findings.allowed_empty,
+        do: Mix.shell().info("  allowed to stay empty: #{column}")
+
     Mix.shell().info("  excluded tables: #{length(report.excluded_tables)}")
     Mix.shell().info("  control hits: #{report.findings.control_hits}")
     for problem <- report.problems, do: Mix.shell().error("  #{problem}")

@@ -28,6 +28,8 @@ lists everything that passes through and why. In short:
 | Large objects | not copied (`no-blobs`); their metadata (oid, owner) is |
 | Tables no resource declares (`schema_migrations`, Oban's jobs, a package's own tables) | as they are |
 | Process and decision definitions | as they are: a tenant's own design, not personal data |
+| MDM raw landings (`mdm_source_records.raw_payload`), staged rows (`mdm_staged_records.mapped` and `validation_findings`), a mapping's findings and its proposer's raw output | replaced with an empty JSON object: a landed row's keys are a spreadsheet's own headers, so no column transform can name the values inside. The rows, their identities, periods and links stay |
+| Other free-form JSON columns no resource positions (92 on 2026-11-18, listed in `greenmask_config_test.exs`) | as they are, until each gets a transform or a stated reason. The name heuristic below cannot see inside a JSON value, so a test lists them and fails on a new one that has neither |
 
 The tenant keys, ids and timestamps are copied unchanged. A copy is therefore linkable to production row for row by
 anyone who holds both.
@@ -68,10 +70,12 @@ an environment that may hold every tenant's pseudonymised rows.
 **Sentinel mode** (CI, on every push, in the `backup-restore-drill` job, against the seeded database): it makes a
 scratch database from the source as a template, writes a sentinel token into every row of every column
 `greenmask.yml` transforms, into a large object and into a control table nothing transforms, validates, copies and
-restores. It fails if the token survives anywhere but the control table (every text, JSON and binary column of the
-copy, every large object and every dump data file is searched), if an excluded table has rows in the copy, if the
-control did not survive (the scan would be blind), or if a `--require`d column had no rows to plant into. The
-source database is never written.
+restores. A transformed table the seeded database left empty first gets one synthetic row (a placeholder of each
+column's type where one is required; foreign keys are not checked while planting), so every transform is exercised.
+It fails if the token survives anywhere but the control table (every text, JSON and binary column of the copy, every
+large object and every dump data file is searched), if an excluded table has rows in the copy, if the control did
+not survive (the scan would be blind), or if any transformed column had no rows to plant into (`--allow-empty
+schema.table.column` names one that may, and the report lists it). The source database is never written.
 
 **Known-value mode**, for a deployment's own database: `scripts/greenmask-drill --known-values --source-url URL`
 opens the source read-only, samples up to 50 distinct values from each transformed text column, copies through
@@ -96,4 +100,4 @@ transformed in flight, into a scratch database, and waits for its owner's agreem
   `engine: "hash"`; greenmask's `Hash` refuses uuid columns), and no resource asks for it.
 - Free text inside a column the model does not mark: the inventory's name heuristic (`DataInventory.looks_personal?`)
   and `sensitive?` are what decide which columns get a position, and a person named in a column neither flags passes
-  through.
+  through. JSON columns are listed instead (above), because a name says nothing about what a map holds.

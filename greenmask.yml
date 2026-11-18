@@ -221,6 +221,31 @@ dump:
     - name: "assistant_reply_drafts"
       schema: "public"
       transformers: []
+    - name: "mdm_mappings"
+      schema: "public"
+      transformers:
+        - name: "Replace"
+          params:
+            column: "validation_findings"
+            value: "{}"
+    - name: "mdm_staged_records"
+      schema: "public"
+      transformers:
+        - name: "Replace"
+          params:
+            column: "mapped"
+            value: "{}"
+        - name: "Replace"
+          params:
+            column: "validation_findings"
+            value: "{\"errors\": [], \"warnings\": []}"
+    - name: "mdm_source_records"
+      schema: "public"
+      transformers:
+        - name: "Replace"
+          params:
+            column: "raw_payload"
+            value: "{}"
     - name: "mdm_attribute_assertions"
       schema: "public"
       transformers:
@@ -230,6 +255,13 @@ dump:
         - name: "Hash"
           params:
             column: "content_digest"
+    - name: "mdm_mapping_proposals"
+      schema: "public"
+      transformers:
+        - name: "Replace"
+          params:
+            column: "raw"
+            value: "{}"
     - name: "credentialing_clinicians"
       schema: "public"
       transformers:
