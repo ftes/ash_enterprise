@@ -87,6 +87,10 @@ defmodule AshEnterprise.Security.TeamRole do
       description "Sets or clears the end of a grant. Clearing it makes the grant open-ended."
       accept [:valid_until]
       require_atomic? false
+
+      # `metadata.revived`, `privileged` and `role_name`: an ended grant brought back into
+      # force hands the role to every member again, for the security_alerts pack's review.
+      change AshEnterprise.Security.Changes.StampGrantRevival
     end
 
     read :history do

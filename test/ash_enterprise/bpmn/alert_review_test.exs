@@ -192,6 +192,32 @@ defmodule AshEnterprise.Bpmn.AlertReviewTest do
     |> Ash.create!()
   end
 
+  # An assignment that ended an hour ago, made before the pack is published so its own
+  # create opens nothing.
+  defp ended_assignment!(ctx, resource, holder, role) do
+    holder_key = if resource == TeamRole, do: :team_id, else: :user_id
+
+    resource
+    |> Ash.Changeset.for_create(
+      :assign,
+      %{holder_key => holder.id, :role_id => role.id, :valid_until => hours_from_now(-1)},
+      actor: ctx.admin.actor,
+      tenant: ctx.tenant
+    )
+    |> Ash.create!()
+  end
+
+  defp set_valid_until!(ctx, assignment, valid_until) do
+    assignment
+    |> Ash.Changeset.for_update(:set_valid_until, %{valid_until: valid_until},
+      actor: ctx.admin.actor,
+      tenant: ctx.tenant
+    )
+    |> Ash.update!()
+  end
+
+  defp hours_from_now(hours), do: DateTime.add(DateTime.utc_now(), hours * 3600, :second)
+
   defp join!(ctx, team, user) do
     TeamMembership
     |> Ash.Changeset.for_create(:create, %{team_id: team.id, user_id: user.id},
@@ -509,6 +535,36 @@ defmodule AshEnterprise.Bpmn.AlertReviewTest do
       nothing!(ctx.tenant)
     end
 
+    test "for an ended grant of a role that grants nothing privileged brought back, or a privileged grant's end moved while it is in force" do
+      ctx = installed!()
+      team = owner_team!(ctx)
+      join!(ctx, team, ctx.newcomer.user)
+      plain = role!(ctx, "Report Reader #{unique()}")
+      ended_plain = ended_assignment!(ctx, TeamRole, team, plain)
+      ended_plain_direct = ended_assignment!(ctx, UserRole, ctx.newcomer.user, plain)
+
+      # Privileged and in force: moving the end hands nobody anything new.
+      in_force_team =
+        ctx
+        |> assign_to_team!(owner_team!(ctx), administrator_role!(ctx))
+        |> then(&set_valid_until!(ctx, &1, hours_from_now(24)))
+
+      in_force_direct =
+        ctx
+        |> assign!(colleague!(ctx.admin).user, administrator_role!(ctx))
+        |> then(&set_valid_until!(ctx, &1, hours_from_now(24)))
+
+      publish!(ctx)
+
+      set_valid_until!(ctx, ended_plain, nil)
+      set_valid_until!(ctx, ended_plain_direct, hours_from_now(48))
+      set_valid_until!(ctx, in_force_team, nil)
+      set_valid_until!(ctx, in_force_direct, hours_from_now(1))
+      sweep!(ctx.tenant)
+
+      nothing!(ctx.tenant)
+    end
+
     test "for a break-glass session opened but not approved" do
       ctx = installed!()
       # Before publishing: a role that opens break-glass sessions is privileged, and making
@@ -782,6 +838,45 @@ defmodule AshEnterprise.Bpmn.AlertReviewTest do
       sweep!(ctx.tenant)
 
       one_review!(ctx, "security_alerts.privileged_team_restored", [ctx.admin, ctx.newcomer])
+    end
+
+    test "when an ended Administrator team grant is brought back into force, offered to neither the reviver nor its members" do
+      ctx = installed!()
+      team = owner_team!(ctx)
+      # A member who is already an administrator: leaving them out is the exclusion's doing.
+      member = colleague!(ctx.admin, admin?: true)
+      join!(ctx, team, member.user)
+      join!(ctx, team, ctx.newcomer.user)
+      ended = ended_assignment!(ctx, TeamRole, team, administrator_role!(ctx))
+      refute administrator_of?(ctx, ctx.newcomer.user)
+      publish!(ctx)
+
+      revived = set_valid_until!(ctx, ended, nil)
+      assert administrator_of?(ctx, ctx.newcomer.user)
+      sweep!(ctx.tenant)
+
+      one_review!(ctx, "security_alerts.privileged_team_role_revived", [
+        ctx.admin,
+        member,
+        ctx.newcomer
+      ])
+
+      assert [%{instance_id: instance_id}] = started(ctx.tenant)
+
+      assert Ash.get!(Instance, instance_id, authorize?: false, tenant: ctx.tenant).subject_id ==
+               revived.id
+    end
+
+    test "when a person's ended privileged grant is moved past now, offered to neither the reviver nor them" do
+      ctx = installed!()
+      custom = role_with!(ctx, "Directory Steward #{unique()}", @authority_grants)
+      ended = ended_assignment!(ctx, UserRole, ctx.newcomer.user, custom)
+      publish!(ctx)
+
+      set_valid_until!(ctx, ended, hours_from_now(24))
+      sweep!(ctx.tenant)
+
+      one_review!(ctx, "security_alerts.privileged_role_revived", [ctx.admin, ctx.newcomer])
     end
 
     test "when a break-glass session is approved, offered to anyone but its operator" do

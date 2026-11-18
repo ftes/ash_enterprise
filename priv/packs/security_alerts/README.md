@@ -1,7 +1,8 @@
 # security_alerts
 
 Opens a review, for an administrator other than the people involved, when a high-risk
-security event is recorded: a privileged role reaching someone, a break-glass session
+security event is recorded: a privileged role reaching someone (assigned, brought back into
+force after it ended, or reaching them through a team), a break-glass session
 approved, an API key issued, a known person's sign-in refused a third time in a row, or an
 inbound alert labelled `security`. `pack.json` lists the recipes; `review_security_alert.bpmn`
 is the review. Installed as drafts: nothing runs until a person publishes the process and
@@ -43,6 +44,8 @@ through `AshEnterprise.Security.PrivilegedRoles`):
 |---|---|---|
 | `privileged_role_assigned` | `UserRole` create | `privileged`, `role_name` |
 | `privileged_role_assigned_to_team` | `TeamRole` create | `privileged`, `role_name` |
+| `privileged_role_revived` | `UserRole.set_valid_until` | `revived`, `privileged`, and `role_name` when it revived |
+| `privileged_team_role_revived` | `TeamRole.set_valid_until` | as for a person's grant |
 | `privileged_team_joined` | `TeamMembership` create | `privileged`, `role_names`, `privileged_role_names` |
 | `privileged_team_restored` | `Team.restore` | as for joining |
 | `held_role_made_privileged` | `RolePrivilege` create | `privileged`, and `role_name` when it is |
@@ -52,6 +55,15 @@ role's name, so the role guards fall back to the name for an event with no `priv
 (`if metadata.privileged = null then <the name> else metadata.privileged = true`); a stamped
 event never does. The guard is an `if` rather than an `or` because this FEEL engine answers
 null, not true, for `true or null`.
+
+A grant whose `valid_until` has passed grants nothing, and its row stays. Clearing that end,
+or moving it past now, gives the role back without a create, so the revival recipes match
+`set_valid_until` and read what `StampGrantRevival` stamped: `privileged` is true only when
+the grant was not in force before the write, is after it, and the role is privileged.
+Moving the end of a grant still in force hands nobody anything new and opens nothing here
+(the `soc2_cc6_3` pack reviews a person's extended grant). The team revival's review is
+offered to none of the team's members (`team_grantees`), the person's to none of them
+(`subject.user_id`).
 
 `held_role_made_privileged` fires when a role someone holds now, directly or through a team,
 is granted its first privileged privilege. A role that already was privileged (the

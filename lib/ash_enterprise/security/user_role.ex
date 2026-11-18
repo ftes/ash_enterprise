@@ -136,6 +136,9 @@ defmodule AshEnterprise.Security.UserRole do
       # Whether the grant now lasts longer, written into the audit event, so a recipe's guard
       # can tell an extension (a review) from a shortening without reading anything.
       change AshEnterprise.Security.Changes.StampValidUntilExtension
+      # `metadata.revived`, `privileged` and `role_name`: an ended grant brought back into
+      # force, for the security_alerts pack's review.
+      change AshEnterprise.Security.Changes.StampGrantRevival
     end
 
     read :history do
