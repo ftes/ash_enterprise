@@ -61,13 +61,23 @@ and lists each element.
 
 ## What the check says
 
-`mix ash_enterprise.api.contract --check` (CI and `scripts/pre-ci`) fails when
+`mix ash_enterprise.api.contract --check --base origin/main` (CI and `scripts/pre-ci`) fails when
 
 - a pinned file does not match its sha-256 in `contract.lock.json` (edited by hand: run `--write`);
 - the API generated now differs from the pin. The failure prints the changed lines, and marks
   `BREAKING` each change no announcement permits yet;
 - `deprecations.json` names an element the pinned contract does not hold, announces with less than the
-  minimum notice, announces one element twice, or carries a link that is not `https`.
+  minimum notice, announces one element twice, or carries a link that is not `https`;
+- the pin this change commits is breaking against the pin at its merge base with main (`--base`; in CI the
+  pull request's base, the commit a push to main started from, or main for a `ci/**` branch), and main's own
+  `deprecations.json` at that commit did not announce the element with at least 90 days between the day the
+  entry first reached main and its sunset, and a sunset that has passed.
+
+`--write` runs on your machine, and the files it writes (the lock included) can be written by hand, so it is
+advice. The `--base` comparison is the gate: an announcement added in the same change permits nothing, and an
+entry's `announced` date counts only from the day it reached main (its first commit's committer date), so a
+back-dated entry gives no notice it did not give. Announce first, land the announcement, and remove the element
+in a later change once the sunset has passed.
 
 ## Notes
 

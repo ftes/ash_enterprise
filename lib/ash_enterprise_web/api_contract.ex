@@ -15,6 +15,13 @@ defmodule AshEnterpriseWeb.ApiContract do
   but refuses a breaking change that no announcement permits. What counts as breaking
   is `AshEnterpriseWeb.ApiContract.Diff`. `docs/runbooks/changing-the-api.md` is the
   procedure.
+
+  `--write` runs where the change is made, so it is advice, not the gate: anyone can
+  write the files and the lock by hand. The gate is `check_against/3` (`--base REF` in
+  CI): it compares the pin a change commits with the pin at the commit it started from,
+  and refuses a breaking change unless that commit's own `deprecations.json` announced it,
+  counting the notice from the day the announcement first reached that history rather
+  than from the date it claims.
   """
 
   alias AshEnterpriseWeb.ApiContract.{Deprecations, Diff}
@@ -186,6 +193,124 @@ defmodule AshEnterpriseWeb.ApiContract do
     {entries, _} = Deprecations.read!(Path.join(root, @deprecations_file))
     entries
   end
+
+  @doc """
+  Check the pin in `root` against the pin at the git commit `base`, the commit a change
+  started from (in CI, its merge base with main). `{:ok, notes}` or `{:error, problems}`.
+
+  Each breaking change between the two pins must be permitted by an announcement in
+  `base`'s `deprecations.json`, not one the change itself adds: the element is named, the
+  sunset has passed by `today`, and the sunset is at least `Deprecations.minimum_notice_days/0`
+  after the announcement. The announcement counts from the later of its `announced` date and
+  the day it first appeared in `base`'s history of that file (a commit's committer date), so
+  a back-dated entry gives no notice it did not give. A `base` with no pinned contract has
+  nothing to compare.
+  """
+  @spec check_against(String.t(), Path.t(), Date.t()) ::
+          {:ok, [String.t()]} | {:error, [String.t()]}
+  def check_against(base, root \\ ".", today \\ Date.utc_today()) do
+    pinned = %{
+      @openapi_file => read(Path.join(root, @openapi_file)),
+      @graphql_file => read(Path.join(root, @graphql_file))
+    }
+
+    with {:ok, old_openapi} <- git_show(root, base, @openapi_file),
+         {:ok, old_sdl} <- git_show(root, base, @graphql_file),
+         :ok <- pinned_here(pinned) do
+      %{breaking: breaking} =
+        diff(%{@openapi_file => old_openapi, @graphql_file => old_sdl}, pinned)
+
+      breaking
+      |> Diff.unannounced(announced_at(root, base), today)
+      |> against_result(breaking, base)
+    else
+      :missing -> {:ok, ["no contract was pinned at #{short(base)}; nothing to compare"]}
+      {:error, _problems} = error -> error
+    end
+  end
+
+  defp pinned_here(pinned) do
+    if Enum.any?(pinned, fn {_path, content} -> is_nil(content) end),
+      do:
+        {:error,
+         [
+           "the contract is not pinned in priv/api/; run `mix ash_enterprise.api.contract --write`"
+         ]},
+      else: :ok
+  end
+
+  defp against_result([], breaking, base),
+    do:
+      {:ok, ["#{length(breaking)} breaking change(s) since #{short(base)}, each announced there"]}
+
+  defp against_result(refused, _breaking, base) do
+    {:error,
+     for f <- refused do
+       "BREAKING #{f.element}: #{f.reason} since #{short(base)}, which announced no " <>
+         "deprecation of it with #{Deprecations.minimum_notice_days()} days' notice " <>
+         "and a sunset that has passed"
+     end}
+  end
+
+  # The announcements `base` holds, each counted from when it reached `base`'s history, and
+  # only those that still give the minimum notice from then.
+  defp announced_at(root, base) do
+    case git_show(root, base, @deprecations_file) do
+      {:ok, json} ->
+        {entries, _retired} = Deprecations.parse!(json)
+
+        entries
+        |> Enum.map(&%{&1 | announced: latest(&1.announced, first_seen(root, base, &1.element))})
+        |> Enum.filter(
+          &(Date.diff(&1.sunset, &1.announced) >= Deprecations.minimum_notice_days())
+        )
+
+      :missing ->
+        []
+    end
+  end
+
+  # The committer date of the first commit in `base`'s history that added `element` to the
+  # deprecations file. `git log -S` takes the string literally.
+  defp first_seen(root, base, element) do
+    case git(root, [
+           "log",
+           "--format=%cs",
+           "--reverse",
+           "-S",
+           Jason.encode!(element),
+           base,
+           "--",
+           @deprecations_file
+         ]) do
+      {:ok, output} ->
+        case String.split(output, "\n", trim: true) do
+          [date | _] -> Date.from_iso8601!(date)
+          [] -> commit_date(root, base)
+        end
+
+      :missing ->
+        commit_date(root, base)
+    end
+  end
+
+  defp commit_date(root, base) do
+    {:ok, output} = git(root, ["log", "-1", "--format=%cs", base])
+    output |> String.trim() |> Date.from_iso8601!()
+  end
+
+  defp latest(a, b), do: if(Date.compare(a, b) == :lt, do: b, else: a)
+
+  defp git_show(root, base, path), do: git(root, ["show", "#{base}:#{path}"])
+
+  defp git(root, args) do
+    case System.cmd("git", args, cd: root, stderr_to_stdout: true) do
+      {output, 0} -> {:ok, output}
+      {_output, _status} -> :missing
+    end
+  end
+
+  defp short(base), do: String.slice(base, 0, 12)
 
   @doc "Classify the change from the pinned files to the generated ones."
   @spec diff(map(), map()) :: %{breaking: [Diff.finding()], changed?: boolean()}

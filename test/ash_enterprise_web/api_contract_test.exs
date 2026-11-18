@@ -366,4 +366,118 @@ defmodule AshEnterpriseWeb.ApiContractTest do
                Deprecations.header_values(entry("x", ~D[2026-01-01], ~D[2027-03-01]))
     end
   end
+
+  describe "the gate: the pin a change commits, against the pin it started from" do
+    # A git repository whose one commit, made on `date`, pins a contract with a route the
+    # build does not have and carries `deprecations`. Returns `{root, base}`.
+    defp base_pinning_an_extra_route(deprecations, date) do
+      root = root_pinning_an_extra_route(deprecations)
+      git!(root, ["init", "--quiet"], date)
+      git!(root, ["add", "priv/api"], date)
+      git!(root, ["commit", "--quiet", "-m", "pin"], date)
+      {root, root |> git!(["rev-parse", "HEAD"], date) |> String.trim()}
+    end
+
+    # The change: the route is gone from the pin, written by hand with a lock that agrees,
+    # as `--write` would write it, and `deprecations` as the change leaves them.
+    defp remove_the_route_by_hand(root, deprecations, retired \\ []) do
+      for f <- ["openapi.json", "schema.graphql", "contract.lock.json"],
+          do: File.cp!(Path.join("priv/api", f), Path.join([root, "priv/api", f]))
+
+      File.write!(
+        Path.join(root, "priv/api/deprecations.json"),
+        Deprecations.encode(deprecations, retired)
+      )
+    end
+
+    defp git!(root, args, date) do
+      env = [
+        {"GIT_AUTHOR_DATE", date},
+        {"GIT_COMMITTER_DATE", date},
+        {"GIT_AUTHOR_NAME", "Contract Test"},
+        {"GIT_AUTHOR_EMAIL", "contract@example.test"},
+        {"GIT_COMMITTER_NAME", "Contract Test"},
+        {"GIT_COMMITTER_EMAIL", "contract@example.test"}
+      ]
+
+      {output, 0} =
+        System.cmd("git", ["-c", "commit.gpgsign=false" | args],
+          cd: root,
+          env: env,
+          stderr_to_stdout: true
+        )
+
+      output
+    end
+
+    test "a removal re-pinned by hand passes --check alone, and the gate refuses it" do
+      {root, base} = base_pinning_an_extra_route([], "2026-01-01T12:00:00Z")
+      remove_the_route_by_hand(root, [])
+
+      # The pin agrees with the build and with its lock: drift alone cannot see it.
+      assert {:ok, []} = ApiContract.check(root, @today)
+
+      assert {:error, [problem]} = ApiContract.check_against(base, root, @today)
+      assert problem =~ "BREAKING route:get /retired: removed"
+    end
+
+    test "an announcement the change itself adds permits nothing, whatever dates it claims" do
+      {root, base} = base_pinning_an_extra_route([], "2026-01-01T12:00:00Z")
+      back_dated = entry("route:get /retired", ~D[2026-01-01], ~D[2026-04-01])
+      remove_the_route_by_hand(root, [back_dated])
+
+      assert {:error, [problem]} = ApiContract.check_against(base, root, @today)
+      assert problem =~ "BREAKING route:get /retired"
+    end
+
+    test "a back-dated announcement counts from the day it reached the base, not the date it claims" do
+      back_dated = entry("route:get /retired", ~D[2026-01-01], ~D[2026-04-01])
+      {root, base} = base_pinning_an_extra_route([back_dated], "2026-11-01T12:00:00Z")
+      remove_the_route_by_hand(root, [], [])
+
+      assert {:error, [problem]} = ApiContract.check_against(base, root, @today)
+      assert problem =~ "BREAKING route:get /retired"
+    end
+
+    test "an announcement on the base for the full notice, past its sunset, permits the removal" do
+      announced = entry("route:get /retired", ~D[2026-01-01], ~D[2026-04-15])
+      {root, base} = base_pinning_an_extra_route([announced], "2026-01-01T12:00:00Z")
+
+      remove_the_route_by_hand(root, [], [
+        %{
+          "element" => "route:get /retired",
+          "announced" => "2026-01-01",
+          "sunset" => "2026-04-15",
+          "link" => announced.link
+        }
+      ])
+
+      assert {:ok, [_note]} = ApiContract.check_against(base, root, @today)
+    end
+
+    test "the same announcement before its sunset still refuses the removal" do
+      announced = entry("route:get /retired", ~D[2026-11-01], ~D[2027-03-01])
+      {root, base} = base_pinning_an_extra_route([announced], "2026-11-01T12:00:00Z")
+      remove_the_route_by_hand(root, [])
+
+      assert {:error, [_problem]} = ApiContract.check_against(base, root, @today)
+    end
+
+    test "an unchanged pin, and a base with no pinned contract, pass" do
+      {root, base} = base_pinning_an_extra_route([], "2026-01-01T12:00:00Z")
+      assert {:ok, [_note]} = ApiContract.check_against(base, root, @today)
+
+      empty = Path.join(System.tmp_dir!(), "api-contract-#{System.unique_integer([:positive])}")
+      File.mkdir_p!(empty)
+      on_exit(fn -> File.rm_rf!(empty) end)
+      File.write!(Path.join(empty, "README"), "nothing pinned")
+      git!(empty, ["init", "--quiet"], "2026-01-01T12:00:00Z")
+      git!(empty, ["add", "README"], "2026-01-01T12:00:00Z")
+      git!(empty, ["commit", "--quiet", "-m", "start"], "2026-01-01T12:00:00Z")
+      head = empty |> git!(["rev-parse", "HEAD"], "2026-01-01T12:00:00Z") |> String.trim()
+
+      assert {:ok, [note]} = ApiContract.check_against(head, empty, @today)
+      assert note =~ "no contract was pinned"
+    end
+  end
 end

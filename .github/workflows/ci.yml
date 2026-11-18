@@ -186,10 +186,14 @@ jobs:
 
       # priv/api/ pins the public API (the OpenAPI document and the GraphQL schema).
       # A resource change that moves what callers see fails here until the pin is
-      # moved on purpose, and a breaking one until it was announced
-      # (docs/runbooks/changing-the-api.md).
+      # moved on purpose. A breaking one fails until it was announced, judged against
+      # the pin the change started from (the PR's base, the commit a push to main
+      # started from, or main for a ci/** branch), not against files the change
+      # itself rewrote (docs/runbooks/changing-the-api.md).
       - name: Check the API contract is pinned
-        run: mix ash_enterprise.api.contract --check
+        env:
+          API_CONTRACT_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.ref == 'refs/heads/main' && github.event.before || 'origin/main') }}
+        run: mix ash_enterprise.api.contract --check --base "$API_CONTRACT_BASE"
 
       # docs/data-inventory.json is generated from the resource declarations and
       # the egress register. A resource added or changed without regenerating it

@@ -5,6 +5,8 @@ defmodule Mix.Tasks.AshEnterprise.Api.Contract do
   The OpenAPI document and the GraphQL schema are committed under `priv/api/`.
 
       mix ash_enterprise.api.contract --check   # fail on any drift from the pin
+      mix ash_enterprise.api.contract --check --base origin/main
+                                                # and on an unannounced breaking change
       mix ash_enterprise.api.contract --write   # re-pin the contract
 
   `--check` fails when the API generated from the resources differs from the pin, when
@@ -15,6 +17,13 @@ defmodule Mix.Tasks.AshEnterprise.Api.Contract do
   argument, a changed type, something newly required of a caller) unless
   `deprecations.json` announced it and its sunset has passed. An additive change
   re-pins freely. See `docs/runbooks/changing-the-api.md`.
+
+  `--base REF` is the gate CI runs, because `--write` runs on the author's machine and the
+  files it writes can be written by hand. It compares the committed pin with the pin at the
+  merge base of `REF` and `HEAD`, and fails on a breaking change that the merge base's own
+  `deprecations.json` did not announce with the minimum notice and a sunset that has passed
+  (`AshEnterpriseWeb.ApiContract.check_against/3`). A `REF` that is not a commit here (a
+  push that created its branch reports all zeros) falls back to `origin/main`.
   """
 
   use Mix.Task
@@ -25,14 +34,56 @@ defmodule Mix.Tasks.AshEnterprise.Api.Contract do
 
   @impl Mix.Task
   def run(argv) do
-    {opts, _rest} = OptionParser.parse!(argv, strict: [check: :boolean, write: :boolean])
+    {opts, _rest} =
+      OptionParser.parse!(argv, strict: [check: :boolean, write: :boolean, base: :string])
+
     Mix.Task.run("compile")
 
     cond do
-      opts[:check] -> check()
-      opts[:write] -> write()
-      true -> Mix.raise("pass --check or --write")
+      opts[:check] ->
+        check()
+        if base = opts[:base], do: check_against(base)
+
+      opts[:write] ->
+        write()
+
+      true ->
+        Mix.raise("pass --check or --write")
     end
+  end
+
+  defp check_against(ref) do
+    case merge_base(ref) do
+      nil -> Mix.shell().info("No base to compare the API contract with (#{ref}, origin/main).")
+      base -> base |> ApiContract.check_against() |> report_against()
+    end
+  end
+
+  defp report_against({:ok, notes}), do: Enum.each(notes, fn note -> Mix.shell().info(note) end)
+
+  defp report_against({:error, problems}) do
+    Mix.shell().error(
+      "\nThe API contract changed in a way callers were not told about:\n\n" <>
+        Enum.map_join(problems, "\n", &"  #{&1}") <>
+        "\n\nSee docs/runbooks/changing-the-api.md.\n"
+    )
+
+    exit({:shutdown, 1})
+  end
+
+  # The merge base of `ref` (or of origin/main when `ref` is not a commit here) with HEAD.
+  defp merge_base(ref) do
+    Enum.find_value([ref, "origin/main"], fn candidate ->
+      with {_, 0} <-
+             System.cmd("git", ["rev-parse", "--verify", "--quiet", candidate <> "^{commit}"],
+               stderr_to_stdout: true
+             ),
+           {base, 0} <- System.cmd("git", ["merge-base", candidate, "HEAD"]) do
+        String.trim(base)
+      else
+        _ -> nil
+      end
+    end)
   end
 
   defp check do
