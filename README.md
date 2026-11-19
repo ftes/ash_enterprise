@@ -426,7 +426,7 @@ permissive direction.
 | 1 | Enterprise identity: SAML, OIDC and SCIM | Federate to the enterprise IdP over OIDC today; SAML and SCIM as planned strategies on the same seam | 🔵 Planned | — |
 | 1 | Integration hub — avoiding M×N | Nango for the provider edge only | 🟡 Partial | [ADR 0011](docs/adr/0011-nango-as-integration-hub.md) |
 | 1 | Legacy migration, process modelling and decisions as platform extensions | ash_strangler + ash_bpmn + ash_decisions, first-party | ✅ Shipped | [ADR 0009](docs/adr/0009-strangler-and-bpmn-are-first-party.md) |
-| 1 | Lineage and provenance | OpenLineage + Marquez | 🟡 Partial | [ADR 0012](docs/adr/0012-openlineage-and-marquez.md) |
+| 1 | Lineage and provenance | OpenLineage, kept in-app; a backend is optional | 🟡 Partial | [ADR 0012](docs/adr/0012-openlineage-and-marquez.md) |
 | 1 | Rules and compliance as data | ash_rules (rule IR + swappable evaluators) and ash_compliance (governed layering compiled to immutable bundles, findings projected from events) | ✅ Shipped | [ADR 0035](docs/adr/0035-compliance-is-projected-from-events.md) |
 | 2 | AI governance: what leaves the tenant boundary | Metadata-only call record stamped with the tenant; the tenant's recorded sub-processor opt-in enforced at the one model-call guard | 🔵 Planned | [ADR 0026](docs/adr/0026-ai-governance-is-disclosure.md) |
 | 2 | API versioning and deprecation | ash_api_versioning | 🔵 Planned | [ADR 0019](docs/adr/0019-api-versioning-as-presentation-contract.md) |

@@ -124,3 +124,31 @@ also what finally emits `:diagram`, a kind this ADR named and nothing produced.
 Everything else in this record stands: records are still never graph nodes, no
 event can request one, the inspector is still server-rendered HEEx rather than
 an A2UI surface, and the surface is still dev-only behind the `/clarity` flag.
+
+## Amendment — 2026-11-19 (proposed with ADR 0081): the model map gives the canvas an audience
+
+This amendment takes the path the Reversal section above calls "to make it non-dev", for one surface. It takes
+effect when [ADR 0081](0081-the-ontology-view-is-derived.md) is accepted. The text above is unchanged; where it
+conflicts with this amendment, this amendment governs.
+
+- **The model map is a second canvas surface, not a move of this one.** It lives at `/app/ontology` in an
+  authenticated `live_session`, as a registry surface (`AshEnterprise.Surfaces`) behind a door, and is offered only
+  where its flag is on (ADR 0072). `/canvas` stays dev-only, behind `:dev_routes`, with the registry's "all domains"
+  stance, unchanged.
+- **The audience lands in the registry, as this record said it would.** The canvas registry gains a per-viewer
+  audience: a type the viewer may not read (`Ash.can?` on its primary read) is absent from the graph payload and
+  from any diagram text, not shown as a locked node. The callback is added to `ash_a2ui`'s registry behaviour first
+  (ADR 0070 §5, U2), so the dev surface and the model map share it.
+- **Nodes carry the overlay, still with no record reads.** A resource node's metadata gains its backing facet, hop
+  chain and action edges from the generated overlay (ADR 0081). These are structural, so the progressive-disclosure
+  guarantee above holds: structural resolution reads no record, and the one client verb still resolves one opaque
+  ref under the viewer's actor and tenant or fails closed.
+- **What a viewer may do is read once.** Capabilities in the inspector are the viewer's, read through the same
+  `AshAcp.AvailableActions` read the shell uses, never a second computation.
+- **Unchanged:** records are never graph nodes; no client event can request one; Cytoscape stays the engine behind
+  the payload contract. Whether the model map's inspector stays server-rendered HEEx or becomes a projection is
+  decided by its gap map; if it would grow a second renderer, the signal named in the Reversal section applies and
+  it becomes a projection.
+
+To reverse this amendment, delete the `/app/ontology` route, its live_session and its registry entry, and drop the
+audience callback's per-viewer filtering from the host registry. The dev surface is untouched either way.

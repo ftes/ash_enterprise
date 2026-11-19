@@ -43,7 +43,7 @@ The concrete exit: which files change, and how much work it is.
 | [0009](0009-strangler-and-bpmn-are-first-party.md) | `ash_strangler`, `ash_bpmn` and `ash_decisions` are first-party platform extensions | accepted |
 | [0010](0010-meltano-for-ingestion.md) | Meltano for ingestion, Airbyte as the named fallback | accepted, amended (2026-10-12; lands into an Ash resource, not a staging schema) |
 | [0011](0011-nango-as-integration-hub.md) | Nango for the provider edge, sync logic stays in Ash | accepted (2026-10-12; Calendar, Gmail, Slack built) |
-| [0012](0012-openlineage-and-marquez.md) | OpenLineage as the schema, Marquez as the backend | proposed |
+| [0012](0012-openlineage-and-marquez.md) | OpenLineage as the schema, Marquez as the backend | proposed; dated note 2026-11-19: lineage is kept in-app, a backend is optional and Marquez is dormant |
 | [0013](0013-openmetadata-as-catalog.md) | OpenMetadata as the catalog, populated from codegen | proposed |
 | [0014](0014-superset-over-metabase.md) | Superset over Metabase for BI | proposed |
 | [0015](0015-approvals-stay-in-ash.md) | Approvals and process modelling stay inside Ash | proposed |
@@ -65,7 +65,7 @@ The concrete exit: which files change, and how much work it is.
 | [0031](0031-the-legacy-estate-is-projected-not-cut-over.md) | The legacy estate is projected, not cut over | accepted |
 | [0032](0032-anonymization-config-is-generated.md) | Anonymization config is generated from the resource declarations | accepted |
 | [0033](0033-experience-layer-adoption.md) | The A2UI experience layer is adopted app-wide: experience v2 with the admin catalog | accepted |
-| [0034](0034-canvas-dev-surface.md) | The canvas starts as a dev-only object graph with a naked-object inspector | accepted |
+| [0034](0034-canvas-dev-surface.md) | The canvas starts as a dev-only object graph with a naked-object inspector | accepted; amended (proposed, with 0081): the model map gives the canvas an audience |
 | [0035](0035-compliance-is-projected-from-events.md) | Compliance is projected from events under an immutable rule bundle | accepted |
 | [0036](0036-converge-process-triggers-onto-projection-checkpoints.md) | Converge process triggers onto projection checkpoints | accepted |
 | [0037](0037-projections-are-host-declared.md) | Projections are host-declared, from a vocabulary the library owns | accepted |
@@ -109,12 +109,25 @@ The concrete exit: which files change, and how much work it is.
 | [0075](0075-outbound-webhooks-are-a-declared-operation.md) | Outbound webhooks are a declared operation: a signed CloudEvent nudge per audited write | accepted (2026-11-17), built |
 | [0076](0076-what-to-ask-is-what-a-requirement-cannot-yet-decide.md) | What to ask is what a requirement cannot yet decide | accepted, not built (2026-11-18) |
 | [0077](0077-a-candidate-is-judged-against-recorded-history.md) | A candidate is judged against recorded history | accepted, not built (2026-11-18) |
+| [0078](0078-values-explain-themselves.md) | Values explain themselves: an address per value, PROV-DM steps and typed gaps, read as the reader (amends thesis 3) | proposed (2026-11-19) |
+| [0079](0079-a-proposal-is-fenced-checked-and-remembered.md) | A proposal is fenced, checked and remembered | proposed (2026-11-19) |
+| [0080](0080-what-if-is-a-scenario-on-the-simulation-twin.md) | What-if is a scenario on the simulation twin, and every act carries its execution context | proposed (2026-11-19) |
+| [0081](0081-the-ontology-view-is-derived.md) | The ontology view is derived: a generated overlay keyed by a manifest digest, a backing facet per resource, one dataset name per relation | proposed (2026-11-19) |
+| [0082](0082-an-effect-is-an-edit-set.md) | An effect is an edit set: pure previews, a declared write footprint, and the edits in the review packet | proposed (2026-11-19) |
+| [0083](0083-an-ontology-facade-is-a-resource-over-resources.md) | An ontology façade is a resource over resources: a computed resource that renames, reads as the viewer and writes through named source actions | proposed (2026-11-19) |
+| [0084](0084-eligibility-is-a-conjunct-in-every-grant.md) | Eligibility is a conjunct in every grant: information-flow labels without `forbid_if` | proposed (2026-11-19) |
 
 Records 0001–0005, 0007–0009, 0020–0023, 0026 (as amended 2026-11-16: a metadata-only call record and the tenant's opt-in at the one model-call guard), 0027–0031, 0033–0037, 0050–0054, 0059 and 0061 are `accepted` and describe code that exists. 0006 is superseded by 0050, and 0016 by 0072. 0049 is accepted and in progress: Phase 0 (PostgreSQL 18) and the System One fact cut-over have landed. 0060 is accepted and in progress: its phases 1 (ash_a2ui) and 2 (this repository) have landed; the downstream host's phases and CLDR formatting are not built.
 0076 and 0077 are `accepted, not built (2026-11-18)`: they extend 0067 and 0068 to the two acts around an issued
 document, asking a person only what a requirement cannot yet decide, and measuring a wording or decision-table change
 against the documents already issued before a second person admits it. This repository does not issue documents yet,
 so both land with document issue.
+0078–0084 are `proposed (2026-11-19)` and none of them is built. They are one set for the ontology work: how a
+value explains itself (0078, with a dated amendment to thesis 3), the shape every proposal shares (0079), what-if
+scenarios and the execution context every act carries (0080), the generated ontology view (0081, with an amendment to
+0034), an effect described as an edit set (0082), ontology façades over existing resources (0083), and
+information-flow labels as a conjunct inside every grant (0084). 0012 carries a dated note of the same day: lineage is
+kept in-app, and a backend is an optional forwarder.
 **0038–0047 are `accepted, not built (2026-09-28)`:** the decision is taken and none of it is built. A record with that
 status flips to plain `accepted` when its code lands, so `accepted` on its own keeps meaning code that exists.
 **0012–0015, 0017–0019 and 0048 are `proposed`: none of them is built**, with the exception 0015 below. 0025 is accepted for its internal half (audit events reach SigNoz as log records, 2026-11-16); its customer SIEM half is still proposed and not built. 0010 (ingestion), 0011 (the Nango edge) and 0024 (crypto-shredding) were accepted on 2026-10-12 when a deployment we operate began depending on them, and 0032 (the generated greenmask config) on 2026-11-17 when it was adopted and gated in CI; each one's implementation note says what is built and where it differs from the Decision (0010 lands into an Ash resource rather than a staging schema; 0024's age half was built later as a verified move to archive tables rather than partitions). They are here because a decision is cheapest to reason about — and cheapest to

@@ -196,3 +196,34 @@ this application's own database as well as forwarding it when `:http_base_url` i
 
 Reversal is unchanged in kind: removing the store is deleting `lib/ash_enterprise/lineage/` (and its two
 surfaces) and setting the transport back to a forwarder.
+
+## Dated note — 2026-11-19: lineage is read in-app; the Marquez backend is dormant
+
+The Decision above reads as if Marquez were the lineage backend. It no longer is, and this note says what
+replaced it. The text above is unchanged; where it conflicts with this note, this note governs.
+
+- **The in-app store is the lineage record.** `AshEnterprise.Lineage.Transport` hands every RunEvent to
+  `AshEnterprise.Lineage.Store`, which writes the `Job`, `Run` and `JobRun` resources
+  (`AshEnterprise.Lineage.Recorder`). The Lineage app (`/app/lineage`) and the audit trail's link to a run
+  read those resources, under the reader's grants and inside the reader's tenant. Nothing in the application
+  reads from Marquez.
+- **Marquez is an optional forwarder, off by default.** The transport posts to an OpenLineage HTTP backend
+  only when `config :ash_open_lineage, :http_base_url` is set, and no shipped configuration sets it. The
+  forward is best effort: a failed POST is logged and dropped, and the store write is unaffected.
+  `deploy/marquez.yml` remains as a local example of such a backend. It is not part of any deployment.
+- **Why the backend question is closed for now.** The commitment this ADR made was to the schema, and that
+  commitment stands: the events are still OpenLineage `RunEvent`s at spec 2-0-2. The backend was always named
+  the disposable half. The first reason to question it, Marquez's maintenance status, has not improved since
+  the verification above: the last release is still 0.50.0 (2024-10-24) and the last commit is still
+  2026-04-12 (checked 2026-11-19). The second reason is new: a backend with no authorization model cannot
+  serve a tenant-scoped surface, and the in-app store can, because it is an ordinary tenant-owned resource.
+- **What the store does not replace.** Retention is 14 days (`AshEnterprise.Lineage.Retention`); the lineage
+  view is an operational one, and the audit log stays the permanent record. A deployment that wants a longer
+  graph, or a graph across applications, sets `:http_base_url` to a backend of its choice. DataHub accepts
+  the events unchanged, as the Reversal section says; Marquez does too.
+- **The two rules above still bind.** No value, actor or tenant appears in an event. The tenant a run belongs
+  to comes from the transport's host metadata, never from the event, and it is never sent to a forwarded
+  backend. A forwarded backend with no authentication stays internal-network only.
+
+Reversal is unchanged in kind. Removing the forwarder is setting `:http_base_url` to nothing, which is already
+the default; removing the store is the deletion described in the 2026-10-21 note.

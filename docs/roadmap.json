@@ -624,7 +624,7 @@
       "id": "lineage",
       "title": "Lineage and provenance",
       "priority": 1,
-      "choice": "OpenLineage + Marquez",
+      "choice": "OpenLineage, kept in-app; a backend is optional",
       "adr": "0012",
       "status": "partial",
       "effort": "Emitter shipped as ash_open_lineage (github.com/lukegalea/ash_open_lineage): Spark `lineage` extension + notifier on the platform base resource, spec 2-0-2 fixture conformance, red-green leak test, live verification against a local Marquez (tap runs input→output, failing taps emit FAIL). Deviations from this entry's wording, recorded: runIds are per-(correlation, job) — sha256(correlation/namespace/job) — because one correlation spans many jobs and a shared runId collapses them in consumers; the raw correlation id rides the producer facet so the audit↔lineage lookup still holds. Known gaps: ingestion Job events can be lost on VM shutdown (async transport), no tap→land parent link yet, and the ingestion job's dataset names do not yet join the notifier's table datasets.",

@@ -165,6 +165,16 @@ keeps an action for the engines alone: the rows they write as their own record. 
 far an existing path reaches, a person's grants are what they were, and an action that declares none of them is
 authorized as before.
 
+## Amendment, 2026-11-19 — an explanation is a read
+
+*Proposed.* [ADR 0078](../adr/0078-values-explain-themselves.md) lets any readable value explain where it came
+from. Thesis 3 makes an inaccessible row invisible; an explanation crosses rows, so the thesis now says what it
+shows. Each hop is a read as the reader, through the same union of grants. A value on a row the reader cannot read
+is not found. An antecedent they cannot read appears as a gap with no identifier, never as a missing step and never
+as data. A secured column is not explained from the audit log and not explained through, and a hidden value is
+masked, never empty. Nothing here is a deny rule: a gap is how a union that does not reach a row looks from one it
+does.
+
 ## Further reading
 
 - `lib/ash_enterprise/security/` — the checks
