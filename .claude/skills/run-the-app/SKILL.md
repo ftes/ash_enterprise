@@ -65,6 +65,20 @@ devenv shell -- mix ash.codegen --check   # schema drift gate
 devenv shell -- reset-db
 ```
 
+## The baseline tour
+
+```bash
+CLINIC_DEMO_DIR=/path/to/clinic-demo devenv shell -- scripts/baseline-tour.sh
+```
+
+Walks the demo surfaces that exist today on a loopback instance with its own database and
+port, and stops at the first broken step: the explorer opened from the import batch's
+correlation id, the canvas's record capabilities and their consequence classes, a stale
+planning candidate refused, and the clinic's labelled simulation run and four-eyes apply.
+It also checks that MiniZinc and `prlimit` are on `PATH`; `TOUR_MINIZINC=report` prints
+their absence and carries on for a host that has none yet. The header of the script lists
+its environment (`TOUR_PORT`, `TOUR_DB`, `TOUR_KEEP`).
+
 ## The agent console needs a key
 
 `/agent` interprets natural language with an LLM. Without `ANTHROPIC_API_KEY` (or
