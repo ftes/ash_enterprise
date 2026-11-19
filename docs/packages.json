@@ -113,14 +113,14 @@
       "module": "AshSignatures",
       "repo": "https://github.com/lukegalea/ash_signatures",
       "purpose": "Signature requests: Spark fragments for a request over hashed document versions, its signers, an append-only event log and one completion record, with providers behind one asynchronous behaviour. The host supplies the base resource, data layer, tenancy, policies and every decision.",
-      "used_for": "Nothing yet. The first planned use is the soc2 pack's policy acknowledgement.",
+      "used_for": "AshEnterprise.Signatures instantiates all five fragments on the platform base for the soc2 pack's policy acknowledgement: a signer is a user of the organization who acts only on their own row, their personal fields are sealed under their erasure scope, and each completion records the tenant's audit chain head.",
       "adr": "0074",
       "declared": "direct",
       "only": null,
-      "ref": "a854b7281726cd4b157770518243ff5b42aa26d5",
+      "ref": "d1ee0ee5fff8fab8bfae6e43a6216abc5178db7f",
       "version": "0.1.0",
       "stated_status": null,
-      "maturity": "declared-not-used-here",
+      "maturity": "used-and-tested-here",
       "battery": false,
       "distribution": "git only",
       "builds_on": [
@@ -131,7 +131,7 @@
       ],
       "hex_name": "free (checked on hex.pm 2026-11-17).",
       "hex_path": "No git dependencies of its own.",
-      "carry": "Nothing until a resource here instantiates a fragment; from then on, a fragment change upstream is a host migration here."
+      "carry": "Five resources here instantiate its fragments, so a fragment change upstream is a host migration here, generated with mix ash.codegen."
     },
     {
       "name": "ash_agent_tools",

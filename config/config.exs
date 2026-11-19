@@ -581,7 +581,8 @@ config :ash_enterprise,
     AshEnterprise.Quality,
     AshEnterprise.Planning,
     AshEnterprise.Flags,
-    AshEnterprise.Exports
+    AshEnterprise.Exports,
+    AshEnterprise.Signatures
   ],
   base_resources: [AshEnterprise.Platform.Resource]
 

@@ -35,6 +35,7 @@ defmodule AshEnterprise.Channels.ParityTest do
   alias AshEnterprise.Credentialing.Credential
   alias AshEnterprise.Execution.{AgentVersion, Intervention, ReleaseManifest, StartProcess}
   alias AshEnterprise.Security.UserRole
+  alias AshEnterprise.Signatures.{Request, Signer}
   alias AshEnterprise.Surfaces
 
   # Web acts no registry surface offers: a LiveView's own button, checked against its
@@ -77,7 +78,12 @@ defmodule AshEnterprise.Channels.ParityTest do
         "is deactivated",
     {Offboarding, :revoke_credentials} =>
       "a step of the offboarding pack's process, run by its service task when a person " <>
-        "is deactivated"
+        "is deactivated",
+    {Request, :send} =>
+      "the host process's write that opens a signature request (ADR 0074); a person's part " <>
+        "is acting on their own signer row",
+    {Signer, :remind} =>
+      "the reminder schedule's write, machinery-only; no person reminds a signer"
   }
 
   # Acts a person should reach on both channels and does not yet, each with what is

@@ -37,6 +37,12 @@
 #   - AshEnterprise.Planning.Run: :encrypted_result_payload — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
 #   - AshEnterprise.Planning.Candidate: :encrypted_assignments — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
 #   - AshEnterprise.Planning.CheckResult: :encrypted_violation_details — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
+#   - AshEnterprise.Signatures.Signer: :encrypted_email — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
+#   - AshEnterprise.Signatures.Signer: :encrypted_name — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
+#   - AshEnterprise.Signatures.SignerEvent: :encrypted_ip_address — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
+#   - AshEnterprise.Signatures.SignerEvent: :encrypted_reason — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
+#   - AshEnterprise.Signatures.SignerEvent: :encrypted_user_agent — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
+#   - AshEnterprise.Signatures.Completion: :record — the completion record names the request, its documents and signers by id and holds hashes, roles, statuses and times; no personal field is in it (ash_signatures rule 6), and its record_hash must still verify
 # Large objects are not copied: this config sets `no-blobs`, so their content
 # stays out of the dump and only their metadata (oid, owner) is restored.
 # greenmask's transformers target table data and could not transform them.
@@ -284,5 +290,14 @@ dump:
       schema: "public"
       transformers: []
     - name: "planning_check_results"
+      schema: "public"
+      transformers: []
+    - name: "signature_signers"
+      schema: "public"
+      transformers: []
+    - name: "signature_signer_events"
+      schema: "public"
+      transformers: []
+    - name: "signature_completions"
       schema: "public"
       transformers: []

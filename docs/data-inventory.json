@@ -2,14 +2,14 @@
   "format": "ash_enterprise.data_inventory/1",
   "note": "Generated from the resource declarations by `mix ash_enterprise.data_inventory`; do not edit. It describes the code, names no data steward, and attests nothing about a running deployment.",
   "summary": {
-    "resources": 182,
+    "resources": 187,
     "global_tables": 45,
     "egress_paths": 17,
-    "tenant_scoped": 104,
+    "tenant_scoped": 109,
     "unclassified_personal_attributes": 0,
-    "with_sealed_attributes": 15,
+    "with_sealed_attributes": 17,
     "with_secured_attributes": 1,
-    "with_sensitive_attributes": 34
+    "with_sensitive_attributes": 36
   },
   "resources": [
     {
@@ -3508,6 +3508,142 @@
       "sensitive_attributes": [],
       "sealed_attributes": [],
       "personal_looking_attributes": [],
+      "secured_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Signatures.Completion",
+      "domain": "AshEnterprise.Signatures",
+      "data_layer": "AshPostgres.DataLayer",
+      "table": "signature_completions",
+      "platform_resource": true,
+      "ownership": "organization_owned",
+      "tenancy": "attribute",
+      "tenant_option": true,
+      "audit": true,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [],
+      "sealed_attributes": [],
+      "personal_looking_attributes": [],
+      "secured_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Signatures.Request",
+      "domain": "AshEnterprise.Signatures",
+      "data_layer": "AshPostgres.DataLayer",
+      "table": "signature_requests",
+      "platform_resource": true,
+      "ownership": "organization_owned",
+      "tenancy": "attribute",
+      "tenant_option": true,
+      "audit": true,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [],
+      "sealed_attributes": [],
+      "personal_looking_attributes": [],
+      "secured_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Signatures.RequestDocument",
+      "domain": "AshEnterprise.Signatures",
+      "data_layer": "AshPostgres.DataLayer",
+      "table": "signature_request_documents",
+      "platform_resource": true,
+      "ownership": "organization_owned",
+      "tenancy": "attribute",
+      "tenant_option": true,
+      "audit": true,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [],
+      "sealed_attributes": [],
+      "personal_looking_attributes": [],
+      "secured_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Signatures.Signer",
+      "domain": "AshEnterprise.Signatures",
+      "data_layer": "AshPostgres.DataLayer",
+      "table": "signature_signers",
+      "platform_resource": true,
+      "ownership": "organization_owned",
+      "tenancy": "attribute",
+      "tenant_option": true,
+      "audit": true,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [
+        "encrypted_email",
+        "encrypted_name"
+      ],
+      "sealed_attributes": [
+        {
+          "attribute": "encrypted_email",
+          "sealing": "erasure_scope"
+        },
+        {
+          "attribute": "encrypted_name",
+          "sealing": "erasure_scope"
+        }
+      ],
+      "personal_looking_attributes": [
+        {
+          "attribute": "encrypted_email",
+          "class": "sensitive",
+          "reason": null
+        }
+      ],
+      "secured_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Signatures.SignerEvent",
+      "domain": "AshEnterprise.Signatures",
+      "data_layer": "AshPostgres.DataLayer",
+      "table": "signature_signer_events",
+      "platform_resource": true,
+      "ownership": "organization_owned",
+      "tenancy": "attribute",
+      "tenant_option": true,
+      "audit": true,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [
+        "encrypted_ip_address",
+        "encrypted_reason",
+        "encrypted_user_agent"
+      ],
+      "sealed_attributes": [
+        {
+          "attribute": "encrypted_ip_address",
+          "sealing": "erasure_scope"
+        },
+        {
+          "attribute": "encrypted_reason",
+          "sealing": "erasure_scope"
+        },
+        {
+          "attribute": "encrypted_user_agent",
+          "sealing": "erasure_scope"
+        }
+      ],
+      "personal_looking_attributes": [
+        {
+          "attribute": "encrypted_ip_address",
+          "class": "sensitive",
+          "reason": null
+        }
+      ],
       "secured_attributes": []
     },
     {
