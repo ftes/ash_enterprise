@@ -1,6 +1,6 @@
 ---
 name: ash-discipline
-description: "Use when writing or reviewing ANY Elixir code that touches Ash resources — domain code, workers, projectors, mix tasks, generated code, or tests. Enforces the anti-raw-SQL rule, code-interface discipline, actor/tenant conventions, and the Ash action lifecycle. Non-negotiable project standard distilled from ScribbleVet production conventions and official Ash 3.x guides."
+description: "Use when writing or reviewing ANY Elixir code that touches Ash resources — domain code, workers, projectors, mix tasks, generated code, or tests. Enforces the anti-raw-SQL rule, code-interface discipline, actor/tenant conventions, and the Ash action lifecycle. Non-negotiable project standard distilled from production conventions and official Ash 3.x guides."
 ---
 
 # Ash discipline: the enforced standard
@@ -85,5 +85,5 @@ rendered output compiles against the HOST's aliases (an unqualified `Repo.` in a
 rendered template is a shipped runtime bug), and that every raw-SQL line in the
 template carries its justification.
 
-Sources: `/home/lukegalea/ScribbleVet/api` production conventions (.clawish/CONVENTIONS.md),
+Sources: a production Ash application's conventions,
 Ash 3.x guides (actions, code-interfaces, policies, multitenancy, testing).

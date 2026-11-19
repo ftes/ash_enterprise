@@ -21,7 +21,7 @@ machinery: a `Checkpoint` resource (`last_seen_event_id` per projector), a
 `DeadLetter` queue with replay, gap detection for ordering hazards, a
 `NotifyProjectors` commit-broadcast fast path with checkpoint drain as the
 recovery net, and blue/green rebuild. The projections engine runs four
-projectors in ScribbleVet production over a shared `ash_events` log.
+projectors in a production host app over a shared `ash_events` log.
 
 Two engines now solve the same problem: consume a committed event stream
 durably, exactly-once-effectively, with recovery. The design dialogue of
