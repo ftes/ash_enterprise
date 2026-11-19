@@ -6,7 +6,8 @@ defmodule AshEnterprise.Security.Changes.KeepHiddenSecuredFields do
   A form is filled from the record as its reader reads it, so a secured column the reader
   has no grant for (`AshEnterprise.Platform.Resource`'s `secured_fields`, ADR 0073) arrives
   in the form as what stood in for it: `nil` on a JSON wire, an empty field, or, where a
-  surface serializes a struct it does not know by inspecting it (`ash_a2ui` does), the
+  surface serializes a struct it does not know by inspecting it (`ash_a2ui` did before
+  `a40499c`), the
   inspected `%Ash.ForbiddenField{}`. Submitting that form unchanged would write the
   stand-in over the stored value. So for each secured column an update changes, when the
   writer does not see the column on this row and the new value is one of those stand-ins,

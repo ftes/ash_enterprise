@@ -94,7 +94,7 @@ const ashCatalog = createAshA2uiCatalog({
 })
 
 // The experience layer's semantic admin catalog (entityPage, dataGrid,
-// recordPanel, ...) registers under its OWN catalog id (admin contract 3.0.0,
+// recordPanel, ...) registers under its OWN catalog id (admin contract 3.6.0,
 // `catalog.id`; AshA2ui.Experience.admin_catalog_id/0 on the server), so it
 // sits alongside the merged catalog rather than shadowing it: the processor
 // resolves `catalogs.find(c => c.id === catalogId)`, basic-catalog surfaces

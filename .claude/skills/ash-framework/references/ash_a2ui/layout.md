@@ -268,6 +268,233 @@ topics for the full contracts.
   `steps` with `pairs`, a badge (`badge_text`, `badge_tones`,
   `badge_help`), `link`, `links`, `link_url` or `source` does not compile.
 
+## Review fields (`review`)
+
+- A detail value filled in automatically (read from a document by a person
+  or a model, imported, inferred) can say so: `review` names a public
+  attribute or calculation of the same resource holding the field's review.
+
+  ```elixir
+  # on MyApp.Agreement: how the fee was filled in
+  calculate :fee_review, :map, {MyApp.Agreement.FieldReview, field: :fee} do
+    public? true
+  end
+
+  # %{state: :pending, page: 3, href: "/files/9#page=3",
+  #   quote: "Annual fee: $14,400"}
+
+  field :fee do
+    review :fee_review
+  end
+  ```
+
+- A review: `state`, one of `pending` (filled in automatically, nobody has
+  checked it yet), `reviewed` (a person checked it) or `missing` (looked for
+  and not found), and an optional citation: `page` (a positive integer),
+  `href` (an address that opens the source there) and `quote` (the words
+  the value was read from). Keys and the state may be atoms or strings.
+- Bad values never fail the page: `nil`, a value that is not a map, or a
+  map without a known state is no review (the field draws as it would
+  without one); a page that is not a positive integer, and a blank or
+  non-text `href` or `quote`, are left out.
+- The detail data carries the normalized review at `_review_<field>`:
+  `{state, stateLabel, page?, pageLabel?, href?, quote?}`, where
+  `stateLabel` is the state in words ("Not reviewed", "Reviewed", "Not found
+  in the document") and `pageLabel` the page tag ("p. 3"), both library
+  strings, translated. `nil` when the field has none.
+- Admin catalog 3.1: the `fieldDisplay` binds it as `review`; the stock
+  renderer highlights a pending value and writes the state out as a badge
+  beside the page tag, a link when there is an `href`, with the quote as
+  its tooltip. The basic catalog draws the value alone.
+- Admin catalog 3.3: a table drawing a review field carries each row's
+  review at the same `_review_<field>` key (`nil` for a row with none), and
+  the `dataGrid` column binds it as `review` (`{path: "_review_<field>"}`,
+  row-relative). A field folded into another column as its `subtitle`
+  rides on that column's subtitle as `reviewPath`. Row layout fields
+  (`title`, `trailing`, `expand`, ...) are columns, so they carry it too.
+  The stock renderer draws it in the cell as on a detail card. The review
+  is computed per row, so its `href` can point at that row's source:
+
+  ```elixir
+  # on MyApp.AgreementLine: how this line's price was filled in
+  calculate :price_review, :map, {MyApp.AgreementLine.FieldReview, field: :price} do
+    public? true
+  end
+
+  component :table, :lines do
+    resource MyApp.AgreementLine
+    fields [:service, :period, :price]
+    column :service, do: subtitle(:period)   # the period's review: reviewPath
+  end
+
+  field :price, do: review(:price_review)
+  field :period, do: review(:period_review)
+  ```
+
+- `review` naming anything but a public attribute, calculation or aggregate
+  of the resource does not compile, and neither does a review field drawn
+  in a table whose resource lacks the named field. Whether a person may
+  mark a value reviewed is the host's action and policy, not this option.
+
+## Field actions (`field_action`)
+
+- A button beside one detail value, running an update action on the
+  card's record for that field (mark this value reviewed, flag it, ask
+  about it). `field_action` names the update action; it must declare a
+  `:field` argument, which receives the field's name as a string.
+  `field_action_visible` names a boolean attribute or calculation saying
+  per record whether the button is offered (omit it to always offer it).
+
+  ```elixir
+  # on MyApp.Agreement
+  update :review_field do
+    argument :field, :atom, allow_nil?: false, constraints: [one_of: [:fee, :term]]
+    change MyApp.Agreement.RecordFieldReview
+  end
+
+  calculate :fee_reviewable, :boolean, MyApp.Agreement.FieldReviewable do
+    public? true
+  end
+
+  # on the surface
+  field :fee do
+    review :fee_review
+    field_action :review_field
+    field_action_visible :fee_reviewable
+  end
+
+  action :review_field do
+    label "Mark as reviewed"
+    icon "check"
+    refreshes []
+  end
+  ```
+
+- The `action` entity of the same name gives the button its `label`, an
+  optional `icon` (a renderer may draw the button as that icon, the label
+  becoming its accessible name and tooltip) and the tables it `refreshes`
+  (every table when omitted; `[]` for none). Its `visible_when` gates row
+  actions only: a field action's gate is `field_action_visible`.
+- Admin catalog 3.2: the `fieldDisplay` carries `action` (`{label, action:
+  "field_action", context, icon?}`, the rowActions entry shape) and
+  `actionVisible` (`/detail/<context>/_action_<field>`). The detail data
+  carries `_action_<field>` (true or false) for every field action. The
+  basic catalog and tables draw no button.
+- The `field_action` ashAction sends the card and the field, never the
+  action: the server finds the action in the field's declaration, re-reads
+  the record through the card's context as the actor, refuses it unless
+  `field_action_visible` holds, runs the update as the actor and re-sends
+  the card's record (`/detail/<context>`). Authorization is the action's
+  own policies.
+- A `field_action` that is not an update action of the card's record, one
+  without a `:field` argument, or a `field_action_visible` that is not a
+  public field of that record does not compile.
+
+## Record pages (`page_header`, `section_nav`, `lead`, `alert`)
+
+- A surface that is a whole record page declares the page around its
+  sections too, so the host writes no header, banner or nav of its own
+  (admin catalog 3.5). Everything reads the record selected into a
+  context, by field name:
+
+  ```elixir
+  page_header do
+    context :order
+    title :name
+    crumb "Orders", href: "/orders", page: :back   # /page/back replaces href
+
+    tag :status_text do
+      tone :status_tone          # info success warning danger neutral pending accent gray
+      help_field :status_help
+    end
+
+    meta :summary
+
+    header_action :approve do
+      run :approve               # an update action of the record, run with no input
+      visible :awaiting_approval?
+      variant :primary
+    end
+
+    header_action :invoice do
+      label "Open invoice"
+      href :invoice_url          # no address, no button
+    end
+  end
+
+  section_nav do
+    nav_item :details, label: "Overview", anchor: "overview"
+    nav_item :lines, label: "Items", anchor: "items"
+  end
+
+  component :detail, :on_hold do
+    context :order
+    lead true                    # full width under the header, beside no nav
+    visible :on_hold?
+
+    alert do
+      variant :warning
+      title "This order is on hold"
+      message :hold_note
+      link_href :hold_href       # "#items" goes to a section
+      link_label :hold_link
+    end
+  end
+  ```
+
+- Header items and buttons are words the host computes (a calculation per
+  value, translated by the host); the tag's `tone` is a field holding one
+  of the tone names. An empty value hides its item.
+- A `header_action` with `run` is offered while its `visible` field is
+  `true` and `Ash.can?/3` lets the person run it (`maybe_is: false`); the
+  record carries the result at `_header_action_<name>`. Choosing it sends
+  the `page_action` ashAction, which re-reads the record through the
+  context, re-checks both and runs the action as the person, then re-sends
+  `/detail/<context>`. A host that reloads its page afterwards catches that
+  message in its own `handle_event("a2ui:message", ...)`. A pinned (`as_of`)
+  surface offers none.
+- `/page` holds the host page's values: `build_surface(..., page: %{back:
+  url})`, or `page_fn: fn socket -> %{back: ...} end` on
+  `AshA2ui.LiveRenderer`, which pushes a change once the surface is built.
+- `nav_item` names the first component of a `section`; its section wrapper
+  (`section_<component>`) is the target. The nav scrolls a section to the
+  nav's line, outlines it for three seconds, marks the section in view, and
+  goes to `#<anchor>` from any link on the page or the address on arrival,
+  waiting for the section however long the surface takes.
+- `lead` is for `:detail` components outside any `section`; `visible` gates
+  lead components only. `alert` draws a `:detail` as an `alertBanner`; the
+  basic catalog draws it as a card with its title and message.
+- A review banner sums up a record's `review` fields with `review_summary`
+  on an alert (catalog 3.6): the count still waiting (`pending` or
+  `missing`) and a link to the first in declaration order, to its card's
+  section (the nav's anchor, else `#section_<component>`), or to
+  `fallback_href` once none waits. The alert's `message` stays the host's
+  words; the alert declares no link of its own.
+
+  ```elixir
+  component :detail, :to_review do
+    context :order
+    lead true
+    visible :to_review?
+
+    alert do
+      variant :warning
+      title "Check what was read"
+      message :review_note
+    end
+
+    review_summary do
+      link_label "Go to the first field to check"
+      fallback_href "#notes"
+      fallback_label "Go to notes"
+    end
+  end
+  ```
+
+- A header field, a nav entry that does not start a section, a `run` that is
+  not an update action, a button with both or neither of `run` and `href`,
+  or a lead component with a `section` does not compile.
+
 ## Table card headers (`heading`, `description`)
 
 - A table that sits in a card of its own on a record page takes a card
