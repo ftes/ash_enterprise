@@ -67,6 +67,12 @@ because they break a node running the previous release against the new schema:
 Everything else (indexes without `CONCURRENTLY`, foreign keys, missing timeouts, "robust statement" style) warns:
 Ash codegen produces those on every migration.
 
+**A table the migration itself creates.** When new tables reference one another, Ash codegen creates them and then
+alters them in the same migration, adding required columns and changing a column's type to attach a foreign key. A
+blocking finding inside an `ALTER TABLE` on a table that a plain `CREATE TABLE` earlier in the same migration made does
+not block: no node running the previous release reads a table that did not exist. `CREATE TABLE IF NOT EXISTS` does not
+count, because the table may already be there. The lint proves both sides on fixture migrations before the real run.
+
 **A deliberate contract step.** Removing something is the last step of expand/contract: ship the change that stops
 reading it, deploy, and only then drop it. Acknowledge that step in `priv/repo/migration-contract-steps.json`, one
 entry per version and rule, with the Plane ticket and a one-line reason. The entry is reviewed in the commit or PR
