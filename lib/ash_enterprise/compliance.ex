@@ -48,6 +48,21 @@ defmodule AshEnterprise.Compliance do
 
     resource AshEnterprise.Compliance.EventLog
 
+    resource AshEnterprise.Compliance.Policy do
+      define :publish_policy, action: :publish, args: [:policy_key, :title, :content]
+      define :current_policies, action: :current
+
+      define :current_policy do
+        action :current
+        get_by [:policy_key]
+        not_found_error? false
+      end
+
+      define :policy_versions, action: :versions_of, args: [:policy_key]
+      define :mint_policy, action: :mint
+      define :supersede_policy, action: :supersede
+    end
+
     # The projector engine's own bookkeeping. Listed for codegen and for the
     # DLQ/verify operations tasks; nothing outside the engine reads them.
     resource AshEvents.Projections.Checkpoint
