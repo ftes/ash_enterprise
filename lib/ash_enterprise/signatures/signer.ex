@@ -119,6 +119,10 @@ defmodule AshEnterprise.Signatures.Signer do
     change {AshEnterprise.Erasure.Changes.SealUnderScope,
             fields: AshSignatures.payload_fields(:signer)},
            on: [:create]
+
+    # A signed acknowledgement of policy versions is a compliance event (CC1.1, CC2.2,
+    # CC5.3), appended in the signing transaction. Acts only on `sign`.
+    change AshEnterprise.Compliance.Changes.RecordPolicyAcknowledgement, on: [:update]
   end
 
   attributes do

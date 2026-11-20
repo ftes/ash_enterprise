@@ -151,6 +151,10 @@ defmodule AshEnterprise.Compliance.Policy do
       description "Write the next version of a policy. Called by `:publish`."
       accept [:policy_key, :title, :version, :document_version_id, :sha256]
       change set_attribute(:published_at, &DateTime.utc_now/0)
+
+      # The people in scope are evaluated again for the policy criteria: a new version
+      # puts out whoever held only the old one (`Compliance.PolicyAcknowledgement`).
+      change AshEnterprise.Compliance.Changes.ReviewPolicyAcknowledgements
     end
 
     update :supersede do

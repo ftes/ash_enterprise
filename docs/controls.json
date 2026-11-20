@@ -170,8 +170,8 @@
       "frequency": "annual",
       "owner_role": "Executive Sponsor",
       "operating_process": "file:priv/packs/soc2/policy_review_acknowledgement.bpmn",
-      "test_ref": "file:test/ash_enterprise/compliance/soc2_pack_test.exs",
-      "rationale": "The adopting organization's code of conduct and its acknowledgement. Software here holds neither. The soc2 pack opens a review for it every year; a tenant publishes the recipe, a person attests, and nothing yet records the attestation as evidence."
+      "test_ref": "file:test/ash_enterprise/compliance/policy_acknowledgement_test.exs",
+      "rationale": "The code of conduct is the adopting organization's own text; it is published here as a policy (AshEnterprise.Compliance.Policy). Each person acknowledges the current version of every published policy by signing an acknowledgement request over those versions, and each acknowledgement and each newly published version is a compliance event. A finding per person is projected from those events (AshEnterprise.Compliance.PolicyAcknowledgementProjector): compliant while the person holds an acknowledgement of every current version, noncompliant once a newer version is current, unknown while they have acknowledged none. Closing the yearly review task records the reviewer's decision, not anyone's acknowledgement."
     },
     {
       "id": "CC1.2",
@@ -226,8 +226,8 @@
       "frequency": "annual",
       "owner_role": "Security Lead",
       "operating_process": "file:priv/packs/soc2/policy_review_acknowledgement.bpmn",
-      "test_ref": "file:test/ash_enterprise/compliance/soc2_pack_test.exs",
-      "rationale": "Internal communication of control duties is a policy and training process. None is defined here. The soc2 pack opens a review for it every year; a tenant publishes the recipe, a person attests, and nothing yet records the attestation as evidence."
+      "test_ref": "file:test/ash_enterprise/compliance/policy_acknowledgement_test.exs",
+      "rationale": "Internal communication of control duties is a policy and training process. The policies that state those duties are published here (AshEnterprise.Compliance.Policy); training is not recorded. Each person acknowledges the current version of every published policy by signing an acknowledgement request over those versions, and each acknowledgement and each newly published version is a compliance event. A finding per person is projected from those events (AshEnterprise.Compliance.PolicyAcknowledgementProjector): compliant while the person holds an acknowledgement of every current version, noncompliant once a newer version is current, unknown while they have acknowledged none. Closing the yearly review task records the reviewer's decision, not anyone's acknowledgement."
     },
     {
       "id": "CC2.3",
@@ -322,8 +322,8 @@
       "frequency": "annual",
       "owner_role": "Security Lead",
       "operating_process": "file:priv/packs/soc2/policy_review_acknowledgement.bpmn",
-      "test_ref": "file:test/ash_enterprise/compliance/soc2_pack_test.exs",
-      "rationale": "Policies and procedures, and the record that people read them, are outside the platform. The platform has nothing that publishes or acknowledges a policy. The soc2 pack opens a review for it every year; a tenant publishes the recipe, a person attests, and nothing yet records the attestation as evidence."
+      "test_ref": "file:test/ash_enterprise/compliance/policy_acknowledgement_test.exs",
+      "rationale": "The policies and procedures are the adopting organization's; each version is published here as an evidence document (AshEnterprise.Compliance.Policy). Each person acknowledges the current version of every published policy by signing an acknowledgement request over those versions, and each acknowledgement and each newly published version is a compliance event. A finding per person is projected from those events (AshEnterprise.Compliance.PolicyAcknowledgementProjector): compliant while the person holds an acknowledgement of every current version, noncompliant once a newer version is current, unknown while they have acknowledged none. Closing the yearly review task records the reviewer's decision, not anyone's acknowledgement."
     },
     {
       "id": "CC6.1",

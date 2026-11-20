@@ -227,7 +227,11 @@ config :ash_compliance,
   # The drain-nudge worker fans out to these (the recovery net for a missed
   # PubSub wake). The projector engine has its own list below — same module,
   # two keys, because the two packages ask their own config for it.
-  projectors: [AshEnterprise.Compliance.Projector, AshEnterprise.Mdm.QualityProjector],
+  projectors: [
+    AshEnterprise.Compliance.Projector,
+    AshEnterprise.Mdm.QualityProjector,
+    AshEnterprise.Compliance.PolicyAcknowledgementProjector
+  ],
   # Where evidence older than the hot window lives (`AshEnterprise.Audit.Retention`).
   # Every read of evidence for a period (the freshness sweep, the audit package) takes
   # the hot table and this archive together.
@@ -243,7 +247,11 @@ config :ash_events_projections,
   pubsub: AshEnterprise.PubSub,
   event_log: AshEnterprise.Compliance.EventLog,
   event_table: "compliance_events",
-  projectors: [AshEnterprise.Compliance.Projector, AshEnterprise.Mdm.QualityProjector],
+  projectors: [
+    AshEnterprise.Compliance.Projector,
+    AshEnterprise.Mdm.QualityProjector,
+    AshEnterprise.Compliance.PolicyAcknowledgementProjector
+  ],
   start_projectors?: true,
   start_probe?: true
 

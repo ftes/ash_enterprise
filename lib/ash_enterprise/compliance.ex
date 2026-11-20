@@ -14,6 +14,11 @@ defmodule AshEnterprise.Compliance do
   * `AshEnterprise.Compliance.KycRules` — the KYC rule set (`use AshRules`),
     compiled to revisions through `AshEnterprise.Compliance.Seeds`.
   * `AshEnterprise.Compliance.Projector` — the finding projector.
+  * `AshEnterprise.Compliance.PolicyAcknowledgement` — a person's acknowledgement of the
+    current policies as compliance events, which
+    `AshEnterprise.Compliance.PolicyAcknowledgementProjector` folds into findings for
+    CC1.1, CC2.2 and CC5.3 under its own rules
+    (`AshEnterprise.Compliance.PolicyAcknowledgementRules`), not the KYC bundle.
 
   The `ash_compliance` resources themselves (catalogs, profiles, bundles,
   findings, evaluations, evidence) are listed in this domain unchanged: they
