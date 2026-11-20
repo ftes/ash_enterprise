@@ -72,6 +72,12 @@ policy passes, and a filter a client supplied (`Ash.Query.filter_input/2`) rewri
    column sends back `nil`, a blank or that inspected text (`Security.Changes.KeepHiddenSecuredFields`). `String.Chars`
    is not implemented, so code that builds a key or a request from a hidden value fails instead of using a mask.
 
+   > **2026-11-20.** An A2UI surface no longer shows the inspected struct. Since `ash_a2ui` 2f9a924 it sends a hidden
+   > value as `null`, as the JSON wire does, so a cell, a card or a form field there shows it empty, not masked
+   > (`AshEnterpriseWeb.HiddenField`). Pages still show the masked text. Until `ash_a2ui` renders a hidden value as
+   > masked, a surface over a secured resource does not title its rows by a secured column: the credentialing
+   > workspace titles a credential by its clinician.
+
 
 The first secured column is `Credentialing.Credential.number`. The coordinator who records numbers holds it through a
 role of its own; the credentialing committee reviews an activation without it.
