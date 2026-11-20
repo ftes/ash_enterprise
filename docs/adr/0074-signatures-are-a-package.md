@@ -1,6 +1,6 @@
 # ADR 0074 — Signatures are a package (`ash_signatures`): a request over hashed document versions, signed in-platform, with providers behind one asynchronous seam
 
-- **Status:** accepted (2026-11-16); package built 2026-11-17, not yet instantiated here
+- **Status:** accepted (2026-11-16); package built 2026-11-17; second use instantiated here 2026-11-20 (`AshEnterprise.Signatures`: the five resources, the policy review's fan-out and reminders, controls projected from acknowledgements, version 2 asking everyone again)
 - **Date:** 2026-11-16
 - **Related:** [ADR 0020](0020-tamper-evident-audit-log.md) (tamper-evident audit),
   [0024](0024-audit-retention-and-erasure.md) (crypto-shredding),
@@ -94,8 +94,10 @@ Checked against the code on 2026-11-16 by reading it. The package's first pull r
 ([lukegalea/ash_signatures#1](https://github.com/lukegalea/ash_signatures/pull/1)) checks the package's rows in
 `test/ash_signatures/gap_map_test.exs`: the source hash copied from the version, the link from draft to signed
 version, the states, the fields marked for sealing, the append-only event log and the provider behaviour. The host
-rows (the audit chain, governed invocations and sealing) stay unverified until this repository instantiates the
-fragments (ADR 0070 section 3).
+rows (the audit chain, governed invocations and sealing) were unverified until this repository instantiated the
+fragments (ADR 0070 section 3). It did on 2026-11-20, and `test/ash_enterprise/signatures/` now calls each of
+them: sealing and the erase test in `signatures_test.exs`, and a version 2 policy asking a person again, with
+their version 1 acknowledgement kept, in `policy_reacknowledgement_test.exs`.
 
 | Part | Expressible | Needs a host swap | Missing upstream | Evidence |
 |---|---|---|---|---|
