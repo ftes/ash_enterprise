@@ -131,8 +131,13 @@ record, on the source.**
 5. **Writes are a named source action, run as the viewer.**
    - A façade's writes are **generic actions**. Each evaluates the put direction of the lenses it touches (tier 1
      and tier 2) in the BEAM, and turns the result into input for one **named action** of the row source, run with
-     the caller's actor, tenant and `as_of`. The source's action, its validations, its guards and its policies
-     decide; the façade adds no update branch to the base resource and no permission of its own.
+     the caller's actor and tenant. The source's action, its validations, its guards and its policies decide; the
+     façade adds no update branch to the base resource and no permission of its own.
+   - **A write with `as_of` is refused.** A write through a façade is a write through a policy-sensitive surface,
+     and ADR 0049 (invariant 7) allows no as-of write there until Ash reloads the actor at the write's instant: the
+     source's policies would judge a back-dated change with the actor's current attributes. So a façade write takes
+     effect now, over a temporal source as over any other, and a write that carries `as_of` is refused before any
+     source action runs. It is never forwarded and never dropped. Reads keep `as_of` (decision 3).
    - **Routes are declared, then checked.** A façade declares which source action carries each writable value: by
      value (a decoded state that one action sets, such as finished through `:complete`) or by acceptance (an
      attribute an action accepts). The verifier checks each route against the action: a by-value route's action
