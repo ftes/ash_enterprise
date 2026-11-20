@@ -54,6 +54,19 @@ msgstr ""
 msgid "Accounts & syncs"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Acknowledge"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Acknowledged on"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgid "Acknowledgements"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/audit_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/lineage_ui.ex:1
 msgid "Action"
@@ -143,6 +156,10 @@ msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Agent start grant"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Agreed on"
 msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
@@ -289,6 +306,11 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/credential_ui.ex:1
 msgid "Ask to activate"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgid "Asked on"
 msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
@@ -564,6 +586,12 @@ msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Change password"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:status"
+msgid "Changes requested"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/planning_ui.ex:1
@@ -868,6 +896,20 @@ msgstr ""
 #: lib/ash_enterprise/canvas/registry.ex:2
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:670
 msgid "Decisions"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Decline"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Decline: why you are not acknowledging"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:status"
+msgid "Declined"
 msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
@@ -1284,6 +1326,10 @@ msgstr ""
 msgid "Findings"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Fingerprint of what you were shown"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
 msgid "Finished"
 msgstr ""
@@ -1430,6 +1476,10 @@ msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Human task"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "I agree"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/mdm_golden_ui.ex:1
@@ -1973,6 +2023,12 @@ msgstr ""
 msgid "Nothing awaits a verdict"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:status"
+msgid "Notified"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/credential_ui.ex:1
 msgid "Number"
 msgstr ""
@@ -2043,6 +2099,10 @@ msgstr ""
 msgid "Open gaps"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Open the documents"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/mdm_batch_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:151
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:282
@@ -2052,6 +2112,10 @@ msgstr ""
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:151
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:282
 msgid "Opened by"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Opened on"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/planning_ui.ex:1
@@ -2161,8 +2225,10 @@ msgctxt "one_of:state"
 msgid "Pending"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/credential_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/mdm_golden_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
 msgctxt "one_of:status"
 msgid "Pending"
 msgstr ""
@@ -2203,6 +2269,14 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/planning_ui.ex:1
 msgid "Planning review"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Policies"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgid "Policies to acknowledge"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/policy_bundle_ui.ex:1
@@ -2357,6 +2431,7 @@ msgstr ""
 msgid "Reads"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:151
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:282
 msgid "Reason"
@@ -2506,12 +2581,20 @@ msgstr ""
 msgid "Reproject"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Request"
+msgstr ""
+
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Request assignment"
 msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Request classifier"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "Request detail"
 msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
@@ -2836,6 +2919,11 @@ msgctxt "select_context"
 msgid "Select person"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgctxt "select_context"
+msgid "Select request"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/lineage_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/planning_ui.ex:1
 msgctxt "select_context"
@@ -2949,6 +3037,12 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/deliveries_ui.ex:1
 msgid "Signature"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:status"
+msgid "Signed"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:557
@@ -3220,6 +3314,10 @@ msgctxt "one_of:status"
 msgid "Tentative"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "The documents"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/judgments/verdicts_ui.ex:1
 msgid "The model"
 msgstr ""
@@ -3415,6 +3513,12 @@ msgstr ""
 msgid "Version"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:status"
+msgid "Viewed"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/action_items_ui.ex:1
 msgid "Waiting"
 msgstr ""
@@ -3457,6 +3561,10 @@ msgstr ""
 msgid "What the model judged"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "What you agree to"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/audit_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:136
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:263
@@ -3469,6 +3577,7 @@ msgstr ""
 msgid "Where"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/action_items_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:670
@@ -3505,6 +3614,12 @@ msgstr ""
 msgid "With"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:status"
+msgid "Withdrawn"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/planning_ui.ex:1
 msgid "World"
 msgstr ""
@@ -3524,6 +3639,10 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/judgments/verdicts_ui.ex:1
 msgid "Your verdict, recorded as a calibration label"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
+msgid "acknowledgement"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/action_items_ui.ex:1

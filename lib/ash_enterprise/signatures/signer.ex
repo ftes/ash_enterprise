@@ -50,7 +50,18 @@ defmodule AshEnterprise.Signatures.Signer do
     machinery_only: [:add, :remind, :notify, :withdraw],
     extra_grants: [
       {AshEnterprise.Signatures.Checks.SignerReach,
-       via: :signer, actions: [:read, :view, :consent, :sign, :decline, :request_changes]}
+       via: :signer,
+       actions: [
+         :read,
+         :mine,
+         :awaiting_me,
+         :naming_version,
+         :view,
+         :consent,
+         :sign,
+         :decline,
+         :request_changes
+       ]}
     ],
     extra_extensions: [AshCloak, AshAgent.Effects],
     fragments: [AshSignatures.Signer]
@@ -88,6 +99,29 @@ defmodule AshEnterprise.Signatures.Signer do
   end
 
   actions do
+    read :mine do
+      description "The person's own signer rows, newest first: every request they were asked on."
+      filter expr(user_id == ^actor(:id))
+      prepare build(sort: [inserted_at: :desc, id: :desc])
+    end
+
+    read :awaiting_me do
+      description "The person's own signer rows that are waiting on them: notified or viewed."
+      filter expr(user_id == ^actor(:id) and status in [:notified, :viewed])
+      prepare build(sort: [notified_at: :asc, id: :asc])
+    end
+
+    read :naming_version do
+      description "The person's own signer rows on requests that name one document version."
+
+      argument :source_version_id, :uuid, allow_nil?: false
+
+      filter expr(
+               user_id == ^actor(:id) and
+                 exists(request.documents, source_version_id == ^arg(:source_version_id))
+             )
+    end
+
     create :add_person do
       description "Adds a user of the organization as a signer of a draft request."
       accept [:request_id, :role, :order, :user_id]
@@ -151,6 +185,31 @@ defmodule AshEnterprise.Signatures.Signer do
   end
 
   calculations do
+    calculate :consent_given, :boolean, expr(not is_nil(consented_at)) do
+      public? true
+      description "Whether the person has agreed to acknowledge electronically."
+    end
+
+    calculate :policies_label,
+              :string,
+              {AshEnterprise.Signatures.Calculations.PolicyDocuments, kind: :titles} do
+      public? true
+      description "The documents the request names, by title and version."
+    end
+
+    calculate :documents_shown,
+              :string,
+              {AshEnterprise.Signatures.Calculations.PolicyDocuments, kind: :documents} do
+      public? true
+
+      description "What the person reads: each document's version, fingerprint and words. Shown once they open the request."
+    end
+
+    calculate :consent_wording, :string, AshEnterprise.Signatures.Calculations.ConsentWording do
+      public? true
+      description "What agreeing to acknowledge electronically means."
+    end
+
     calculate :recorded?, :boolean, expr(erasure_scope.status == :active) do
       public? true
 

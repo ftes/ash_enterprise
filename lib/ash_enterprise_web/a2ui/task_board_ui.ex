@@ -58,6 +58,21 @@ defmodule AshEnterpriseWeb.A2ui.TaskBoardUI do
       end
     end
 
+    # Policies the person has been asked to read and acknowledge (ADR 0074): their own
+    # signer rows, linked to, never copied. Each opens on Acknowledgements, where they are
+    # read, agreed to and acknowledged.
+    component :table, :acknowledgements do
+      resource AshEnterprise.Signatures.Signer
+      fields [:policies_label, :status, :notified_at]
+      read_action :awaiting_me
+
+      row_layout do
+        title :policies_label
+        meta [:status, :notified_at]
+        columns 3
+      end
+    end
+
     component :detail, :task_detail do
       context(:task)
 
@@ -104,6 +119,15 @@ defmodule AshEnterpriseWeb.A2ui.TaskBoardUI do
 
     field :name do
       label("Step")
+    end
+
+    field :policies_label do
+      label("Policies to acknowledge")
+      link({:acknowledgements, :id})
+    end
+
+    field :notified_at do
+      label("Asked on")
     end
 
     field :delegate_to_id do

@@ -639,6 +639,29 @@ defmodule AshEnterprise.Surfaces do
       context: :task,
       acp: %{command: "my tasks"}
     },
+    # ADR 0074: the policies a person has been asked to read and acknowledge, their own
+    # signer rows. Linked from My tasks, where the ones waiting on them are listed.
+    %Surface{
+      key: :acknowledgements,
+      audience: [:member, :reviewer],
+      label: dgettext_noop("default", "Acknowledgements"),
+      blurb:
+        dgettext_noop(
+          "default",
+          "The policies you have been asked to read and acknowledge, and the ones you already have."
+        ),
+      group: :processes,
+      order: 1,
+      icon: "hero-document-check",
+      path: "/app/acknowledgements",
+      ui: A2ui.AcknowledgementUI,
+      resource: AshEnterprise.Signatures.Signer,
+      context: :request,
+      acp: %{
+        command: "acknowledgements",
+        description: "The policies you were asked to acknowledge"
+      }
+    },
     # Stalled reviews (AGT-61): the view the assistant's `stalled_reviews` tool puts
     # in an answer, reached without chat. No `context`: tasks open in detail on
     # Approvals and My tasks, never here.

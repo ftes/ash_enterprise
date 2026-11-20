@@ -48,6 +48,7 @@ defmodule AshEnterprise.Signatures do
       define :add_signer, action: :add_person
       define :get_signer, action: :read, get_by: [:id]
       define :list_signers, action: :read
+      define :list_my_signers_naming_version, action: :naming_version, args: [:source_version_id]
       define :view_signature_request, action: :view
       define :consent_to_sign, action: :consent
       define :sign_signature_request, action: :sign

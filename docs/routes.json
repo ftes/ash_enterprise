@@ -49,6 +49,20 @@
     {
       "action": null,
       "kind": "live",
+      "module": "AshEnterpriseWeb.SurfaceLive.Acknowledgements",
+      "path": "/app/acknowledgements",
+      "verb": "GET"
+    },
+    {
+      "action": "show",
+      "kind": "controller",
+      "module": "AshEnterpriseWeb.AcknowledgementDocumentController",
+      "path": "/app/acknowledgements/documents/:id",
+      "verb": "GET"
+    },
+    {
+      "action": null,
+      "kind": "live",
       "module": "AshEnterpriseWeb.DailyLive.ActionItems",
       "path": "/app/action-items",
       "verb": "GET"

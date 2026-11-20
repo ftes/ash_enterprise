@@ -209,6 +209,10 @@ defmodule AshEnterpriseWeb.Router do
     # The nth row of a surface's list, as `/open <surface> <n>` asks for it.
     get "/app/r/:surface/row/:n", RecordController, :row
 
+    # The original bytes of a document a signature request names, to the people it names
+    # (ADR 0074). 404 for anyone else. See AshEnterpriseWeb.AcknowledgementDocumentController.
+    get "/app/acknowledgements/documents/:id", AcknowledgementDocumentController, :show
+
     # --- A2UI surfaces -------------------------------------------------------
     #
     # Declarative, agent-renderable screens derived from resource metadata. Each
