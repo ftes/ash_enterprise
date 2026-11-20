@@ -13,33 +13,33 @@ the missing forward half.
 <!-- roadmap:items:start -->
 | Priority | Gap | Choice | Status | ADR |
 |---|---|---|---|---|
-| 1 | Approvals and maker-checker | ash_bpmn — no external engine | 🟡 Partial | [ADR 0015](adr/0015-approvals-stay-in-ash.md) |
+| 1 | Approvals and maker-checker | ash_bpmn — no external engine | ✅ Shipped | [ADR 0015](adr/0015-approvals-stay-in-ash.md) |
 | 1 | Audit retention, partitioning and erasure | Time-partitioned hot/cold split; erasure by crypto-shredding | 🟡 Partial | [ADR 0024](adr/0024-audit-retention-and-erasure.md) |
 | 1 | Business rules and decision tables | ash_decisions — DMN, engine adopted not written | 🟡 Partial | [ADR 0028](adr/0028-decisions-are-dmn.md) |
 | 1 | Control mapping and evidence | Generated from the ledger; SOC 2, ISO 27001, GDPR | 🟡 Partial | [ADR 0021](adr/0021-control-mapping-is-generated.md) |
 | 1 | Data ingestion | Meltano (MIT); Airbyte as the fallback | 🟡 Partial | [ADR 0010](adr/0010-meltano-for-ingestion.md) |
-| 1 | Enterprise identity: SAML, OIDC and SCIM | Federate to the enterprise IdP over OIDC today; SAML and SCIM as planned strategies on the same seam | 🔵 Planned | — |
+| 1 | Enterprise identity: SAML, OIDC and SCIM | Federate to the enterprise IdP over OIDC today; SAML and SCIM as planned strategies on the same seam | 🟡 Partial | — |
 | 1 | Integration hub — avoiding M×N | Nango for the provider edge only | 🟡 Partial | [ADR 0011](adr/0011-nango-as-integration-hub.md) |
 | 1 | Legacy migration, process modelling and decisions as platform extensions | ash_strangler + ash_bpmn + ash_decisions, first-party | ✅ Shipped | [ADR 0009](adr/0009-strangler-and-bpmn-are-first-party.md) |
 | 1 | Lineage and provenance | OpenLineage, kept in-app; a backend is optional | 🟡 Partial | [ADR 0012](adr/0012-openlineage-and-marquez.md) |
 | 1 | Rules and compliance as data | ash_rules (rule IR + swappable evaluators) and ash_compliance (governed layering compiled to immutable bundles, findings projected from events) | ✅ Shipped | [ADR 0035](adr/0035-compliance-is-projected-from-events.md) |
-| 2 | AI governance: what leaves the tenant boundary | Metadata-only call record stamped with the tenant; the tenant's recorded sub-processor opt-in enforced at the one model-call guard | 🔵 Planned | [ADR 0026](adr/0026-ai-governance-is-disclosure.md) |
+| 2 | AI governance: what leaves the tenant boundary | Metadata-only call record stamped with the tenant; the tenant's recorded sub-processor opt-in enforced at the one model-call guard | 🟡 Partial | [ADR 0026](adr/0026-ai-governance-is-disclosure.md) |
 | 2 | API versioning and deprecation | ash_api_versioning | 🔵 Planned | [ADR 0019](adr/0019-api-versioning-as-presentation-contract.md) |
 | 2 | Break-glass and impersonation control | In-Ash: a session resource with a stated reason | 🟡 Partial | — |
 | 2 | Data catalog and governance | OpenMetadata (DataHub is the closer call it looks) | 🔵 Planned | [ADR 0013](adr/0013-openmetadata-as-catalog.md) |
 | 2 | Issued documents that hold up later | ash_paper: a document rendered from recorded inputs; questions derived from requirements; changes measured against issued documents | 🔵 Planned | [ADR 0067](adr/0067-a-document-is-a-pure-function-of-recorded-inputs.md) |
-| 2 | Log shipping, review and alerting | Structured export to the customer's SIEM; SigNoz for ours (ADR 0065) | 🔵 Planned | [ADR 0025](adr/0025-log-shipping-and-review.md) |
+| 2 | Log shipping, review and alerting | Structured export to the customer's SIEM; SigNoz for ours (ADR 0065) | 🟡 Partial | [ADR 0025](adr/0025-log-shipping-and-review.md) |
 | 2 | Pseudoanonymization of production data | ash_greenmask — config generated from the resource declarations (greenmask, Apache-2.0, adopted not written). Adopted here: greenmask.yml is generated, gated by --check, and drilled in CI | 🟡 Partial | [ADR 0032](adr/0032-anonymization-config-is-generated.md) |
 | 2 | Reporting and embedded analytics | Apache Superset over Metabase | 🔵 Planned | [ADR 0014](adr/0014-superset-over-metabase.md) |
-| 2 | SLOs, disaster recovery and incident response | Committed RPO/RTO with a tested restore; error budgets | 🔵 Planned | — |
-| 3 | Bulk import and export | Ash bulk actions over a staged upload | 🔵 Planned | — |
-| 3 | Data inventory, classification and sub-processors | Derived from resource metadata, not maintained by hand | 🔵 Planned | — |
+| 2 | SLOs, disaster recovery and incident response | Committed RPO/RTO with a tested restore; error budgets | 🟡 Partial | — |
+| 3 | Bulk import and export | Ash bulk actions over a staged upload | 🟡 Partial | — |
+| 3 | Data inventory, classification and sub-processors | Derived from resource metadata, not maintained by hand | 🟡 Partial | — |
 | 3 | Feature flags and progressive delivery | Tenant flag rows resolved into ActorContext (FunWithFlags and Unleash not adopted) | 🟡 Partial | [ADR 0072](adr/0072-ash-native-tenant-flags.md) |
 | 3 | Observability backend | SigNoz and GlitchTip | 🟡 Partial | [ADR 0065](adr/0065-signoz-and-glitchtip-observability-backends.md) |
-| 3 | Outbound events and subscriptions | An Ash notifier over the existing event log | 🔵 Planned | — |
+| 3 | Outbound events and subscriptions | An Ash notifier over the existing event log | 🟡 Partial | [ADR 0075](adr/0075-outbound-webhooks-are-a-declared-operation.md) |
 | 4 | Master data and entity resolution | In-Ash resolution over CDM resources | 🟡 Partial | [ADR 0054](adr/0054-mdm-stewardship-is-system-one.md) |
-| 4 | Performance at enterprise data volumes | A seeded large tenant and a query budget | 🔵 Planned | — |
-| 4 | SBOM and build provenance | CycloneDX SBOM; attested builds | 🔵 Planned | — |
+| 4 | Performance at enterprise data volumes | A seeded large tenant and a query budget | 🟡 Partial | — |
+| 4 | SBOM and build provenance | CycloneDX SBOM; attested builds | 🟡 Partial | — |
 | 4 | Zero-downtime deploys and reversible migrations | Expand/contract, proven by a two-version test | 🟡 Partial | — |
 <!-- roadmap:items:end -->
 

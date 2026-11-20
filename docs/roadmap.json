@@ -11,7 +11,7 @@
     "  partial -- works, with a named limitation stated in the answer.",
     "  planned -- an ADR and a plan exist, no code.",
     "  open    -- named as a gap, no decision taken.",
-    "Last reviewed against the tree: 2026-11-13."
+    "Last reviewed against the tree: 2026-11-20."
   ],
   "sections": [
     {
@@ -44,7 +44,7 @@
       "id": "q1",
       "section": "identity",
       "question": "How do people prove who they are?",
-      "answer": "Password sign-in through `ash_authentication`, with remember-me, email confirmation and password reset; sign-in through the deployment's OpenID Connect identity provider when the build configures one (q29, ADR 0071); and API keys for the API and MCP pipelines. Sign-in issues a token that is stored server-side and expires after 8 hours (set explicitly, not the library's 14 days), the session cookie expires with it, and changing a password logs the user out everywhere. Five failed password sign-ins for one address lock it for 15 minutes, counted atomically in Postgres whether or not the address exists. The API and MCP pipelines read either an ordinary user token or a hashed API key from the bearer header; a key must carry an expiry (90 days at most), can be revoked, and stops working when its owner is deactivated. The unused magic-link route and its confirmation hook are removed. Not built: SAML and WebAuthn. OIDC sign-in is built and tested but not yet running in a deployment we operate.",
+      "answer": "Password sign-in through `ash_authentication`, with remember-me, email confirmation and password reset; sign-in through the deployment's OpenID Connect identity provider when the build configures one (q29, ADR 0071); and API keys for the API and MCP pipelines. Sign-in issues a token that is stored server-side and expires after 8 hours (set explicitly, not the library's 14 days), the session cookie expires with it, and changing a password logs the user out everywhere. Five failed password sign-ins for one address lock it for 15 minutes, counted atomically in Postgres whether or not the address exists. The API and MCP pipelines read either an ordinary user token or a hashed API key from the bearer header; a key must carry an expiry (90 days at most), can be revoked, and stops working when its owner is deactivated. The unused magic-link route and its confirmation hook are removed. Not built: SAML and WebAuthn. OIDC sign-in is built, tested and deployed, and not yet configured on a deployment we operate.",
       "status": "partial",
       "proof": "test/ash_enterprise/accounts/sign_in_test.exs",
       "test": "a correct password signs the user in and issues a token",
@@ -169,7 +169,7 @@
       "id": "q14",
       "section": "tenancy",
       "question": "Can you erase a person on request?",
-      "answer": "Partly, by crypto-shredding (ADR 0024's erasure half). Content that arrives through an external connection -- raw landings, canonical messages, conversations and calendar events, and the copies of that content in the audit log -- is sealed under that connection's erasure-scope key, and `shred_scope` destroys the key: rows, structural columns and the audit hash chain survive, the content reads as an explicit `shredded` marker. A correspondent (`Canonical.Person`) can now be erased by their address, with a receipt: `PersonErasure.erase` (and `mix ash_enterprise.erasure.erase_person`, a dry run by default) shreds the person's own `data_subject` scope and those of every record merged into them, blanks their name and blind index, deletes their MDM attribute statements, staged rows and derived joins, and shreds a sign-in account's own request and assistant-thread scopes, in one transaction that only an operator, never a system actor or automation, may run (`test/ash_enterprise/erasure/erase_person_test.exs`). What is still missing: backups and WAL keep the wrapped keys until they age out; the MDM source landings (`mdm_source_records`) are not reached; audit events written before the seal (merge provenance) and the audit event of every MDM staging keep plaintext; the sign-in account's own row and core platform resources (users, organizations) are not erased; there is no request intake or 30-day clock; and it is not yet running in a deployment we operate.",
+      "answer": "Partly, by crypto-shredding (ADR 0024's erasure half). Content that arrives through an external connection -- raw landings, canonical messages, conversations and calendar events, and the copies of that content in the audit log -- is sealed under that connection's erasure-scope key, and `shred_scope` destroys the key: rows, structural columns and the audit hash chain survive, the content reads as an explicit `shredded` marker. A correspondent (`Canonical.Person`) can now be erased by their address, with a receipt: `PersonErasure.erase` (and `mix ash_enterprise.erasure.erase_person`, a dry run by default) shreds the person's own `data_subject` scope and those of every record merged into them, blanks their name and blind index, deletes their MDM attribute statements, staged rows and derived joins, and shreds a sign-in account's own request and assistant-thread scopes, in one transaction that only an operator, never a system actor or automation, may run (`test/ash_enterprise/erasure/erase_person_test.exs`). What is still missing: backups and WAL keep the wrapped keys until they age out; the MDM source landings (`mdm_source_records`) are not reached; audit events written before the seal (merge provenance) and the audit event of every MDM staging keep plaintext; the sign-in account's own row and core platform resources (users, organizations) are not erased; there is no request intake or 30-day clock; and on a deployment we operate it is deployed but no person has yet been erased.",
       "status": "partial",
       "adr": "0024",
       "item": "retention",
@@ -216,7 +216,7 @@
       "section": "flow",
       "question": "What data do you have, and who owns it?",
       "answer": "A generated, read-only inventory of declared schema and ownership kind: `mix ash_enterprise.data_inventory` writes `docs/data-inventory.json` from the declarations every resource was compiled with, and CI fails when the file is stale. Each entry carries the domain, table, ownership kind, tenant-scoped or global, audit and archival switches, CDM provenance, API exposure, which attributes are `sensitive?` or sealed, and which are secured columns, with the privilege each is read through. Classification is derived, never declared: a narrow name heuristic flags attributes that look personal (contact details, a person's names and login, an identity provider's subject), and one that is neither sensitive, sealed nor listed with a reason fails the check. It is a projection of the code, not a second source of truth, and it makes no claim of compatibility with any catalogue's schema. Not built: named data stewards (ownership here is a resource-level kind, which says who may be granted access, not who is accountable; accountable people are a deployment owner's input), a push to an external catalogue, and any attestation of what a running deployment holds.",
-      "status": "planned",
+      "status": "partial",
       "adr": "0013",
       "item": "catalog",
       "proof": "test/ash_enterprise/governance/data_inventory_test.exs",
@@ -226,8 +226,8 @@
       "id": "q20",
       "section": "flow",
       "question": "How do people get reports out of it?",
-      "answer": "As CSV, under the same policies as every other read; built, and not yet running in a deployment we operate. The business units, teams, users and audit trail surfaces each offer an Export CSV button that re-reads the table as the signed-in person, with the current search and filters, so the file holds exactly the rows their grants reach and only the columns the surface declares (up to 10,000 rows). A whole exposed collection comes out of `GET /api/exports/:type` with an API key, streamed (see q42). Dashboards and ad-hoc analysis are not provided: Superset over views filtered by the same actor context (ADR 0014) is still the plan for those, and Metabase loses because its row-level security is paywalled.",
-      "status": "planned",
+      "answer": "As CSV, under the same policies as every other read; built and deployed to a deployment we operate. The business units, teams, users and audit trail surfaces each offer an Export CSV button that re-reads the table as the signed-in person, with the current search and filters, so the file holds exactly the rows their grants reach and only the columns the surface declares (up to 10,000 rows). A whole exposed collection comes out of `GET /api/exports/:type` with an API key, streamed (see q42). Dashboards and ad-hoc analysis are not provided: Superset over views filtered by the same actor context (ADR 0014) is still the plan for those, and Metabase loses because its row-level security is paywalled.",
+      "status": "partial",
       "adr": "0014",
       "item": "bi",
       "proof": "test/ash_enterprise_web/a2ui/surface_export_test.exs",
@@ -271,11 +271,12 @@
       "section": "change",
       "question": "How does an action get a second person's approval before it takes effect?",
       "answer": "A change dropped on any action: work item, materialized candidate list, maker-checker exclusion applied by subtraction at candidate resolution rather than as a `forbid_if`, delegation, and escalation timers that get cancelled. **A work item is a platform resource here** -- owned, tenant-scoped and audited -- so who may approve is the same union of grants as who may read, and both the manager and executive approval branches are reachable in the demo. The refusals are now asserted, not only the positive case: a member who is not a candidate, a member whose role reads every task, a candidate for another task and another tenant's candidate are each refused and the task stays open.",
-      "status": "partial",
+      "status": "shipped",
       "adr": "0015",
       "item": "approvals",
       "proof": "test/ash_enterprise/bpmn/human_task_candidacy_test.exs",
-      "test": "a member of the same tenant who is not a candidate cannot decide the task"
+      "test": "a member of the same tenant who is not a candidate cannot decide the task",
+      "built": "0cccb0a3"
     },
     {
       "id": "q25",
@@ -291,7 +292,7 @@
       "id": "q26",
       "section": "change",
       "question": "How do you ship a change to some users first?",
-      "answer": "Through tenant feature flags (ADR 0072). A build declares its flags; each tenant decides who sees one with an audited, tenant-scoped row: off, on for everyone in the tenant, or targeted at named people, the members of named teams, the subtree of named business units, and a percentage of people by a bucket that is stable per person and key. The rows are resolved once per request (and before every LiveView event) into the person's `ActorContext`, so checking a flag is a set lookup that never queries, and a change reaches a person at their next request or event. An undeclared key is off; `FLAGS_OFF` kills a key in every tenant without touching a row. Flipping a flag is a person's act, needs a grant, and is in the audit log. Policies are not a substitute and never read a flag: they answer *may you*, not *is this on*, and conflating them produces a `beta_user` role you then have to revoke from everyone. Not provided: environments, percentage-of-time, scheduled flips and a management screen (flags are managed through the code interface and `mix ash_enterprise.flags`). Not yet running in a deployment we operate.",
+      "answer": "Through tenant feature flags (ADR 0072). A build declares its flags; each tenant decides who sees one with an audited, tenant-scoped row: off, on for everyone in the tenant, or targeted at named people, the members of named teams, the subtree of named business units, and a percentage of people by a bucket that is stable per person and key. The rows are resolved once per request (and before every LiveView event) into the person's `ActorContext`, so checking a flag is a set lookup that never queries, and a change reaches a person at their next request or event. An undeclared key is off; `FLAGS_OFF` kills a key in every tenant without touching a row. Flipping a flag is a person's act, needs a grant, and is in the audit log. Policies are not a substitute and never read a flag: they answer *may you*, not *is this on*, and conflating them produces a `beta_user` role you then have to revoke from everyone. Not provided: environments, percentage-of-time, scheduled flips and a management screen (flags are managed through the code interface and `mix ash_enterprise.flags`). Deployed to a deployment we operate, where no flag has been set yet.",
       "status": "partial",
       "adr": "0072",
       "item": "flags",
@@ -321,7 +322,7 @@
       "id": "q29",
       "section": "identity",
       "question": "How do enterprise customers bring their own identity provider?",
-      "answer": "One identity provider per deployment, over OpenID Connect (ADR 0071). The user resource declares an `oidc` strategy when the build sets `OIDC_BASE_URL`; the issuer, client and secret are read at runtime, and a build without them shows no provider button. A first sign-in links the provider's subject only to an existing user who is active, has confirmed the address here, and whose email the provider marks verified. An unknown address, an unverified email, an unconfirmed or deactivated user, a subject already linked to someone else and a second subject for one user are all refused, and no user is ever created. Each attempt is recorded at the `oidc` sign-in door without the email, including one the protocol refuses before any account is looked up (a forged state, a wrong nonce or bad ID token, a replayed code or one that fails PKCE, a provider error or an unreachable provider), by a closed reason; a refusal of a known user is also an occurrence a recipe can react to. The provider's access and refresh tokens are not kept. Every call to the provider verifies its certificate: against the default trust store, or against `OIDC_CA_FILE` for a provider whose certificate is signed by a private certificate authority, and a set but unusable file refuses the sign-in rather than skipping verification. The provider then owns the second factor, password policy and when a person leaves. Not built: SAML, a provider per organisation, and SCIM provisioning. Not yet running in a deployment we operate.",
+      "answer": "One identity provider per deployment, over OpenID Connect (ADR 0071). The user resource declares an `oidc` strategy when the build sets `OIDC_BASE_URL`; the issuer, client and secret are read at runtime, and a build without them shows no provider button. A first sign-in links the provider's subject only to an existing user who is active, has confirmed the address here, and whose email the provider marks verified. An unknown address, an unverified email, an unconfirmed or deactivated user, a subject already linked to someone else and a second subject for one user are all refused, and no user is ever created. Each attempt is recorded at the `oidc` sign-in door without the email, including one the protocol refuses before any account is looked up (a forged state, a wrong nonce or bad ID token, a replayed code or one that fails PKCE, a provider error or an unreachable provider), by a closed reason; a refusal of a known user is also an occurrence a recipe can react to. The provider's access and refresh tokens are not kept. Every call to the provider verifies its certificate: against the default trust store, or against `OIDC_CA_FILE` for a provider whose certificate is signed by a private certificate authority, and a set but unusable file refuses the sign-in rather than skipping verification. The provider then owns the second factor, password policy and when a person leaves. Not built: SAML, a provider per organisation, and SCIM provisioning. Deployed, and not yet configured on a deployment we operate: no identity provider is registered there yet.",
       "status": "partial",
       "item": "sso",
       "proof": "test/ash_enterprise_web/oidc_round_trip_test.exs",
@@ -426,7 +427,7 @@
       "section": "tenancy",
       "question": "What crosses the tenant boundary, and to whom?",
       "answer": "A design-time register of egress paths, generated into `docs/data-inventory.json` beside the inventory: one row per way data leaves the database (the provider proxy, guarded and judgment model calls, the assistant runtime, lineage events, account mail, trace export, the golden-record and audit exports, and every operation declared through `AshOperations`, read from its DSL). Each row names the class of recipient, the classes of data it can carry, and the gate that governs it, or says `none` with the gap in prose: the provider proxy and account mail have no tenant-level gate, and the guarded model path consults the deployment-wide in-zone flag but not the tenant's recorded opt-in. A test scans `lib/` for egress shapes and fails on a module that holds one and is in no row; it is a text scan with a known list of shapes, so a client library outside the list passes unseen. Not built: a list of a deployment's live sub-processors (the register names classes of recipient; the deployment owner records the actual vendors), a tenant-facing report, and an attestation of what a running deployment sent.",
-      "status": "open",
+      "status": "partial",
       "item": "governance",
       "proof": "test/ash_enterprise/governance/data_flows_test.exs",
       "test": "a module in lib/ that calls an egress primitive (Req, ReqLLM, Swoosh delivery, use AshOperations, the lineage transport) and is not in the register fails"
@@ -445,8 +446,8 @@
       "id": "q41",
       "section": "flow",
       "question": "How do other systems find out that something happened here?",
-      "answer": "Built, not yet running in a deployment we operate (ADR 0075). A person registers an outbound webhook endpoint for their organization: a public HTTPS URL on port 443 and the event types it wants, chosen from a catalogue derived from the code (the create, update and destroy of every audited resource with a public API type). Every minute the organization's own audit log is read from the endpoint's cursor, which starts where the log stood at registration, so history is never replayed. Each matching event is sent once as a CloudEvents 1.0 nudge naming the record and carrying nothing else of it; the receiver reads the record through the API with its own key, so it learns only what its grants allow. Each send is a declared operation (`ash_operations`) behind a disclosure gate, signed per Standard Webhooks v1 with the endpoint's own secret (shown once, sealed under its own erasure scope), and sent only to an address the egress guard vetted as public, without following redirects. Delivery is at least once with a stable `webhook-id`: retried after 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours, then dead-lettered, and three dead letters in a row disable the endpoint until a person re-enables it. The thin payload and the catalogue's scope are the design, not a gap. Not built: registering and rotating from the web surface (code interface only), and per-tenant rate limits.",
-      "status": "open",
+      "answer": "Built and deployed, and not yet configured on a deployment we operate, where no endpoint is registered (ADR 0075). A person registers an outbound webhook endpoint for their organization: a public HTTPS URL on port 443 and the event types it wants, chosen from a catalogue derived from the code (the create, update and destroy of every audited resource with a public API type). Every minute the organization's own audit log is read from the endpoint's cursor, which starts where the log stood at registration, so history is never replayed. Each matching event is sent once as a CloudEvents 1.0 nudge naming the record and carrying nothing else of it; the receiver reads the record through the API with its own key, so it learns only what its grants allow. Each send is a declared operation (`ash_operations`) behind a disclosure gate, signed per Standard Webhooks v1 with the endpoint's own secret (shown once, sealed under its own erasure scope), and sent only to an address the egress guard vetted as public, without following redirects. Delivery is at least once with a stable `webhook-id`: retried after 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours, then dead-lettered, and three dead letters in a row disable the endpoint until a person re-enables it. The thin payload and the catalogue's scope are the design, not a gap. Not built: registering and rotating from the web surface (code interface only), and per-tenant rate limits.",
+      "status": "partial",
       "proof": "test/ash_enterprise/integration/outbound/outbound_webhook_test.exs",
       "test": "the Standard Webhooks signature verifies over id.timestamp.body",
       "item": "webhooks"
@@ -455,8 +456,8 @@
       "id": "q42",
       "section": "flow",
       "question": "How does a customer get fifty thousand rows in, or out?",
-      "answer": "Out: built, and not yet running in a deployment we operate. `GET /api/exports/:type` streams one exposed collection (business units, teams, positions) as CSV to a person holding the export privilege (the seeded Administrator role, and anyone a tenant grants it), with a bearer API key. The rows are read as that person, in their tenant, through the resource's own policies, in keyset pages of 250 sent as they are read, so the set is never held in memory; a column a field policy withholds is written empty. The `scale` CI job exports 50,000 teams this way on every run: 5.7 s for 10.7 MB in 201 reads, the reading process never above 1.5 MB (the fixture on a CI runner, not a deployment). Exports are recorded as telemetry (type, row count, duration), not as rows. The audit log has its own export with its chain columns. In: built, and not yet running in a deployment we operate. The MDM staged import (`/app/mdm/import`) is the one bulk path in; there is no generic import into any table, because it would skip the mapping, the stewardship and the person gate. A file of up to 50,000 rows and 30 MB (both configurable) is kept on the server, never as rows in the wizard. The batch opens as the person, so a person who may not open one lands nothing. The batch worker lands the file 1,000 rows at a time as raw source records in the batch's tenant, then stages and matches, in one-minute slices with the job snoozed between them so Oban's Lifeline never starts a second copy. A row that cannot land (malformed, or a residency the landing region does not admit) is recorded with its spreadsheet row number and why, listed on the batch and exportable as CSV, and the rest land; the same file again lands no new record. The durability CI job imports 50,000 rows with a commit per row: 342 s to land (146 rows a second) and 616 s until the batch is staged, with ceilings at three times those (docs/runbooks/bulk-import.md; a fixture on a CI runner, not a deployment). JSON:API and GraphQL paginate and neither is a bulk path.",
-      "status": "open",
+      "answer": "Out: built and deployed to a deployment we operate. `GET /api/exports/:type` streams one exposed collection (business units, teams, positions) as CSV to a person holding the export privilege (the seeded Administrator role, and anyone a tenant grants it), with a bearer API key. The rows are read as that person, in their tenant, through the resource's own policies, in keyset pages of 250 sent as they are read, so the set is never held in memory; a column a field policy withholds is written empty. The `scale` CI job exports 50,000 teams this way on every run: 5.7 s for 10.7 MB in 201 reads, the reading process never above 1.5 MB (the fixture on a CI runner, not a deployment). Exports are recorded as telemetry (type, row count, duration), not as rows. The audit log has its own export with its chain columns. In: built and deployed; a 50,000-row import has not yet been run on a deployment we operate. The MDM staged import (`/app/mdm/import`) is the one bulk path in; there is no generic import into any table, because it would skip the mapping, the stewardship and the person gate. A file of up to 50,000 rows and 30 MB (both configurable) is kept on the server, never as rows in the wizard. The batch opens as the person, so a person who may not open one lands nothing. The batch worker lands the file 1,000 rows at a time as raw source records in the batch's tenant, then stages and matches, in one-minute slices with the job snoozed between them so Oban's Lifeline never starts a second copy. A row that cannot land (malformed, or a residency the landing region does not admit) is recorded with its spreadsheet row number and why, listed on the batch and exportable as CSV, and the rest land; the same file again lands no new record. The durability CI job imports 50,000 rows with a commit per row: 342 s to land (146 rows a second) and 616 s until the batch is staged, with ceilings at three times those (docs/runbooks/bulk-import.md; a fixture on a CI runner, not a deployment). JSON:API and GraphQL paginate and neither is a bulk path.",
+      "status": "partial",
       "item": "bulk",
       "proof": "test/ash_enterprise_web/controllers/export_controller_test.exs",
       "test": "a reader sees only the rows their grants reach (a :local grant exports its business unit only)"
@@ -473,8 +474,8 @@
       "id": "q44",
       "section": "change",
       "question": "Does it still work for a customer with fifty thousand of something?",
-      "answer": "Built and measured on CI; not yet running in a deployment we operate, so the status waits for that. Every list read on a platform resource names a page size: a transformer gives each read that is not a get or a manual read a `default_limit` of 50 and a `max_page_size` of 250, so a page asked for without a limit gets 50 rows and no request gets more than 250, while an internal read that asks for no page still returns a list. The JSON:API index and the GraphQL list on business units, teams and positions serve a `:list` read whose paging is required, so a request that names no page gets 50 rows and a next link, never the table; a type's to-many relationship fields (child business units, ancestors, child positions) are keyset pages too, so one page of a list cannot carry a whole child table and an asked-for size is clamped to 250; a test walks every index route, list query, GraphQL relationship field and AI read tool and fails on one that could return a table. The `scale` CI job seeds 50,000 audited teams in one tenant: an unpaged JSON:API index, its next page and a GraphQL list each issue the same 12 queries at 1,000 rows and at 50,000 (at 50,000 rows the index and its next page took 83 ms each and the list 59 ms on a CI runner, against ceilings of three times the first CI measurement), and a business-unit-depth role's page is one query, on teams (25 ms). Seeding the 50,000 took 92 s. The numbers are the template's own seeded fixture on CI hardware, not any deployment's. Not measured at that size: writes, exports, the A2UI surfaces, the AI lookups that read a window before keeping their first rows, and every resource other than teams.",
-      "status": "open",
+      "answer": "Built, measured on CI and deployed: the page limits are in the code, so a deployment we operate runs them with no configuration. Every list read on a platform resource names a page size: a transformer gives each read that is not a get or a manual read a `default_limit` of 50 and a `max_page_size` of 250, so a page asked for without a limit gets 50 rows and no request gets more than 250, while an internal read that asks for no page still returns a list. The JSON:API index and the GraphQL list on business units, teams and positions serve a `:list` read whose paging is required, so a request that names no page gets 50 rows and a next link, never the table; a type's to-many relationship fields (child business units, ancestors, child positions) are keyset pages too, so one page of a list cannot carry a whole child table and an asked-for size is clamped to 250; a test walks every index route, list query, GraphQL relationship field and AI read tool and fails on one that could return a table. The `scale` CI job seeds 50,000 audited teams in one tenant: an unpaged JSON:API index, its next page and a GraphQL list each issue the same 12 queries at 1,000 rows and at 50,000 (at 50,000 rows the index and its next page took 83 ms each and the list 59 ms on a CI runner, against ceilings of three times the first CI measurement), and a business-unit-depth role's page is one query, on teams (25 ms). Seeding the 50,000 took 92 s. The numbers are the template's own seeded fixture on CI hardware, not any deployment's. Not measured at that size: writes, exports, the A2UI surfaces, the AI lookups that read a window before keeping their first rows, and every resource other than teams.",
+      "status": "partial",
       "item": "scale",
       "proof": "test/ash_enterprise/platform/bounded_reads_test.exs",
       "test": "every JSON:API index, GraphQL list and relationship field, and AshAi read tool pages by default"
@@ -636,10 +637,10 @@
       "priority": 1,
       "choice": "ash_bpmn — no external engine",
       "adr": "0015",
-      "status": "partial",
-      "effort": "Built and tested in the package, including duplicate refusal via a partial unique index and timer cancellation, and now running here: a manager approval and an executive approval are both reachable from the seeded demo and both appear on `/app/tasks` behind the actor's principal ids. Remaining, and the reason this is not shipped: no test asserts the *negative* -- that a user without the privilege cannot decide a task -- which is this file's own bar.",
+      "status": "shipped",
+      "effort": "Built and tested in the package, including duplicate refusal via a partial unique index and timer cancellation, and now running here: a manager approval and an executive approval are both reachable from the seeded demo and both appear on `/app/tasks` behind the actor's principal ids. The negative is asserted too: a member who is not a candidate, a member whose role reads every task, a candidate for another task and another tenant's candidate are each refused, and the task stays open (q24).",
       "bar": "The decisive argument against Camunda or Flowable — an external engine is a second authorization and data model to keep in sync, and it would express maker-checker as a deny rule, which this repository forbids.",
-      "answer": "`ash_bpmn` adopted, with its work item on the platform base resource and the engine's authority declared as the first bypass in the base's policy set rather than as an option at a call site. Maker-checker is applied by subtraction at candidate resolution, never as a `forbid_if`. Decisions a process routes on are `ash_decisions`. A process runs here and people can complete its tasks; what is still missing is the test that would fail if the wrong person could."
+      "answer": "`ash_bpmn` adopted, with its work item on the platform base resource and the engine's authority declared as the first bypass in the base's policy set rather than as an option at a call site. Maker-checker is applied by subtraction at candidate resolution, never as a `forbid_if`. Decisions a process routes on are `ash_decisions`. A process runs here and people can complete its tasks, and a test fails if the wrong person could."
     },
     {
       "id": "decisions",
@@ -747,8 +748,8 @@
       "title": "Enterprise identity: SAML, OIDC and SCIM",
       "priority": 1,
       "choice": "Federate to the enterprise IdP over OIDC today; SAML and SCIM as planned strategies on the same seam",
-      "status": "planned",
-      "effort": "OIDC with one provider per deployment is built through the library's strategy (ADR 0071), with no provisioning: a first sign-in links only to a confirmed account whose email the provider verifies. SAML needs a new strategy and an XML signature story. SCIM is the larger piece and the more interesting one here: provisioning maps onto ordinary create and lifecycle actions, so it is an endpoint over existing actions rather than a parallel user store.",
+      "status": "partial",
+      "effort": "OIDC with one provider per deployment is built through the library's strategy (ADR 0071), with no provisioning: a first sign-in links only to a confirmed account whose email the provider verifies. It is deployed, and not yet configured on a deployment we operate. SAML needs a new strategy and an XML signature story. SCIM is the larger piece and the more interesting one here: provisioning maps onto ordinary create and lifecycle actions, so it is an endpoint over existing actions rather than a parallel user store.",
       "bar": "Yes. An identity provider authenticates; it never authorizes. Group-to-role mapping stays here as `(role, privilege, depth)` rows, which is the difference between an IdP telling us who you are and an IdP telling us what you may do."
     },
     {
@@ -766,8 +767,8 @@
       "priority": 2,
       "choice": "Structured export to the customer's SIEM; SigNoz for ours (ADR 0065)",
       "adr": "0025",
-      "status": "planned",
-      "effort": "A notifier streaming audit events as structured JSON to a customer-configured sink, per tenant, with the chain hashes intact so the copy is verifiable against the original. Alerting rules follow the same ledger the control map does.",
+      "status": "partial",
+      "effort": "Our half is built (ADR 0025 as amended, ADR 0065): every committed audit event reaches SigNoz as an OTLP log record carrying its chain hashes, shipped from a per-chain cursor that moves only when the endpoint acknowledges a batch, and SigNoz rules filter those records for declared security events (q38). It is deployed, and not yet configured on a deployment we operate. The customer's half, a per-tenant stream to the customer's own SIEM, is still proposed.",
       "bar": "Partial by design: a SIEM cannot consume ActorContext, so the boundary is that it receives only what one tenant is entitled to and never a cross-tenant stream."
     },
     {
@@ -775,8 +776,8 @@
       "title": "SLOs, disaster recovery and incident response",
       "priority": 2,
       "choice": "Committed RPO/RTO with a tested restore; error budgets",
-      "status": "planned",
-      "effort": "A restore drill in CI against a real dump is the load-bearing piece — an untested backup is a belief. SLOs and error budgets sit on the telemetry that already exists; the status page and rota are process rather than code, and are named as such.",
+      "status": "partial",
+      "effort": "Built: a backup and restore drill that CI runs against a seeded database (q48), an unauthenticated `/health` and default SLO rules and dashboards for SigNoz (q47), and an alert that opens an incident and a triage task (q49). Not built, or the owner's: an RPO and RTO measured on a deployment's own data, the prober, the number promised to customers, a status page, a pager and the rota.",
       "bar": "Not applicable in the usual sense, and worth saying so: these are operational commitments, not tools with authorization models. The bar they have to clear is that they are tested rather than asserted."
     },
     {
@@ -784,8 +785,9 @@
       "title": "Outbound events and subscriptions",
       "priority": 3,
       "choice": "An Ash notifier over the existing event log",
-      "status": "planned",
-      "effort": "The audit log already contains every change with an actor and a tenant. A subscription is a filtered, tenant-scoped view of it with delivery and retry — which is Oban's job, not a new event system's.",
+      "adr": "0075",
+      "status": "partial",
+      "effort": "Built (ADR 0075): an organization registers a public HTTPS endpoint and the event types it wants, its own audit log is read from the endpoint's cursor, and each matching event is sent once as a signed CloudEvents nudge that names the record and nothing else of it, retried and then dead-lettered (q41). It is deployed, and not yet configured on a deployment we operate. Not built: registering and rotating from the web surface, and per-tenant rate limits.",
       "bar": "Yes, and unusually cleanly: a subscription is a read, so it is filtered by the same policies as any other read. A customer cannot subscribe to what they cannot see."
     },
     {
@@ -793,8 +795,8 @@
       "title": "Bulk import and export",
       "priority": 3,
       "choice": "Ash bulk actions over a staged upload",
-      "status": "planned",
-      "effort": "`Ash.bulk_create` and `Ash.bulk_update` already exist and are authorized per record. The work is the staging surface, the error report a user can act on, and streaming exports that do not load a tenant into memory — the audit export is the pattern.",
+      "status": "partial",
+      "effort": "Built: `GET /api/exports/:type` streams an exposed collection as CSV, read as the person in keyset pages, and the MDM staged import lands a file of up to 50,000 rows as the person who opened the batch, with a per-row refusal report; both are measured at 50,000 rows on CI (q42). There is no generic import into any table, by design. Deployed; a 50,000-row import has not yet been run on a deployment we operate.",
       "bar": "Yes. Bulk is the same actions in a loop, so ownership, tenancy and audit apply per row rather than being skipped for speed."
     },
     {
@@ -802,8 +804,8 @@
       "title": "Data inventory, classification and sub-processors",
       "priority": 3,
       "choice": "Derived from resource metadata, not maintained by hand",
-      "status": "planned",
-      "effort": "Every resource already declares its CDM provenance, ownership type and tenancy scope. Classification is one more declaration, and the inventory is then generated — the same argument as the control map, and the same reason it will still be true in a year.",
+      "status": "partial",
+      "effort": "Built: `docs/data-inventory.json` is generated from the resource declarations, with classification derived (`sensitive?`, sealed, and a narrow name heuristic) rather than declared, and a register of egress paths sits beside it; CI fails when either is stale, or when a module that sends data out is in no row (q19, q39). Not built: named data stewards, a list of a deployment's live sub-processors, and any attestation of what a running deployment holds or sent.",
       "bar": "Overlaps the catalog item deliberately: this is the compliance artefact, that is the discovery tool, and both should read from the same declarations."
     },
     {
@@ -811,8 +813,8 @@
       "title": "SBOM and build provenance",
       "priority": 4,
       "choice": "CycloneDX SBOM; attested builds",
-      "status": "planned",
-      "effort": "An SBOM generated in CI and attached to each release, plus provenance attestation for the container. Small, mechanical, and asked about on every enterprise security questionnaire.",
+      "status": "partial",
+      "effort": "Built: CycloneDX SBOMs for the Elixir and npm trees on every push and daily, a gate that every locked production dependency is in them at its locked version, advisory scans with expiring exceptions, and an attestation of the SBOM file on main (q50). Not built: provenance for a container, since no image or release is published, pinned apt packages and a reproducible-build check.",
       "bar": "Not applicable — nothing here touches the authorization model. It is on the list because it is asked for, and off priority 1 because nothing depends on it."
     },
     {
@@ -829,8 +831,8 @@
       "title": "Performance at enterprise data volumes",
       "priority": 4,
       "choice": "A seeded large tenant and a query budget",
-      "status": "planned",
-      "effort": "Seed a tenant with fifty thousand of the widest resource, then assert query counts and response times in CI. The interesting result is not the number; it is which of the inherited policies turn out to cost something at that size.",
+      "status": "partial",
+      "effort": "Built: every list read on a platform resource pages by default (50 rows, at most 250), and the CI `scale` job seeds 50,000 teams and asserts the same query count, under a time ceiling, at 1,000 and at 50,000 rows; the export and the MDM import are measured at 50,000 rows too (q44, q42). Not measured at that size: writes, the A2UI surfaces, the AI lookups that read a window before keeping their first rows, and every resource other than teams.",
       "bar": "Not applicable, but load-bearing for thesis 3: an authorization model that is elegant and slow is not a model anyone keeps."
     },
     {
@@ -839,7 +841,7 @@
       "priority": 2,
       "choice": "Metadata-only call record stamped with the tenant; the tenant's recorded sub-processor opt-in enforced at the one model-call guard",
       "adr": "0026",
-      "status": "planned",
+      "status": "partial",
       "effort": "Thesis 5 already did the hard part: an agent is an actor, so a model reaches nothing its user could not, and there is no agent-specific authorization path to secure. What is left is disclosure. ADR 0026, accepted as amended, records each model call as metadata (caller, tenant, model, residency, usage) and never its content, and refuses a model outside the zone unless the tenant has recorded an opt-in. What remains is any tenant-facing report beyond the `:disclosures` read, and an in-zone opt-out if one is ever wanted.",
       "bar": "Yes, and it is the clearest case in the set. An LLM provider is a service behind a network boundary that cannot consume ActorContext, so the rule from thesis 6 applies literally: it receives only what one actor was already entitled to, and removing it degrades a feature rather than breaking the app."
     },
