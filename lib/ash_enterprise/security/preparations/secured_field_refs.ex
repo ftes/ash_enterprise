@@ -21,7 +21,7 @@ defmodule AshEnterprise.Security.Preparations.SecuredFieldRefs do
   It runs as a `before_action` hook, after every filter, preparation and policy has been
   applied, so a filter added after the action was built is covered too.
 
-  Two uses of a secured column cannot be rewritten that way, and are refused with an
+  Three uses of a secured column cannot be rewritten that way, and are refused with an
   `Ash.Error.Invalid` naming the column, for a reader who does not see the column on
   every row (a grant below `:global` included):
 
@@ -33,6 +33,10 @@ defmodule AshEnterprise.Security.Preparations.SecuredFieldRefs do
       whatever it sorts by.
     * a filter on a calculation or an aggregate that reads it. The data layer evaluates
       the expression, where the field policy does not apply.
+    * a calculation or an aggregate loaded on the read that reads it, declared or built by
+      the code that reads (`Ash.Query.calculate/4`, an aggregate loaded at run time). Its
+      value is the column's, computed where the field policy does not apply. A
+      relationship's load is a read of the related resource, refused there the same way.
   """
 
   use Ash.Resource.Preparation
@@ -51,7 +55,16 @@ defmodule AshEnterprise.Security.Preparations.SecuredFieldRefs do
   def prepare(query, _opts, context) do
     if Map.get(context, :authorize?, false) do
       actor = Map.get(context, :actor)
-      Ash.Query.before_action(query, &hide(&1, actor))
+
+      case refuse_loads(query, actor) do
+        {:error, refusals} ->
+          Ash.Query.add_error(query, refusals)
+
+        query ->
+          query
+          |> Ash.Query.before_transaction(&refuse_loads(&1, actor))
+          |> Ash.Query.before_action(&hide(&1, actor))
+      end
     else
       query
     end
@@ -148,6 +161,28 @@ defmodule AshEnterprise.Security.Preparations.SecuredFieldRefs do
       end
 
     Enum.uniq(sorts ++ filters)
+  end
+
+  # Run when the action prepares the query, and again as a `before_transaction` hook for a
+  # load added after `Ash.Query.for_read/4`. Not in `before_action`: Ash takes the
+  # calculations off the query before those hooks run. Loading onto records in hand
+  # (`Ash.load/3`) prepares a query of its own and runs no `before_transaction` hook.
+  @doc false
+  @spec refuse_loads(Ash.Query.t(), term()) :: Ash.Query.t() | {:error, term()}
+  def refuse_loads(%Ash.Query{} = query, actor) do
+    refusals =
+      for load <- Map.values(query.calculations) ++ Map.values(query.aggregates),
+          {target, name, _derived?} <- secured_reads(load, query.resource),
+          not everywhere?(actor, target, name, query),
+          uniq: true do
+        Ash.Error.Query.InvalidQuery.exception(
+          field: name,
+          value: load.name,
+          message: "#{inspect(load.name)} reads the secured column #{inspect(name)}"
+        )
+      end
+
+    if refusals == [], do: query, else: {:error, refusals}
   end
 
   defp sort_reads(%Ash.Query{sort: sort, resource: resource}) do

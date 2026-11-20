@@ -53,6 +53,13 @@ policy passes, and a filter a client supplied (`Ash.Query.filter_input/2`) rewri
    a filter on a calculation or an aggregate that reads it, which the data layer evaluates past the field policy. Keyset
    cursors are signed (`config :ash, :keyset_signing_secret`, derived from `SECRET_KEY_BASE` in a deployment), so a
    cursor a reader wrote to page past a hidden value is refused.
+
+   > **2026-11-20.** A third use is refused the same way: a calculation or an aggregate loaded on the read that reads
+   > the column (`Ash.Query.calculate/4`, an aggregate built at run time, one loaded onto records in hand with
+   > `Ash.load/3`, or one inside a relationship's load), for a reader who does not see it on every row. The test in the
+   > Consequences scans only the calculations and aggregates the application declares; one built by the code that reads
+   > returned the value to a reader without the grant. `SecuredFieldRefs` walks a load as it walks a sort, and the
+   > refusal names the column.
 7. `AshEnterprise.Platform.Verifiers.SecuredFields` refuses a name that is not an attribute, the primary key (Ash shows
    it to everyone), an ownership or tenant column (authorization reads them), a column that is not `sensitive?` (the
    audit log keeps every other changed value, and is read through a row grant), and a resource that also declares
@@ -64,6 +71,7 @@ policy passes, and a filter a client supplied (`Ash.Query.filter_input/2`) rewri
    form filled from the record holds a stand-in, so an update keeps the stored value when a writer who cannot see the
    column sends back `nil`, a blank or that inspected text (`Security.Changes.KeepHiddenSecuredFields`). `String.Chars`
    is not implemented, so code that builds a key or a request from a hidden value fails instead of using a mask.
+
 
 The first secured column is `Credentialing.Credential.number`. The coordinator who records numbers holds it through a
 role of its own; the credentialing committee reviews an activation without it.

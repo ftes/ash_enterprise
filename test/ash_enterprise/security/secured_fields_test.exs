@@ -297,6 +297,65 @@ defmodule AshEnterprise.Security.SecuredFieldsTest do
                |> Ash.read(as(clinicians))
     end
 
+    test "a calculation or an aggregate loaded over the column is refused without the grant",
+         ctx do
+      import Ash.Expr, only: [expr: 1]
+      reader = DailyFixtures.member!(ctx.admin, "Reviewer", [{Credential, :read, :global}])
+
+      # Built by the code that reads, as a page or an explorer column would build it.
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidQuery{} = e]}} =
+               Credential
+               |> Ash.Query.calculate(:through, :string, expr(number <> ""))
+               |> Ash.read(as(reader))
+
+      assert e.field == :number
+      assert Exception.message(e) =~ ":number"
+
+      clinicians =
+        DailyFixtures.member!(ctx.admin, "Clinicians", [
+          {Credentialing.Clinician, :read, :global},
+          {Credential, :read, :global}
+        ])
+
+      {:ok, first_number} =
+        Ash.Query.Aggregate.new(Credentialing.Clinician, :first_number, :first,
+          path: [:credentials],
+          field: :number
+        )
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidQuery{field: :number}]}} =
+               Credentialing.Clinician
+               |> Ash.Query.load(first_number)
+               |> Ash.read(as(clinicians))
+
+      # Added after the action has prepared the query, and loaded onto records in hand.
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidQuery{field: :number}]}} =
+               Credential
+               |> Ash.Query.for_read(:read, %{}, as(reader))
+               |> Ash.Query.calculate(:through, :string, expr(number))
+               |> Ash.read()
+
+      clinician = Ash.get!(Credentialing.Clinician, ctx.clinician.id, as(clinicians))
+
+      assert {:error, %Ash.Error.Invalid{errors: [%Ash.Error.Query.InvalidQuery{field: :number}]}} =
+               Ash.load(clinician, [first_number], as(clinicians))
+
+      # Inside a relationship's load, which reads the related resource as the same reader.
+      assert {:error, %Ash.Error.Invalid{}} =
+               Credentialing.Clinician
+               |> Ash.Query.load(
+                 credentials: Ash.Query.calculate(Credential, :through, :string, expr(number))
+               )
+               |> Ash.read(as(clinicians))
+
+      # What does not read the column still loads.
+      assert [%{calculations: %{kind_text: _}}] =
+               Credential
+               |> Ash.Query.filter(id == ^ctx.credential.id)
+               |> Ash.Query.calculate(:kind_text, :string, expr(type(kind, :string)))
+               |> Ash.read!(as(reader))
+    end
+
     test "the credential form leaves a hidden number as it is when its editor cannot see it",
          ctx do
       editor =
@@ -351,7 +410,9 @@ defmodule AshEnterprise.Security.SecuredFieldsTest do
       end
     end
 
-    test "a holder at :global sorts, pages and filters through derived reads", ctx do
+    test "a holder at :global sorts, pages, filters and loads through derived reads", ctx do
+      import Ash.Expr, only: [expr: 1]
+
       holder =
         DailyFixtures.member!(ctx.admin, "Holder", [
           {Credential, :read, :global},
@@ -375,6 +436,12 @@ defmodule AshEnterprise.Security.SecuredFieldsTest do
                |> Ash.read!(as(holder))
 
       assert clinician_id == ctx.clinician.id
+
+      assert [%{calculations: %{through: ^number}}] =
+               Credential
+               |> Ash.Query.filter(id == ^ctx.credential.id)
+               |> Ash.Query.calculate(:through, :string, expr(number))
+               |> Ash.read!(as(holder))
 
       # A system read is not a reader: nothing is refused.
       assert [_ | _] =
