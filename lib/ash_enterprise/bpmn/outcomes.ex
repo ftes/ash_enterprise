@@ -21,18 +21,20 @@ defmodule AshEnterprise.Bpmn.Outcomes do
 
   The board's prompt is an `ash_a2ui` ChoicePicker over the Complete action's
   enumerated `outcome` argument, whose values are fixed when the resource
-  compiles: every outcome a checked-in baseline (`priv/bpmn/*.bpmn`) declares
-  (`offered/0`). A prompt's options cannot vary per card (the protocol's
+  compiles: every outcome a checked-in baseline (`priv/bpmn/*.bpmn`) or recipe
+  pack (`priv/packs/*/*.bpmn`) declares (`offered/0`), so a review a pack
+  opens can be closed from the board. A prompt's options cannot vary per card (the protocol's
   ChoicePicker takes literal options), so the picker on one card can show an
   outcome another step declares; the action refuses it with the outcomes this
   step does declare, and the task's detail lists them. Per-card options need
   per-record prompt options in `ash_a2ui`.
   """
 
-  # Compile-time constants from the checked-in baselines, so the atoms below
-  # come from our own files, never from input (iron law #10's documented
-  # exception). Adding or removing a baseline recompiles this module.
-  @baselines Path.wildcard(Path.expand("../../../priv/bpmn/*.bpmn", __DIR__))
+  # Compile-time constants from the checked-in baselines and packs, so the
+  # atoms below come from our own files, never from input (iron law #10's
+  # documented exception). Adding or removing one recompiles this module.
+  @patterns ["../../../priv/bpmn/*.bpmn", "../../../priv/packs/*/*.bpmn"]
+  @baselines Enum.flat_map(@patterns, &Path.wildcard(Path.expand(&1, __DIR__)))
   for baseline <- @baselines, do: @external_resource(baseline)
 
   @offered @baselines
@@ -46,9 +48,9 @@ defmodule AshEnterprise.Bpmn.Outcomes do
 
   @doc false
   def __mix_recompile__?,
-    do: Path.wildcard(Path.expand("../../../priv/bpmn/*.bpmn", __DIR__)) != @baselines
+    do: Enum.flat_map(@patterns, &Path.wildcard(Path.expand(&1, __DIR__))) != @baselines
 
-  @doc "Every outcome a checked-in baseline declares, in first-seen order: the picker's choices."
+  @doc "Every outcome a checked-in baseline or pack declares, in first-seen order: the picker's choices."
   @spec offered() :: [String.t()]
   def offered, do: @offered
 

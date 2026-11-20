@@ -386,6 +386,18 @@ defmodule AshEnterprise.Accounts.User do
       prepare AshEnterprise.Accounts.Preparations.ActiveOnly
     end
 
+    read :asked_to_acknowledge do
+      description """
+      The people a policy review asks to acknowledge the organization's policies: every
+      active user whose home business unit is in the organization. One read, so a role or
+      team filter is added here.
+      """
+
+      argument :organization_id, :uuid, allow_nil?: false
+      prepare AshEnterprise.Accounts.Preparations.AskedToAcknowledge
+      prepare build(sort: [email: :asc])
+    end
+
     read :delegate_candidates do
       description """
       The people a task the actor holds may be handed to: its candidates the

@@ -186,7 +186,8 @@ defmodule AshEnterprise.Process.ActionInvokerTest do
                  "agent_run_outcome",
                  "cancel_agent_run",
                  "offboarding_open",
-                 "offboarding_revoke_credentials"
+                 "offboarding_revoke_credentials",
+                 "policy_acknowledgements_open"
                ])
 
       for ref <- refs do

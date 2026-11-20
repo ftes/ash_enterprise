@@ -6,7 +6,10 @@ defmodule AshEnterprise.Bpmn.Calculations.SubjectSummary do
       Smyth` (a steward decision's pair), or the subject's kind;
     * `field: :outline` — the brief in one line (`6 events · 08:30–17:30`);
     * `field: :detail` — the morning brief's draft (rendered on read, so a
-      shredded event line reads `[shredded]`), or nothing for other kinds;
+      shredded event line reads `[shredded]`); for a policy review, who has and
+      has not acknowledged the policies (`AshEnterprise.Signatures.ReviewStatus`),
+      so the administrator closing it has the list in front of them; nothing for
+      other kinds;
     * `field: :ref` — the subject as a typed record reference,
       `"<surface key>:<id>"`: the registry surface that shows a record of the
       subject's type (`AshEnterprise.Surfaces.record_surface/1`) and its id.
@@ -28,6 +31,7 @@ defmodule AshEnterprise.Bpmn.Calculations.SubjectSummary do
   # The engine records a subject type as `to_string(module)` ("Elixir.…").
   @brief to_string(MorningBrief)
   @candidate to_string(AshEnterprise.Mdm.MatchCandidate)
+  @occurrence to_string(AshEnterprise.Automation.Occurrence)
 
   @impl true
   def init(opts) do
@@ -55,7 +59,13 @@ defmodule AshEnterprise.Bpmn.Calculations.SubjectSummary do
     tasks = Enum.map(tasks, &subject/1)
     briefs = briefs(tasks, opts[:field], context)
     candidates = if opts[:field] == :label, do: candidates(tasks, context), else: %{}
-    {:ok, Enum.map(tasks, &value(&1, opts[:field], Map.merge(briefs, candidates)))}
+    reviews = policy_reviews(tasks, opts[:field], context)
+
+    {:ok,
+     Enum.map(
+       tasks,
+       &value(&1, opts[:field], briefs |> Map.merge(candidates) |> Map.merge(reviews))
+     )}
   end
 
   # A process task names its subject through its instance (the task's own
@@ -124,6 +134,59 @@ defmodule AshEnterprise.Bpmn.Calculations.SubjectSummary do
       |> Ash.Query.load([:staged_label, :golden_label])
       |> Ash.read!(Ash.Context.to_opts(context))
       |> Map.new(&{&1.id, &1})
+    end
+  end
+
+  # A policy review's occurrence: its period, and who has acknowledged, read as the
+  # reader (a reader who may not see the requests sees nobody asked).
+  defp policy_reviews(tasks, field, context) do
+    ids = for %{subject_type: @occurrence, subject_id: id} <- tasks, not is_nil(id), do: id
+
+    if ids == [] do
+      %{}
+    else
+      opts = Ash.Context.to_opts(context)
+
+      AshEnterprise.Automation.Occurrence
+      |> Ash.Query.filter(id in ^ids)
+      |> Ash.read(opts)
+      |> case do
+        {:ok, occurrences} -> occurrences
+        {:error, _} -> []
+      end
+      |> Enum.filter(&AshEnterprise.Signatures.Actions.OpenAcknowledgements.policy_review?/1)
+      |> Map.new(&{&1.id, {:policy_review, &1, review_status(&1, field, opts)}})
+    end
+  end
+
+  defp review_status(_occurrence, :label, _opts), do: nil
+
+  defp review_status(occurrence, _field, opts) do
+    case AshEnterprise.Signatures.ReviewStatus.status(occurrence.id, opts) do
+      {:ok, status} -> status
+      {:error, _} -> nil
+    end
+  end
+
+  defp value(%{subject_type: @occurrence, subject_id: id} = task, field, found) do
+    case {Map.get(found, id), field} do
+      {{:policy_review, occurrence, _}, :label} ->
+        "Policy review · #{occurrence.data["period"]}"
+
+      {{:policy_review, _, nil}, _field} ->
+        nil
+
+      {{:policy_review, _, status}, :outline} ->
+        AshEnterprise.Signatures.ReviewStatus.outline(status)
+
+      {{:policy_review, _, status}, :detail} ->
+        AshEnterprise.Signatures.ReviewStatus.describe(status)
+
+      {nil, :label} ->
+        value(%{task | subject_type: "Occurrence"}, :label, %{})
+
+      _ ->
+        nil
     end
   end
 

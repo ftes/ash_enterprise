@@ -28,6 +28,9 @@ defmodule AshEnterprise.Signatures do
   resources do
     resource AshEnterprise.Signatures.Request do
       define :draft_signature_request, action: :draft
+      define :draft_acknowledgement, action: :draft_acknowledgement
+      define :open_acknowledgements, action: :open_acknowledgements, args: [:id]
+      define :acknowledgement_review_status, action: :review_status, args: [:occurrence_id]
       define :send_signature_request, action: :send
       define :recall_signature_request, action: :recall
       define :cancel_signature_request, action: :cancel

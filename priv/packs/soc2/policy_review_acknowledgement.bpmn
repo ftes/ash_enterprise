@@ -8,23 +8,41 @@
                    id="Definitions_policy_review_acknowledgement"
                    targetNamespace="https://ash-enterprise.example/bpmn">
   <!--
-    Review the policies and acknowledge them (SOC 2 CC1.1, CC2.2 and CC5.3). Started by the pack's recipe when the year's policy review falls due.
-    An administrator records that the policies were reviewed and acknowledged, or that they were not.
+    Review the policies and acknowledge them (SOC 2 CC1.1, CC2.2 and CC5.3). Started by the pack's recipe when the year's policy review falls due:
+    the subject is the compliance.review_due occurrence recorded in this organization.
 
-    The shape follows the operator process template ash_compliance ships as
-    compliance.policy_review_acknowledgement, with its human step only: this pack's recipes are
-    human-tasks-only, so nothing here acts on its own. The template's evidence and
-    completion steps are not run; the outcome is recorded on the task and the instance.
+    Each person acknowledges for themselves. The service task names a declared target
+    (AshEnterprise.Signatures.Request.open_acknowledgements): it asks every active person in
+    the organization to acknowledge the current version of every current policy, one request
+    each, in the app, and a person already asked by this review over those versions is not
+    asked again. Under the recipe's standing grant it runs as the recipe runner acting for the
+    person who published the recipe, and nothing else; published plainly, the recipe is
+    refused, because this step acts. Each person reads, consents and acknowledges on their own
+    request; the event records the SHA-256 of every version shown. Reminders follow on the
+    host's schedule (AshEnterprise.Signatures.ReminderWorker).
+
+    The review task shows the administrator who has and has not acknowledged. Closing it
+    records the administrator's decision about the review and nothing more: it acknowledges
+    nothing for anyone, the people outstanding stay outstanding, and the controls are judged
+    from the acknowledgements themselves, not from this outcome.
     The reviewer is an Administrator other than the person whose write started the
     instance and the creator of the row that started it.
   -->
   <bpmn2:process id="Process_policy_review_acknowledgement" name="Review the policies and acknowledge them" isExecutable="true">
 
     <bpmn2:startEvent id="Start" name="Policy review due">
-      <bpmn2:outgoing>Flow_to_review</bpmn2:outgoing>
+      <bpmn2:outgoing>Flow_to_ask</bpmn2:outgoing>
     </bpmn2:startEvent>
 
-    <bpmn2:userTask id="Review" name="Review the policies and record the acknowledgement">
+    <bpmn2:serviceTask id="Ask" name="Ask each person to acknowledge the current policies">
+      <bpmn2:extensionElements>
+        <ash:taskConfig action="policy_acknowledgements_open"/>
+      </bpmn2:extensionElements>
+      <bpmn2:incoming>Flow_to_ask</bpmn2:incoming>
+      <bpmn2:outgoing>Flow_to_review</bpmn2:outgoing>
+    </bpmn2:serviceTask>
+
+    <bpmn2:userTask id="Review" name="Review the policies and who has acknowledged them">
       <bpmn2:extensionElements>
         <ash:taskConfig>
           <ash:candidates>
@@ -60,7 +78,8 @@
       <bpmn2:incoming>Flow_not_completed</bpmn2:incoming>
     </bpmn2:endEvent>
 
-    <bpmn2:sequenceFlow id="Flow_to_review" sourceRef="Start" targetRef="Review"/>
+    <bpmn2:sequenceFlow id="Flow_to_ask" sourceRef="Start" targetRef="Ask"/>
+    <bpmn2:sequenceFlow id="Flow_to_review" sourceRef="Ask" targetRef="Review"/>
     <bpmn2:sequenceFlow id="Flow_to_route" sourceRef="Review" targetRef="Route"/>
     <bpmn2:sequenceFlow id="Flow_completed" sourceRef="Route" targetRef="EndCompleted">
       <bpmn2:conditionExpression xsi:type="bpmn2:tFormalExpression"
@@ -74,35 +93,42 @@
       <bpmndi:BPMNShape id="Shape_Start" bpmnElement="Start">
         <dc:Bounds x="150" y="202" width="36" height="36"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Review" bpmnElement="Review">
+      <bpmndi:BPMNShape id="Shape_Ask" bpmnElement="Ask">
         <dc:Bounds x="240" y="180" width="140" height="80"/>
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Review" bpmnElement="Review">
+        <dc:Bounds x="430" y="180" width="140" height="80"/>
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Route" bpmnElement="Route" isMarkerVisible="true">
-        <dc:Bounds x="440" y="195" width="50" height="50"/>
+        <dc:Bounds x="630" y="195" width="50" height="50"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_EndCompleted" bpmnElement="EndCompleted">
-        <dc:Bounds x="560" y="132" width="36" height="36"/>
+        <dc:Bounds x="750" y="132" width="36" height="36"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_EndNotCompleted" bpmnElement="EndNotCompleted">
-        <dc:Bounds x="560" y="272" width="36" height="36"/>
+        <dc:Bounds x="750" y="272" width="36" height="36"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Edge_Flow_to_review" bpmnElement="Flow_to_review">
+      <bpmndi:BPMNEdge id="Edge_Flow_to_ask" bpmnElement="Flow_to_ask">
         <di:waypoint x="186" y="220"/>
         <di:waypoint x="240" y="220"/>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Flow_to_route" bpmnElement="Flow_to_route">
+      <bpmndi:BPMNEdge id="Edge_Flow_to_review" bpmnElement="Flow_to_review">
         <di:waypoint x="380" y="220"/>
-        <di:waypoint x="440" y="220"/>
+        <di:waypoint x="430" y="220"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_to_route" bpmnElement="Flow_to_route">
+        <di:waypoint x="570" y="220"/>
+        <di:waypoint x="630" y="220"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_completed" bpmnElement="Flow_completed">
-        <di:waypoint x="465" y="195"/>
-        <di:waypoint x="465" y="150"/>
-        <di:waypoint x="560" y="150"/>
+        <di:waypoint x="655" y="195"/>
+        <di:waypoint x="655" y="150"/>
+        <di:waypoint x="750" y="150"/>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_not_completed" bpmnElement="Flow_not_completed">
-        <di:waypoint x="465" y="245"/>
-        <di:waypoint x="465" y="290"/>
-        <di:waypoint x="560" y="290"/>
+        <di:waypoint x="655" y="245"/>
+        <di:waypoint x="655" y="290"/>
+        <di:waypoint x="750" y="290"/>
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

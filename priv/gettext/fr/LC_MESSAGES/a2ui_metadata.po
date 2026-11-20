@@ -293,6 +293,10 @@ msgstr "Interroger le demandeur — il répond avant votre décision"
 msgid "Ask to activate"
 msgstr "Demander l’activation"
 
+#: lib/ash_enterprise/canvas/registry.ex:2
+msgid "Asked to acknowledge"
+msgstr "Appelés à prendre connaissance"
+
 #: lib/ash_enterprise_web/a2ui/mdm_golden_ui.ex:1
 msgid "Asserted by"
 msgstr "Affirmé par"
@@ -650,6 +654,11 @@ msgstr "Terminer la tâche"
 #: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
 msgid "Complete — the outcome, and a note for the record (optional)"
 msgstr "Terminer : le résultat et une note pour le dossier (facultatif)"
+
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Completed"
+msgstr "Terminé"
 
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:670
 #: lib/ash_enterprise_web/a2ui/stalled_reviews_ui.ex:1
@@ -1292,6 +1301,11 @@ msgstr "Première applicable"
 msgid "Flight view"
 msgstr "Vue de suivi"
 
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Follow up"
+msgstr "À suivre"
+
 #: lib/ash_enterprise_web/a2ui/deliveries_ui.ex:1
 msgid "Follow-up"
 msgstr "Suivi"
@@ -1390,6 +1404,11 @@ msgstr "Accordé"
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Grant recipe"
 msgstr "Octroyer pour une recette"
+
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Handed over"
+msgstr "Transmis"
 
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:1
 msgid "Health"
@@ -1949,6 +1968,11 @@ msgstr "Aucune"
 msgctxt "one_of:outcome"
 msgid "Not applicable"
 msgstr "Sans objet"
+
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Not completed"
+msgstr "Non terminé"
 
 #: lib/ash_enterprise_web/a2ui/judgments/verdicts_ui.ex:1
 msgid "Nothing awaits a verdict"

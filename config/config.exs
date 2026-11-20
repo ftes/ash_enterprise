@@ -159,6 +159,9 @@ config :ash_enterprise, Oban,
          # occurrence per organization with a published recipe, template and period, and the
          # soc2 pack's recipes open the review (AshEnterprise.Compliance.ScheduledReviewWorker).
          {"25 5 * * *", AshEnterprise.Compliance.ScheduledReviewWorker},
+         # Signers a request is waiting on hear again once the host's interval passes with no
+         # word (AshEnterprise.Signatures.ReminderWorker: seven days unless `interval_days` is set).
+         {"45 5 * * *", AshEnterprise.Signatures.ReminderWorker},
          # PROD-18: commitments in sent mail and Slack, and follow-ups to ended
          # meetings, proposed as action items (AshEnterprise.Canonical.Commitments).
          # Messages are read only by the in-zone model; with none, they wait.

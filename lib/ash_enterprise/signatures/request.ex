@@ -28,6 +28,18 @@ defmodule AshEnterprise.Signatures.Request do
       a host process that opens requests runs it as a governed target.
     * **The chain head.** Each completion records the tenant's audit chain head
       (`AshEnterprise.Signatures.ChainHead`).
+
+  ## Policy acknowledgements
+
+  When the policy review falls due, `open_acknowledgements` (the first step of the `soc2`
+  pack's policy review, run as a governed target) asks each person in scope to acknowledge
+  the current policies: one request per person (`draft_acknowledgement`: the person is the
+  subject, the review's occurrence is `occurrence_id`), over one document per current
+  policy version, sent in the app. `AshEnterprise.Signatures.Actions.OpenAcknowledgements`
+  says what it does on a replay, after a new version, and in the next period.
+  `review_status` says who has and has not acknowledged for one review
+  (`AshEnterprise.Signatures.ReviewStatus`); the administrator's review task shows it.
+  `AshEnterprise.Signatures.ReminderWorker` reminds the people still waiting.
   """
 
   use AshEnterprise.Platform.Resource,
@@ -43,7 +55,23 @@ defmodule AshEnterprise.Signatures.Request do
   postgres do
     table "signature_requests"
     repo AshEnterprise.Repo
+
+    # A review's requests, and one person's acknowledgements, are each read together.
+    custom_indexes do
+      index [:occurrence_id]
+      index [:subject_type, :subject_id]
+    end
   end
+
+  @acknowledgement "compliance.policy_acknowledgement"
+
+  @doc """
+  The `subject_type` of a policy acknowledgement: the subject is the person asked
+  (`subject_id`, their user id). A completed acknowledgement supersedes the person's other
+  open ones and nobody else's.
+  """
+  @spec acknowledgement() :: String.t()
+  def acknowledgement, do: @acknowledgement
 
   signature_request do
     request_document(AshEnterprise.Signatures.RequestDocument)
@@ -64,6 +92,72 @@ defmodule AshEnterprise.Signatures.Request do
       open_world?: false,
       approval: :none,
       intent: :execute
+
+    action :open_acknowledgements,
+      kind: :edit,
+      read_only?: false,
+      destructive?: false,
+      idempotent?: true,
+      open_world?: false,
+      approval: :none,
+      intent: :execute
+  end
+
+  attributes do
+    attribute :occurrence_id, :uuid do
+      public? true
+
+      description "The scheduled review (an `AshEnterprise.Automation.Occurrence`) that " <>
+                    "opened this request, when one did."
+    end
+  end
+
+  actions do
+    create :draft_acknowledgement do
+      description """
+      A draft request for one person to acknowledge the organization's policies, opened by
+      the review `occurrence_id` names. The person is the subject; written by
+      `open_acknowledgements`.
+      """
+
+      accept [:occurrence_id]
+
+      argument :user_id, :uuid, allow_nil?: false, public?: true
+
+      change set_attribute(:subject_type, @acknowledgement)
+      change set_attribute(:subject_id, arg(:user_id))
+      change set_attribute(:purpose, :acknowledge)
+    end
+
+    action :open_acknowledgements, :map do
+      description """
+      Asks every person in scope to acknowledge the current policies, for the policy review
+      the occurrence `id` names: one request per person, over every current policy version,
+      sent in the app. Idempotent per review: a person already asked by this review over the
+      same versions is not asked again. A person's open acknowledgement requests from before
+      are cancelled, so each person has one open request. Refuses an occurrence that is not a
+      policy review falling due with `not_a_policy_review`.
+      """
+
+      argument :id, :uuid do
+        allow_nil? false
+        description "The `compliance.review_due` occurrence of the policy review."
+      end
+
+      run AshEnterprise.Signatures.Actions.OpenAcknowledgements
+    end
+
+    action :review_status, :map do
+      description """
+      Who has and has not acknowledged, for the policy review the occurrence `occurrence_id`
+      names: each person asked, the newest request this review sent them, and where it
+      stands. Read as the caller.
+      """
+
+      argument :occurrence_id, :uuid, allow_nil?: false, public?: true
+
+      run AshEnterprise.Signatures.Actions.ReviewStatus
+    end
   end
 
   relationships do

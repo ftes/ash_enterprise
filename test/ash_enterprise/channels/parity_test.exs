@@ -79,6 +79,9 @@ defmodule AshEnterprise.Channels.ParityTest do
     {Offboarding, :revoke_credentials} =>
       "a step of the offboarding pack's process, run by its service task when a person " <>
         "is deactivated",
+    {Request, :open_acknowledgements} =>
+      "a step of the soc2 pack's policy review, run by its service task when the review " <>
+        "falls due; a person's part is acknowledging on their own signer row",
     {Request, :send} =>
       "the host process's write that opens a signature request (ADR 0074); a person's part " <>
         "is acting on their own signer row",

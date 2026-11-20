@@ -1,8 +1,10 @@
 defmodule AshEnterprise.Compliance.Soc2PackTest do
   @moduledoc """
   The `soc2` pack (`priv/packs/soc2/`): every operator process template `ash_compliance`
-  ships has exactly one row in the pack's map, a recipe that starts a human-only review or a
-  stated reason no audited event can, and the periodic ones fall due on a schedule.
+  ships has exactly one row in the pack's map, a recipe that starts a review or a stated
+  reason no audited event can, and the periodic ones fall due on a schedule. Every review is
+  human tasks only but the policy review, whose first step asks each person to acknowledge
+  the policies (`AshEnterprise.Compliance.PolicyReviewTest`).
 
   Refusals first: a map with a template missing, doubled or unknown, a row that is empty,
   double or has a blank reason, a recipe that points nowhere, a scheduled template with no
@@ -259,6 +261,11 @@ defmodule AshEnterprise.Compliance.Soc2PackTest do
       manifest = manifest!()
       assert Enum.all?(manifest["recipes"], &(&1["authority"] == "human_tasks_only"))
 
+      # One process has a step that acts: the policy review asks each person to acknowledge,
+      # so a person publishes its recipe with publish_granted.
+      assert for(process <- pack.processes, process.xml =~ "<bpmn2:serviceTask", do: process.key) ==
+               ["soc2.policy_review_acknowledgement"]
+
       assert Enum.all?(
                manifest["recipes"],
                &(&1["match_resource"] == "AshEnterprise.Automation.Occurrence")
@@ -379,16 +386,16 @@ defmodule AshEnterprise.Compliance.Soc2PackTest do
       assert {:ok, _} = ScheduledReviewWorker.perform(%Oban.Job{})
       sweep!(listening.tenant)
 
-      # Later in the same period, the policy review's recipe is published.
-      publish!(listening.tenant, "soc2.policy_review_acknowledgement")
+      # Later in the same period, the training attestation's recipe is published.
+      publish!(listening.tenant, "soc2.training_attestation")
       assert {:ok, _} = ScheduledReviewWorker.perform(%Oban.Job{})
       sweep!(listening.tenant)
 
       assert started(listening.tenant) ==
-               ["soc2.policy_review_acknowledgement", "soc2.vendor_review"]
+               ["soc2.training_attestation", "soc2.vendor_review"]
 
       assert listening.tenant |> occurrences() |> Enum.map(& &1.data["template"]) |> Enum.sort() ==
-               ["policy_review_acknowledgement", "vendor_review"]
+               ["training_attestation", "vendor_review"]
     end
 
     test "a period opens one review, in the tenant that published its recipe only" do

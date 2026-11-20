@@ -291,6 +291,10 @@ msgstr ""
 msgid "Ask to activate"
 msgstr ""
 
+#: lib/ash_enterprise/canvas/registry.ex:2
+msgid "Asked to acknowledge"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/mdm_golden_ui.ex:1
 msgid "Asserted by"
 msgstr ""
@@ -647,6 +651,11 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
 msgid "Complete — the outcome, and a note for the record (optional)"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Completed"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:670
@@ -1288,6 +1297,11 @@ msgstr ""
 msgid "Flight view"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Follow up"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/deliveries_ui.ex:1
 msgid "Follow-up"
 msgstr ""
@@ -1385,6 +1399,11 @@ msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Grant recipe"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Handed over"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:1
@@ -1943,6 +1962,11 @@ msgstr ""
 #: lib/ash_enterprise_web/a2ui/compliance_evaluation_ui.ex:1
 msgctxt "one_of:outcome"
 msgid "Not applicable"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/task_board_ui.ex:1
+msgctxt "one_of:outcome"
+msgid "Not completed"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/judgments/verdicts_ui.ex:1

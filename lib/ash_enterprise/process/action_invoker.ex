@@ -119,6 +119,9 @@ defmodule AshEnterprise.Process.ActionInvoker do
     "offboarding_revoke_credentials" => %{
       invoke: {AshEnterprise.Accounts.Offboarding, :revoke_credentials}
     },
+    "policy_acknowledgements_open" => %{
+      invoke: {AshEnterprise.Signatures.Request, :open_acknowledgements}
+    },
     "start_agent_run" => %{
       run: &AshEnterprise.Process.AgentRuns.start/1,
       action: :bespoke,
