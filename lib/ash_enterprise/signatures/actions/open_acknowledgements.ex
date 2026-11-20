@@ -25,7 +25,18 @@ defmodule AshEnterprise.Signatures.Actions.OpenAcknowledgements do
        replay opens nothing). Otherwise the person's open acknowledgement requests are
        cancelled, and one request is drafted (`draft_acknowledgement`, the person as its
        subject, this occurrence as its review), given one document per current version in
-       key order, the person as its only signer (`add_person`), and sent in the app.
+       key order, the person as its only signer (`add_person`), and sent in the app. The
+       person's standing is recorded for the policy criteria in the same transaction
+       (`AshEnterprise.Compliance.PolicyAcknowledgement.record_entered/4`), so everyone
+       asked has a finding, unknown until they acknowledge.
+
+  ## A person who has been erased
+
+  Erasing a person shreds their own erasure scope and leaves their account as it was, so
+  they can still be an active user of the organization. A signer row is sealed under that
+  scope, and nothing new may land under a shredded one, so such a person cannot be asked.
+  They are skipped and counted (`"erased"`), and everyone else is still asked: one person
+  who cannot be asked never stops the review for the people after them.
 
   One request per person, not one request with everyone on it: the package moves signers in
   order and reminds only the signer whose turn it is, so a request per person is what lets
@@ -36,7 +47,7 @@ defmodule AshEnterprise.Signatures.Actions.OpenAcknowledgements do
   acknowledged before.
 
   Answers `%{"policies" => p, "people" => n, "opened" => o, "already_asked" => a,
-  "cancelled" => c}`. With no current policy there is nothing to acknowledge and nothing is
+  "cancelled" => c, "erased" => e}`. With no current policy there is nothing to acknowledge and nothing is
   opened.
   """
 
@@ -48,6 +59,9 @@ defmodule AshEnterprise.Signatures.Actions.OpenAcknowledgements do
   alias AshEnterprise.Accounts.User
   alias AshEnterprise.Automation.{Occurrence, Occurrences}
   alias AshEnterprise.Compliance
+  alias AshEnterprise.Compliance.PolicyAcknowledgement
+  alias AshEnterprise.Erasure
+  alias AshEnterprise.Execution.Changes.SealingScope
   alias AshEnterprise.Signatures
   alias AshEnterprise.Signatures.Request
 
@@ -68,12 +82,13 @@ defmodule AshEnterprise.Signatures.Actions.OpenAcknowledgements do
          "people" => length(people),
          "opened" => tally.opened,
          "already_asked" => tally.already_asked,
-         "cancelled" => tally.cancelled
+         "cancelled" => tally.cancelled,
+         "erased" => tally.erased
        }}
     end
   end
 
-  @none %{opened: 0, already_asked: 0, cancelled: 0}
+  @none %{opened: 0, already_asked: 0, cancelled: 0, erased: 0}
 
   # No current policy: nothing to acknowledge, so nobody is asked.
   defp ask_all(_people, _occurrence, [], _opts), do: {:ok, @none}
@@ -88,6 +103,7 @@ defmodule AshEnterprise.Signatures.Actions.OpenAcknowledgements do
   end
 
   defp count(tally, :already_asked), do: Map.update!(tally, :already_asked, &(&1 + 1))
+  defp count(tally, :erased), do: Map.update!(tally, :erased, &(&1 + 1))
 
   defp count(tally, {:opened, cancelled}),
     do: %{tally | opened: tally.opened + 1, cancelled: tally.cancelled + cancelled}
@@ -127,8 +143,23 @@ defmodule AshEnterprise.Signatures.Actions.OpenAcknowledgements do
   defp ask(person, occurrence, policies, opts) do
     hashes = policies |> Enum.map(& &1.sha256) |> Enum.sort()
 
-    with {:ok, theirs} <- requests_of(person.id, opts) do
+    with {:ok, false} <- erased?(person.id),
+         {:ok, theirs} <- requests_of(person.id, opts) do
       ask(person, occurrence, policies, theirs, hashes, opts)
+    else
+      {:ok, true} -> {:ok, :erased}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # The person's own erasure scope (the one their signer row would be sealed under) has
+  # been shredded. Bookkeeping, like reading who the people are: read without
+  # authorization. A person never yet asked has no scope, and is not erased.
+  defp erased?(user_id) do
+    case Erasure.scope_by_ref(:data_subject, SealingScope.scope_ref(user_id), authorize?: false) do
+      {:ok, %{status: :shredded}} -> {:ok, true}
+      {:ok, _active_or_none} -> {:ok, false}
+      {:error, error} -> {:error, error}
     end
   end
 
@@ -181,6 +212,10 @@ defmodule AshEnterprise.Signatures.Actions.OpenAcknowledgements do
     )
 
     Signatures.send_signature_request!(request, opts)
+
+    :ok =
+      PolicyAcknowledgement.record_entered(occurrence.organization_id, person.id, "asked")
+
     {:opened, length(stale)}
   end
 

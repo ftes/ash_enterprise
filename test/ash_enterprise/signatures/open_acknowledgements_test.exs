@@ -98,6 +98,70 @@ defmodule AshEnterprise.Signatures.OpenAcknowledgementsTest do
     end
   end
 
+  describe "a person who has been erased" do
+    # Erasing a person shreds their own erasure scope and leaves their account as it was.
+    # Nothing new may be sealed under a shredded scope, so they cannot be asked again; the
+    # people after them must still be.
+    test "is skipped and counted, and everyone after them is still asked" do
+      operator =
+        DailyFixtures.tenant!(
+          operator?: true,
+          email: "zz-operator-#{System.unique_integer([:positive])}@example.test"
+        )
+
+      [first, second] =
+        [
+          DailyFixtures.member!(operator, "Staff one", []),
+          DailyFixtures.member!(operator, "Staff two", [])
+        ]
+        |> Enum.sort_by(& &1.email)
+
+      publish!(operator, "acceptable-use", "v1")
+      first_review = review_due!(operator, @template, "2026")
+      assert {:ok, %{"opened" => 3}} = open(operator, first_review.id)
+
+      assert {:ok, _receipt} =
+               AshEnterprise.Erasure.erase_person(
+                 first.email,
+                 first.email,
+                 "SYNTHETIC: erasure before the next review",
+                 opts(operator)
+               )
+
+      # Their account is untouched: still an active person of the organization.
+      assert Ash.get!(AshEnterprise.Accounts.User, first.user.id, authorize?: false).lifecycle_status ==
+               :active
+
+      next_review = review_due!(operator, @template, "2027")
+
+      assert {:ok, %{"opened" => 2, "erased" => 1, "people" => 3}} =
+               open(operator, next_review.id)
+
+      asked_next =
+        operator
+        |> requests()
+        |> Enum.filter(&(&1.occurrence_id == next_review.id))
+        |> Enum.map(& &1.subject_id)
+
+      assert to_string(second.user.id) in asked_next
+      assert to_string(operator.user.id) in asked_next
+      refute to_string(first.user.id) in asked_next
+
+      # The review counts only the people it could ask.
+      assert {:ok, %{"asked" => 2}} = status(operator, next_review.id)
+
+      # Nor is an erased person chased: their old request is never due a reminder.
+      due =
+        DateTime.utc_now()
+        |> DateTime.add(86_400, :second)
+        |> AshEnterprise.Signatures.ReminderWorker.due()
+        |> Enum.map(& &1.user_id)
+
+      refute first.user.id in due
+      assert second.user.id in due
+    end
+  end
+
   describe "opened" do
     test "each person gets one request over every current version, sent in the app", ctx do
       use_policy = publish!(ctx.admin, "acceptable-use", "v1")

@@ -13,12 +13,18 @@ defmodule AshEnterprise.Signatures.SignerEvent do
 
   ## Sealing
 
-  `ip_address`, `user_agent` and `reason` (`AshSignatures.payload_fields(:signer_event)`)
-  are cloaked and sealed under the signer's erasure scope, copied from the signer row
+  `ip_address`, `user_agent` and `reason`, and the event's `salt`
+  (`AshSignatures.payload_fields(:signer_event)`), are cloaked and sealed under the signer's
+  erasure scope, copied from the signer row
   (`AshEnterprise.Signatures.Changes.ScopeFromSigner`). The event hash is taken from them
   before they are sealed, so `event_hash` covers them and outlives them: once the scope is
   shredded they read as `AshEnterprise.Erasure.Shredded` and the hash, type, route, the
   SHA-256 of what was shown and `occurred_at` stay.
+
+  The salt is 32 random bytes the package puts in the hash of every event recorded with a
+  personal field. Every other field the hash covers stays in plain text after the shred,
+  so without it the hash would confirm a guess at the erased fields (an IPv4 address is
+  only 2^32 candidates). Sealed with them, it goes with them.
   """
 
   use AshEnterprise.Platform.Resource,
@@ -97,6 +103,11 @@ defmodule AshEnterprise.Signatures.SignerEvent do
     )
 
     keep(:encrypted_reason,
+      because:
+        "ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there"
+    )
+
+    keep(:encrypted_salt,
       because:
         "ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there"
     )

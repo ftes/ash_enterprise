@@ -483,6 +483,13 @@ defmodule AshEnterprise.Accounts.User do
     change AshEnterprise.Accounts.Changes.RecordDeactivation,
       on: :update,
       where: action_is(:deactivate)
+
+    # A person placed in an organization or activated is in scope for its policy
+    # acknowledgements: their standing is recorded, so they have a finding (CC1.1, CC2.2,
+    # CC5.3) from that moment, not from the next publish or signature.
+    change AshEnterprise.Compliance.Changes.EnterPolicyScope,
+      on: :update,
+      where: action_is([:assign_to_business_unit, :activate])
   end
 
   # Exposed as an ash_ai tool (`list_users`); ADR 0057.

@@ -8,10 +8,15 @@ defmodule AshEnterprise.Signatures.ReviewStatus do
 
   | Bucket | The person's newest request for this review |
   |---|---|
-  | `acknowledged` | they signed it: every version it named, at `signed_at` |
-  | `outstanding` | it is still open, waiting on them (`notified` or `viewed`) |
+  | `acknowledged` | they signed it, and it named every current policy version |
+  | `outstanding` | it is still open, waiting on them (`notified` or `viewed`), or they signed it but a version it named has since been replaced (`earlier version`) |
   | `declined` | they declined it |
   | `ended` | it ended without them: cancelled by a later review, expired or recalled |
+
+  A signature over a version that is no longer current is not counted as acknowledged: the
+  controls say that person is out (`AshEnterprise.Compliance.PolicyAcknowledgement`), and
+  the review says the same. Publishing a new version asks them again
+  (`AshEnterprise.Signatures.ReaskWorker`), and that newer request then decides their place.
 
   Everything is read as the caller, so a reader who may not see the requests sees nobody.
   The administrator's review task shows this (`AshEnterprise.Bpmn.Calculations.SubjectSummary`)
@@ -39,12 +44,15 @@ defmodule AshEnterprise.Signatures.ReviewStatus do
   """
   @spec status(Ash.UUID.t(), keyword()) :: {:ok, t()} | {:error, term()}
   def status(occurrence_id, opts) do
-    with {:ok, requests} <- requests(occurrence_id, opts) do
+    with {:ok, requests} <- requests(occurrence_id, opts),
+         {:ok, policies} <- AshEnterprise.Compliance.current_policies(opts) do
+      current = MapSet.new(policies, & &1.sha256)
+
       people =
         requests
         |> Enum.group_by(&person/1)
         |> Enum.reject(fn {user_id, _} -> is_nil(user_id) end)
-        |> Enum.map(fn {_user_id, theirs} -> theirs |> newest() |> entry() end)
+        |> Enum.map(fn {_user_id, theirs} -> theirs |> newest() |> entry(current) end)
         |> Enum.sort_by(&{&1["email"], &1["user_id"]})
 
       grouped = Enum.group_by(people, & &1["bucket"], &Map.delete(&1, "bucket"))
@@ -108,8 +116,8 @@ defmodule AshEnterprise.Signatures.ReviewStatus do
   # uuid v7 ids order by creation.
   defp newest(requests), do: Enum.max_by(requests, & &1.id)
 
-  defp entry(%{signers: [signer | _]} = request) do
-    {bucket, state, at} = place(request, signer)
+  defp entry(%{signers: [signer | _]} = request, current) do
+    {bucket, state, at} = place(request, signer, current)
 
     %{
       "bucket" => bucket,
@@ -120,17 +128,21 @@ defmodule AshEnterprise.Signatures.ReviewStatus do
     }
   end
 
-  defp place(_request, %{status: :signed} = signer),
-    do: {"acknowledged", "signed", signer.signed_at}
+  defp place(request, %{status: :signed} = signer, current) do
+    if MapSet.subset?(current, MapSet.new(request.documents, & &1.source_sha256)),
+      do: {"acknowledged", "signed", signer.signed_at},
+      else: {"outstanding", "earlier version", signer.signed_at}
+  end
 
-  defp place(_request, %{status: :declined} = signer),
+  defp place(_request, %{status: :declined} = signer, _current),
     do: {"declined", "declined", signer.ended_at}
 
-  defp place(%{status: status}, %{status: signer_status})
+  defp place(%{status: status}, %{status: signer_status}, _current)
        when status in @open and signer_status in [:pending, :notified, :viewed],
        do: {"outstanding", Atom.to_string(signer_status), nil}
 
-  defp place(request, _signer), do: {"ended", Atom.to_string(request.status), request.ended_at}
+  defp place(request, _signer, _current),
+    do: {"ended", Atom.to_string(request.status), request.ended_at}
 
   defp versions(requests) do
     requests

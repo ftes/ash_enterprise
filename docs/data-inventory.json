@@ -3621,6 +3621,7 @@
       "sensitive_attributes": [
         "encrypted_ip_address",
         "encrypted_reason",
+        "encrypted_salt",
         "encrypted_user_agent"
       ],
       "sealed_attributes": [
@@ -3630,6 +3631,10 @@
         },
         {
           "attribute": "encrypted_reason",
+          "sealing": "erasure_scope"
+        },
+        {
+          "attribute": "encrypted_salt",
           "sealing": "erasure_scope"
         },
         {
@@ -4098,18 +4103,19 @@
     },
     {
       "id": "outbound_mail",
-      "name": "Account mail (confirmation and password reset)",
+      "name": "Account mail (confirmation, password reset and signature reminders)",
       "recipient_class": "mail_provider",
       "data_classes": [
         "account_identity",
         "credentials_reference"
       ],
       "gate": "none",
-      "known_gap": "No tenant-level gate. A message goes to the address of the user the action is for, and carries a single-use token link. Which mail provider receives it is a deployment choice (default: local mailbox).",
+      "known_gap": "No tenant-level gate. A message goes to the address of the user the action is for, and carries a single-use token link, or, for a signature reminder, a link to the page where the person acts, naming no document. Which mail provider receives it is a deployment choice (default: local mailbox).",
       "modules": [
         "AshEnterprise.Accounts.User.Senders.SendNewUserConfirmationEmail",
         "AshEnterprise.Accounts.User.Senders.SendPasswordResetEmail",
-        "AshEnterprise.Mailer"
+        "AshEnterprise.Mailer",
+        "AshEnterprise.Signatures.Senders.SendReminder"
       ],
       "notes": null
     },

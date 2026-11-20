@@ -3,7 +3,7 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgement do
   How a person's acknowledgement of the policies becomes compliance events (ADR 0035), for
   the criteria the yearly policy review serves: CC1.1, CC2.2 and CC5.3.
 
-  Two moments append events to `AshEnterprise.Compliance.EventLog`, one per criterion:
+  Three moments append events to `AshEnterprise.Compliance.EventLog`, one per criterion:
 
     * **`policy_acknowledged`**: a person signs an acknowledgement request whose documents
       include a policy version (`AshEnterprise.Compliance.Changes.RecordPolicyAcknowledgement`,
@@ -13,6 +13,14 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgement do
       (`AshEnterprise.Compliance.Changes.ReviewPolicyAcknowledgements`, on the policy's
       `mint`). Every person in scope is evaluated again, so a person who held version 1 is
       out once version 2 is current, and stays out until they acknowledge it.
+    * **`policy_scope_entered`**: a person comes into scope while policies are published
+      (`record_entered/4`): they are placed in one of the organization's business units or
+      activated (`AshEnterprise.Compliance.Changes.EnterPolicyScope`, on the user), or the
+      review asks them (`AshEnterprise.Signatures.Request.open_acknowledgements`). Their
+      standing is recorded as it is then, so a person who joined after the last publish is
+      unknown rather than absent, and a person reactivated after a new version is out
+      rather than still in on the old one. A person who leaves scope keeps their last
+      finding.
 
   `AshEnterprise.Compliance.PolicyAcknowledgementProjector` folds them into one finding per
   person and criterion. Nothing here evaluates a rule: each event carries the person's
@@ -34,6 +42,18 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgement do
   A superseded acknowledgement is not edited or removed: the version-1 signer row, its
   events and its completion stay as they were.
 
+  ## One at a time
+
+  Each event carries the standing as it is when the event is written, and the projector
+  folds a person's events in the order they were written, so two writers must not work
+  out a standing on snapshots that miss each other: a person signing while version 2 is
+  being published would otherwise be recorded as holding the current versions. Every
+  event here is written after taking the organization's audit-log lock
+  (`AshEnterprise.Repo.AdvisoryLock.xact_lock_audit_log!/2`), held until the transaction
+  ends. The signer's `sign` and the policy's `supersede` and `mint` are audited and already
+  take that lock before their hooks run; taking it again here is free, and it covers the
+  writers that are not (a user, whose audit chain is not the organization's).
+
   ## In scope
 
   Every active user of the organization (`in_scope_users/1`). A role or team filter is a
@@ -52,6 +72,7 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgement do
   alias AshEnterprise.Accounts.{BusinessUnit, User}
   alias AshEnterprise.Compliance.{EventLog, Policy}
   alias AshEnterprise.Platform.SystemActor
+  alias AshEnterprise.Repo.AdvisoryLock
   alias AshEnterprise.Signatures.Signer
 
   @subject_type "user"
@@ -109,6 +130,23 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgement do
   end
 
   @doc """
+  Records the standing of a person who has come into scope: one `policy_scope_entered`
+  event per criterion, with `reason` (`"joined"`, `"activated"` or `"asked"`).
+
+  `:ok` without writing anything when the organization has no current policy: there is
+  nothing to acknowledge, and the first publish evaluates everyone in scope.
+  """
+  @spec record_entered(Ecto.UUID.t(), Ecto.UUID.t(), String.t(), keyword()) ::
+          :ok | {:error, term()}
+  def record_entered(organization_id, user_id, reason, opts \\ []) do
+    transaction(fn ->
+      if current_policies?(organization_id),
+        do: record(organization_id, user_id, :policy_scope_entered, %{"reason" => reason}, opts),
+        else: :ok
+    end)
+  end
+
+  @doc """
   The person's standing against the organization's current policies, as the facts and the
   per-policy detail an event carries. See the moduledoc for what each value means.
   """
@@ -162,6 +200,7 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgement do
   # --- the events --------------------------------------------------------------------
 
   defp record(organization_id, user_id, action, data, opts) do
+    :ok = AdvisoryLock.xact_lock_audit_log!(Policy, organization_id)
     standing = standing(organization_id, user_id)
 
     occurred_at =
@@ -203,7 +242,25 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgement do
     end)
   end
 
+  # The lock above needs a transaction; inside one already, this joins it.
+  defp transaction(fun) do
+    case AshEnterprise.Repo.transaction(fn -> fun.() |> ok_or_rollback() end) do
+      {:ok, :ok} -> :ok
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp ok_or_rollback(:ok), do: :ok
+  defp ok_or_rollback({:error, error}), do: AshEnterprise.Repo.rollback(error)
+
   # --- the reads ---------------------------------------------------------------------
+
+  defp current_policies?(organization_id) do
+    Policy
+    |> Ash.Query.filter(is_nil(superseded_at))
+    |> Ash.Query.limit(1)
+    |> Ash.exists?(tenant: organization_id, authorize?: false)
+  end
 
   defp load_request(organization_id, request_id) do
     AshEnterprise.Signatures.Request

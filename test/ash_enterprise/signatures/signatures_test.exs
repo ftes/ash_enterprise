@@ -339,6 +339,63 @@ defmodule AshEnterprise.Signatures.SignaturesTest do
       assert AshSignatures.Completion.intact?(after_completion)
     end
 
+    # Once the scope is shredded every other field the event hash covers is still in plain
+    # text, so a hash with no secret in it would confirm a guess at the erased ones: an
+    # IPv4 address is 2^32 candidates and a browser's user agent one of a few.
+    test "after erasing the person, the stored hashes cannot confirm a guess at what was erased",
+         ctx do
+      ip = "198.51.100.77"
+      agent = "Mozilla/5.0 (X11; Linux x86_64)"
+      signer_row = sent!(ctx.admin, ctx.signer)
+      signed = acknowledge!(ctx.signer, signer_row, ip_address: ip, user_agent: agent)
+
+      before_events =
+        signed
+        |> events()
+        |> Ash.load!([:ip_address, :user_agent, :reason, :salt],
+          authorize?: false,
+          tenant: ctx.admin.tenant
+        )
+
+      # While the scope is live the hash verifies, salt and all.
+      for event <- before_events, event.ip_address == ip do
+        assert is_binary(event.salt)
+        assert AshSignatures.SignerEvent.Changes.Hash.hash(event) == event.event_hash
+      end
+
+      assert {:ok, _receipt} =
+               Erasure.erase_person(ctx.signer.email, ctx.signer.email, "SYNTHETIC: erasure test",
+                 actor: ctx.admin.actor,
+                 tenant: ctx.admin.tenant
+               )
+
+      erased =
+        signed
+        |> events()
+        |> Ash.load!([:salt], authorize?: false, tenant: ctx.admin.tenant)
+
+      assert erased |> Enum.filter(&(&1.type in [:viewed, :consented, :signed])) != []
+
+      for event <- erased, event.type in [:viewed, :consented, :signed] do
+        assert Shredded.shredded?(event.salt)
+
+        # What a reader still holds, with the true values guessed exactly.
+        guess = %{
+          request_id: event.request_id,
+          signer_id: event.signer_id,
+          type: event.type,
+          route: event.route,
+          sha256: event.sha256,
+          ip_address: ip,
+          user_agent: agent,
+          reason: nil,
+          occurred_at: event.occurred_at
+        }
+
+        refute AshSignatures.Digest.sha256_hex(guess) == event.event_hash
+      end
+    end
+
     test "the chain head is the tenant's last audit hash", ctx do
       [last | _] = chain_hashes(ctx.admin.tenant)
       assert ChainHead.head(ctx.admin.tenant) == last

@@ -79,6 +79,28 @@ defmodule AshEnterprise.Signatures.ReminderWorkerTest do
     end
   end
 
+  describe "a reminder reaches the person" do
+    test "nobody waiting inside the interval gets mail", _ctx do
+      ReminderWorker.remind_due(DateTime.utc_now())
+      assert reminders() == []
+    end
+
+    test "the person is sent a message at their account's address, naming no policy", ctx do
+      [signer] = mine(ctx.staff)
+      backdate!(signer, 8)
+
+      assert %{reminded: 1} = ReminderWorker.remind_due(DateTime.utc_now())
+
+      address = to_string(ctx.staff.user.email)
+
+      assert [email] = reminders()
+      assert email.to == [{"", address}]
+      assert email.text_body =~ "/app/acknowledgements"
+      refute email.text_body =~ "SYNTHETIC"
+      refute email.html_body =~ "SYNTHETIC"
+    end
+  end
+
   describe "reminded" do
     test "once after the interval, and again only after another", ctx do
       [signer] = mine(ctx.staff)
@@ -129,6 +151,16 @@ defmodule AshEnterprise.Signatures.ReminderWorkerTest do
 
     test "the job runs the day's reminders" do
       assert {:ok, %{reminded: 0, failed: 0}} = ReminderWorker.perform(%Oban.Job{})
+    end
+  end
+
+  # The reminder messages this test process was sent, in order; other mail (a new
+  # account's confirmation) is left out.
+  defp reminders(acc \\ []) do
+    receive do
+      {:email, %{subject: "A request is waiting for you"} = email} -> reminders([email | acc])
+    after
+      0 -> Enum.reverse(acc)
     end
   end
 

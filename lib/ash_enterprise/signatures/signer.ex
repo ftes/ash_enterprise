@@ -22,8 +22,10 @@ defmodule AshEnterprise.Signatures.Signer do
       administrator's) does not let anyone act for another person. Reads of their own rows
       go through the same check. Another person's row is not theirs to read or act on.
     * **The job runner.** `remind` is machinery-only: a reminder is the host's schedule,
-      not anyone's choice. So are `notify` and `withdraw`, which the package writes itself
-      when a request is sent or ends.
+      not anyone's choice. It records the `reminded` event and sends the person a message
+      at their account's address (`AshEnterprise.Signatures.Changes.DeliverReminder`). So
+      are `notify` and `withdraw`, which the package writes itself when a request is sent
+      or ends.
     * **People who manage requests** read and add signers through a grant on this
       resource, as on any other.
 
@@ -87,13 +89,15 @@ defmodule AshEnterprise.Signatures.Signer do
     encrypt_nil?(false)
   end
 
+  # Open-world: a reminder sends the person a message outside the application
+  # (`AshEnterprise.Signatures.Changes.DeliverReminder`).
   effects do
     action :remind,
       kind: :edit,
       read_only?: false,
       destructive?: false,
       idempotent?: false,
-      open_world?: false,
+      open_world?: true,
       approval: :none,
       intent: :execute
   end
@@ -157,6 +161,12 @@ defmodule AshEnterprise.Signatures.Signer do
     # A signed acknowledgement of policy versions is a compliance event (CC1.1, CC2.2,
     # CC5.3), appended in the signing transaction. Acts only on `sign`.
     change AshEnterprise.Compliance.Changes.RecordPolicyAcknowledgement, on: [:update]
+
+    # A reminder reaches the person: a message at their account's address, sent once the
+    # `reminded` event has committed. The in-platform provider sends nothing itself.
+    change AshEnterprise.Signatures.Changes.DeliverReminder,
+      on: [:update],
+      where: action_is(:remind)
   end
 
   attributes do

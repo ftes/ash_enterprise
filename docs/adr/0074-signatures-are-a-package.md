@@ -1,6 +1,6 @@
 # ADR 0074 — Signatures are a package (`ash_signatures`): a request over hashed document versions, signed in-platform, with providers behind one asynchronous seam
 
-- **Status:** accepted (2026-11-16); package built 2026-11-17; second use instantiated here 2026-11-20 (`AshEnterprise.Signatures`: the five resources, the policy review's fan-out and reminders, controls projected from acknowledgements, version 2 asking everyone again)
+- **Status:** accepted (2026-11-16); package built 2026-11-17; second use instantiated here 2026-11-20 (`AshEnterprise.Signatures`: the five resources, the policy review's fan-out and reminders, controls projected from acknowledgements, version 2 asking everyone again by itself, reminders sent as a message, the acknowledgement page)
 - **Date:** 2026-11-16
 - **Related:** [ADR 0020](0020-tamper-evident-audit-log.md) (tamper-evident audit),
   [0024](0024-audit-retention-and-erasure.md) (crypto-shredding),

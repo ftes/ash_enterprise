@@ -41,6 +41,7 @@
 #   - AshEnterprise.Signatures.Signer: :encrypted_name — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
 #   - AshEnterprise.Signatures.SignerEvent: :encrypted_ip_address — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
 #   - AshEnterprise.Signatures.SignerEvent: :encrypted_reason — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
+#   - AshEnterprise.Signatures.SignerEvent: :encrypted_salt — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
 #   - AshEnterprise.Signatures.SignerEvent: :encrypted_user_agent — ciphertext sealed under an erasure-scope key; a copy's scope keys are replaced (Erasure.Key.wrapped_key), so it cannot be opened there
 #   - AshEnterprise.Signatures.Completion: :record — the completion record names the request, its documents and signers by id and holds hashes, roles, statuses and times; no personal field is in it (ash_signatures rule 6), and its record_hash must still verify
 # Large objects are not copied: this config sets `no-blobs`, so their content

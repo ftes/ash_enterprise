@@ -1,7 +1,7 @@
 defmodule AshEnterprise.Compliance.PolicyAcknowledgementProjector do
   @moduledoc """
-  The policy acknowledgement finding projector (ADR 0035): folds `policy_acknowledged` and
-  `policy_published` events (`AshEnterprise.Compliance.PolicyAcknowledgement`) into
+  The policy acknowledgement finding projector (ADR 0035): folds `policy_acknowledged`,
+  `policy_published` and `policy_scope_entered` events (`AshEnterprise.Compliance.PolicyAcknowledgement`) into
   findings on the grain `[organization_id, control_id, subject_type, subject_id]`, one row
   per person and criterion (CC1.1, CC2.2, CC5.3).
 
@@ -28,7 +28,7 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgementProjector do
     }
   end)
 
-  project_all([:policy_acknowledged, :policy_published])
+  project_all([:policy_acknowledged, :policy_published, :policy_scope_entered])
 
   @doc "The rules bundle, round-tripped through the IR like every seeded bundle. No lookup."
   def active_bundle(_event) do

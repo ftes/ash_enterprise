@@ -12,9 +12,11 @@ defmodule AshEnterprise.Signatures.ReminderWorker do
 
   A reminder is the signer's `remind` act, which only the job runner takes
   (`SystemActor.oban/0`; the action is machinery-only and declared as an effect). It records
-  a `reminded` event in the person's own chain of events; with the in-app provider that
-  event is the reminder, shown where the person acknowledges. A signer who has signed,
-  declined or been withdrawn, or whose request has ended, is never reminded.
+  a `reminded` event in the person's own chain of events, and once that commits the person
+  is sent a message at their account's address with a link to the page where they
+  acknowledge (`AshEnterprise.Signatures.Changes.DeliverReminder`); the in-app provider
+  sends nothing itself. A signer who has signed, declined or been withdrawn, whose request
+  has ended, or who has been erased (their erasure scope shredded), is never reminded.
 
   Signers are read across organizations as the job runner, by status and time only, and
   each is reminded in its own organization. A failure is logged and the rest go on.
@@ -88,7 +90,7 @@ defmodule AshEnterprise.Signatures.ReminderWorker do
     Signer
     |> Ash.Query.filter(
       status in ^@waiting and not is_nil(notified_at) and notified_at <= ^cutoff and
-        request.status in ^@open
+        request.status in ^@open and erasure_scope.status == :active
     )
     |> Ash.read!(actor: SystemActor.oban(), tenant: nil)
   end

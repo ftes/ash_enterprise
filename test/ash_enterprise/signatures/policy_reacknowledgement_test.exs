@@ -152,7 +152,185 @@ defmodule AshEnterprise.Signatures.PolicyReacknowledgementTest do
     end
   end
 
+  describe "publishing version 2 asks again by itself" do
+    test "everyone is asked over version 2 without another call to the fan-out", ctx do
+      publish!(ctx.admin, "acceptable-use", "v1")
+      review = review_due!(ctx.admin, "2026")
+      {:ok, _} = open(ctx.admin, review.id)
+      acknowledge!(ctx.alice)
+
+      v2 = publish!(ctx.admin, "acceptable-use", "v2")
+      reask!()
+
+      for person <- [ctx.alice, ctx.bob, ctx.admin] do
+        assert [%{status: :sent} = fresh] =
+                 ctx.admin |> requests_of(person) |> Enum.filter(&(&1.status == :sent))
+
+        assert fresh.occurrence_id == review.id
+        assert [%{source_sha256: sha}] = fresh.documents
+        assert sha == v2.sha256
+      end
+
+      # The version-1 acknowledgement is kept.
+      assert [%{status: :completed} | _] = requests_of(ctx.admin, ctx.alice)
+    end
+
+    test "with no review fallen due yet nobody is asked, and the publish still stands", ctx do
+      v1 = publish!(ctx.admin, "acceptable-use", "v1")
+      reask!()
+
+      assert requests_of(ctx.admin, ctx.alice) == []
+      assert [%{id: id}] = Compliance.current_policies!(opts(ctx.admin))
+      assert id == v1.id
+    end
+
+    test "the review does not count a version-1 acknowledgement once version 2 is current",
+         ctx do
+      publish!(ctx.admin, "acceptable-use", "v1")
+      review = review_due!(ctx.admin, "2026")
+      {:ok, _} = open(ctx.admin, review.id)
+      acknowledge!(ctx.alice)
+
+      {:ok, before} = Signatures.acknowledgement_review_status(review.id, opts(ctx.admin))
+      assert before["counts"]["acknowledged"] == 1
+
+      # Version 2 is current and nobody has been asked over it yet.
+      publish!(ctx.admin, "acceptable-use", "v2")
+
+      {:ok, status} = Signatures.acknowledgement_review_status(review.id, opts(ctx.admin))
+      assert status["counts"]["acknowledged"] == 0
+      assert to_string(ctx.alice.user.id) in Enum.map(status["outstanding"], & &1["user_id"])
+    end
+  end
+
+  describe "people who come into scope after a publish" do
+    test "a person reactivated after version 2 is out, not still in on version 1", ctx do
+      publish!(ctx.admin, "acceptable-use", "v1")
+      review = review_due!(ctx.admin, "2026")
+      {:ok, _} = open(ctx.admin, review.id)
+      acknowledge!(ctx.alice)
+      seen = project!(ctx.marker)
+      assert statuses(ctx.alice) == uniform(:compliant)
+
+      lifecycle!(ctx.alice, :deactivate)
+      publish!(ctx.admin, "acceptable-use", "v2")
+      lifecycle!(ctx.alice, :activate)
+
+      project!(seen)
+      assert statuses(ctx.alice) == uniform(:noncompliant)
+    end
+
+    test "a person who joins after the policies were published is unknown, never absent",
+         ctx do
+      publish!(ctx.admin, "acceptable-use", "v1")
+      carol = colleague!(ctx.admin)
+
+      project!(ctx.marker)
+      assert statuses(carol) == uniform(:unknown)
+      # Bob was there at the publish: the same.
+      assert statuses(ctx.bob) == uniform(:unknown)
+    end
+
+    test "a person asked by the fan-out has a finding even with no other event", ctx do
+      publish!(ctx.admin, "acceptable-use", "v1")
+      carol = colleague!(ctx.admin)
+      # Only the events written from here on count.
+      seen = marker()
+
+      review = review_due!(ctx.admin, "2026")
+      {:ok, _} = open(ctx.admin, review.id)
+
+      project!(seen)
+      assert statuses(carol) == uniform(:unknown)
+    end
+  end
+
+  # A person who signs while version 2 is being published must not be recorded as holding
+  # the current versions on a snapshot that still shows version 1. Both writes take the
+  # tenant's audit lock before they work out anyone's standing, so the second waits for
+  # the first to commit and reads what it wrote.
+  describe "a sign during a publish" do
+    test "a sign takes the tenant's lock before it reads the policies", ctx do
+      publish!(ctx.admin, "acceptable-use", "v1")
+      review = review_due!(ctx.admin, "2026")
+      {:ok, _} = open(ctx.admin, review.id)
+
+      [signer] =
+        ctx.alice
+        |> opts()
+        |> Signatures.list_signers!()
+        |> Enum.filter(&(&1.status == :notified))
+
+      consented =
+        signer
+        |> Signatures.view_signature_request!(opts(ctx.alice))
+        |> Signatures.consent_to_sign!(opts(ctx.alice))
+
+      queries =
+        capture_queries(fn -> Signatures.sign_signature_request!(consented, opts(ctx.alice)) end)
+
+      assert_locked_before(queries, ~s(FROM "compliance_policies"))
+    end
+
+    test "a publish takes the tenant's lock before it reads anyone's acknowledgements", ctx do
+      publish!(ctx.admin, "acceptable-use", "v1")
+
+      queries = capture_queries(fn -> publish!(ctx.admin, "acceptable-use", "v2") end)
+
+      assert_locked_before(queries, ~s(FROM "signature_signers"))
+    end
+  end
+
   # --- fixtures ---------------------------------------------------------------------
+
+  defp capture_queries(fun) do
+    id = "policy-lock-order-#{System.unique_integer([:positive])}"
+    me = self()
+
+    :telemetry.attach(
+      id,
+      [:ash_enterprise, :repo, :query],
+      fn _event, _measurements, meta, _config -> send(me, {:query, meta.query}) end,
+      nil
+    )
+
+    try do
+      fun.()
+    after
+      :telemetry.detach(id)
+    end
+
+    collect([])
+  end
+
+  defp collect(acc) do
+    receive do
+      {:query, query} -> collect([query | acc])
+    after
+      0 -> Enum.reverse(acc)
+    end
+  end
+
+  defp assert_locked_before(queries, read) do
+    lock = Enum.find_index(queries, &(&1 =~ "pg_advisory_xact_lock"))
+    first_read = Enum.find_index(queries, &(&1 =~ read))
+
+    assert is_integer(first_read), "expected a read #{read}"
+    assert is_integer(lock), "expected the tenant's advisory lock"
+    assert lock < first_read
+  end
+
+  # Runs what a publish enqueued: asking everyone again over the new set.
+  defp reask! do
+    Oban.drain_queue(queue: :default, with_safety: false)
+  end
+
+  defp lifecycle!(member, action) do
+    AshEnterprise.Accounts.User
+    |> Ash.get!(member.user.id, authorize?: false)
+    |> Ash.Changeset.for_update(action, %{}, authorize?: false)
+    |> Ash.update!()
+  end
 
   defp opts(%{actor: actor, tenant: tenant}), do: [actor: actor, tenant: tenant]
 
@@ -233,7 +411,10 @@ defmodule AshEnterprise.Signatures.PolicyReacknowledgementTest do
   defp project!(since) do
     events =
       EventLog
-      |> Ash.Query.filter(id > ^since and action in [:policy_acknowledged, :policy_published])
+      |> Ash.Query.filter(
+        id > ^since and
+          action in [:policy_acknowledged, :policy_published, :policy_scope_entered]
+      )
       |> Ash.Query.sort(id: :asc)
       |> Ash.read!(authorize?: false)
 

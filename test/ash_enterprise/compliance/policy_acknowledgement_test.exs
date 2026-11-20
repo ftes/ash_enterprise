@@ -299,7 +299,10 @@ defmodule AshEnterprise.Compliance.PolicyAcknowledgementTest do
   defp project!(since) do
     events =
       EventLog
-      |> Ash.Query.filter(id > ^since and action in [:policy_acknowledged, :policy_published])
+      |> Ash.Query.filter(
+        id > ^since and
+          action in [:policy_acknowledged, :policy_published, :policy_scope_entered]
+      )
       |> Ash.Query.sort(id: :asc)
       |> Ash.read!(authorize?: false)
 
