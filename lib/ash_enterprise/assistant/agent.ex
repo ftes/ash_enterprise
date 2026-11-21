@@ -6,7 +6,7 @@ defmodule AshEnterprise.Assistant.Agent do
 
     * **Instructions** — `AshEnterprise.Assistant.Prompt.instructions/0`, the same for
       every run; the time, the conversation so far and the question are the run's input.
-    * **Tools** — fourteen reads a run takes in its loop (thirteen lookups and the composer,
+    * **Tools** — fifteen reads a run takes in its loop (fourteen lookups and the composer,
       `AshEnterprise.Assistant`), and nine changes it may only ask for: actions of
       their own resources whose effects say `approval: :confirm`. A call to one of those
       is a governed invocation (ADR 0055) requested as the person; the answer ends
@@ -35,6 +35,7 @@ defmodule AshEnterprise.Assistant.Agent do
     model_profile: "in_zone_generative",
     tools: [
       {AshEnterprise.Assistant.Lookup.CalendarEvent, :calendar_events},
+      {AshEnterprise.Assistant.Lookup.MeetingPrep, :meeting_prep},
       {AshEnterprise.Assistant.Lookup.Conversation, :find_conversations},
       {AshEnterprise.Assistant.Lookup.Message, :read_messages},
       {AshEnterprise.Assistant.Lookup.Person, :find_people},

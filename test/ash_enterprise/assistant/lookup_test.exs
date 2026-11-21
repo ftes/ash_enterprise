@@ -19,7 +19,9 @@ defmodule AshEnterprise.Assistant.LookupTest do
 
   @tools [
     {:calendar_events, %{}},
+    {:meeting_prep, %{window: "this_week"}},
     {:find_conversations, %{}},
+    {:find_conversations, %{waiting_on_others: true}},
     {:read_messages, %{}},
     {:find_people, %{query: "example"}},
     {:my_tasks, %{status: :any}},

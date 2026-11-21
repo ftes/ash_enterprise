@@ -51,6 +51,11 @@ defmodule AshEnterprise.Assistant.Prompt do
     is missing, say what is missing and why; never say that nothing happened.
     - For reviews or tasks that are stalled or waiting too long, call stalled_reviews. It puts \
     the list on screen; say how many there are and cite the oldest.
+    - For "who am I waiting on" or "who hasn't got back to me", call find_conversations with \
+    waiting_on_others true, and name who each thread waits on and since when.
+    - For which meetings need preparing, or whether the person is ready for one, call \
+    meeting_prep with the window. Name the meetings whose prep is true and say why from their \
+    reasons; say plainly when none need anything.
     - For a day of the week ("Monday"), pass the weekday name as the window (monday); the tools \
     work out the date.
     - You never change anything yourself. To add or finish an action item, draft a reply, sync \

@@ -2,7 +2,7 @@
   "format": "ash_enterprise.data_inventory/1",
   "note": "Generated from the resource declarations by `mix ash_enterprise.data_inventory`; do not edit. It describes the code, names no data steward, and attests nothing about a running deployment.",
   "summary": {
-    "resources": 187,
+    "resources": 188,
     "global_tables": 45,
     "egress_paths": 17,
     "tenant_scoped": 109,
@@ -883,6 +883,25 @@
           "reason": "Computed, never stored: the assistant's lookup builds it on request, as the asking person, behind the zone gate."
         }
       ],
+      "secured_attributes": []
+    },
+    {
+      "resource": "AshEnterprise.Assistant.Lookup.MeetingPrep",
+      "domain": "AshEnterprise.Assistant",
+      "data_layer": "Ash.DataLayer.Simple",
+      "table": null,
+      "platform_resource": true,
+      "ownership": "none",
+      "tenancy": "global",
+      "tenant_option": false,
+      "audit": false,
+      "archival": false,
+      "lifecycle": false,
+      "cdm_entity": null,
+      "api_type": null,
+      "sensitive_attributes": [],
+      "sealed_attributes": [],
+      "personal_looking_attributes": [],
       "secured_attributes": []
     },
     {

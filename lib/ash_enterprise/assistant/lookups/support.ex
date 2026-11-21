@@ -28,6 +28,8 @@ defmodule AshEnterprise.Assistant.Lookups.Support do
   a ref is only ever a request.
   """
 
+  require Ash.Query
+
   alias AshEnterprise.Assistant.ZoneGate
   alias AshEnterprise.Platform.LocalTime
   alias AshEnterprise.Surfaces
@@ -250,6 +252,50 @@ defmodule AshEnterprise.Assistant.Lookups.Support do
   def window_label({from, to}) do
     last = to |> DateTime.add(-1, :second)
     "#{LocalTime.stamp(from)} to #{LocalTime.stamp(last)}"
+  end
+
+  @doc """
+  The ids of the canonical people who are the asking person themself, read as
+  them: the contact holding their sign-in address, and whoever sent their own
+  sent mail and Slack posts (an outbound message's sender is the operator,
+  under whatever address they wrote from). A tool leaves these out when it
+  names who else is in a thread or a meeting.
+  """
+  @spec my_people(keyword()) :: MapSet.t(Ecto.UUID.t())
+  def my_people(opts) do
+    MapSet.union(by_sign_in_address(opts), senders_of_my_messages(opts))
+  end
+
+  defp by_sign_in_address(opts) do
+    case AshEnterprise.Erasure.BlindIndex.of(opts[:tenant], Map.get(opts[:actor] || %{}, :email)) do
+      nil ->
+        MapSet.new()
+
+      address ->
+        AshEnterprise.Canonical.Person
+        |> Ash.Query.for_read(:read, %{}, opts)
+        |> Ash.Query.filter(email_bidx == ^address)
+        |> Ash.Query.select([:id])
+        |> Ash.Query.limit(5)
+        |> ids(opts, & &1.id)
+    end
+  end
+
+  defp senders_of_my_messages(opts) do
+    AshEnterprise.Canonical.Message
+    |> Ash.Query.for_read(:read, %{}, opts)
+    |> Ash.Query.filter(direction == :outbound and not is_nil(sender_id))
+    |> Ash.Query.select([:id, :sender_id])
+    |> Ash.Query.sort(sent_at: :desc)
+    |> Ash.Query.limit(100)
+    |> ids(opts, & &1.sender_id)
+  end
+
+  defp ids(query, opts, field) do
+    case Ash.read(query, opts) do
+      {:ok, rows} -> MapSet.new(rows, field)
+      {:error, _} -> MapSet.new()
+    end
   end
 
   @doc "The ref of `record` on its registry surface, or nil when none shows it."

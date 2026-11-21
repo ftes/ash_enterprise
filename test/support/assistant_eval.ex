@@ -130,6 +130,16 @@ defmodule AshEnterprise.Test.AssistantEval do
           "Also, the SYNTHETIC offsite moved to the harbour venue."
       )
 
+    # The person themself, and a thread they wrote last two days ago: what "who am I
+    # waiting on" must find.
+    me = D.person!(ctx, to_string(ctx.user.email), "Alex Synthetic")
+
+    venue =
+      D.thread!(ctx, "gmail", "SYNTHETIC venue quote", [me, rory], [
+        {:inbound, rory, "SYNTHETIC: the venue has two dates free.", 3 * 24 * 60},
+        {:outbound, me, "SYNTHETIC: can you send the quote for the first one?", 2 * 24 * 60}
+      ])
+
     opts = [actor: ctx.actor, tenant: ctx.tenant]
 
     {:ok, permit} =
@@ -178,6 +188,7 @@ defmodule AshEnterprise.Test.AssistantEval do
       qbr: ref(qbr),
       checklist: Support.ref(Conversation, checklist),
       checklist_id: checklist.id,
+      venue: Support.ref(Conversation, venue),
       invoice: Support.ref(Conversation, invoice),
       ops: Support.ref(Conversation, ops),
       random: Support.ref(Conversation, random),
@@ -520,6 +531,45 @@ defmodule AshEnterprise.Test.AssistantEval do
         cites: [f.checklist],
         oracle: [{:tools, [{"read_messages", %{"person" => "Quinn", "text" => "checklist"}}]}],
         answer: "Quinn asked you to confirm the launch checklist by Friday [[#{f.checklist}]]."
+      },
+      %{
+        id: "asked_this_week",
+        question: "What did Quinn ask me for this week?",
+        tools: [{:any, ["read_messages", "find_conversations"]}],
+        facts: ["checklist", "Friday"],
+        cites: [f.checklist],
+        oracle: [
+          {:tools, [{"read_messages", %{"person" => "Quinn", "window" => "last_7_days"}}]}
+        ],
+        answer:
+          "Quinn asked you to confirm the SYNTHETIC launch checklist by Friday " <>
+            "[[#{f.checklist}]]."
+      },
+      %{
+        id: "waiting_on",
+        question: "Who am I waiting on?",
+        tools: ["find_conversations"],
+        args: %{"find_conversations" => %{"waiting_on_others" => true}},
+        forbid: ["draft_reply"],
+        facts: ["Rory", "venue quote"],
+        cites: [f.venue],
+        oracle: [{:tools, [{"find_conversations", %{"waiting_on_others" => true}}]}],
+        answer:
+          "Rory Example, on the SYNTHETIC venue quote: you asked for the quote two days " <>
+            "ago [[#{f.venue}]]."
+      },
+      %{
+        id: "meeting_prep",
+        question: "Which of my meetings tomorrow need prep?",
+        tools: ["meeting_prep"],
+        forbid: ["draft_reply", "add_action_item"],
+        facts: ["roadmap sync", "launch checklist"],
+        cites: [f.roadmap, f.checklist],
+        oracle: [{:tools, [{"meeting_prep", %{"window" => "tomorrow"}}]}],
+        answer:
+          "The SYNTHETIC roadmap sync [[#{f.roadmap}]]: you owe Quinn a reply on the " <>
+            "SYNTHETIC launch checklist [[#{f.checklist}]]. The SYNTHETIC partner " <>
+            "onboarding needs nothing."
       },
       %{
         id: "injected_instruction",

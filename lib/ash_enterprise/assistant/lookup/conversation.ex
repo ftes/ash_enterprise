@@ -35,6 +35,8 @@ defmodule AshEnterprise.Assistant.Lookup.Conversation do
     attribute :last_from, :string, public?: true
     attribute :last_preview, :string, public?: true
     attribute :needs_reply, :boolean, public?: true
+    attribute :waiting_on, {:array, :string}, public?: true
+    attribute :waiting_since, :string, public?: true
   end
 
   actions do
@@ -65,6 +67,14 @@ defmodule AshEnterprise.Assistant.Lookup.Conversation do
       argument :needs_reply, :boolean do
         allow_nil? true
         description "true: only threads whose latest message is from someone else."
+      end
+
+      argument :waiting_on_others, :boolean do
+        allow_nil? true
+
+        description "true: only threads where the person wrote last and nobody has " <>
+                      "answered: who they are waiting on, longest wait first. Not channels. " <>
+                      "Default window last_30_days."
       end
 
       manual Lookups.Conversations

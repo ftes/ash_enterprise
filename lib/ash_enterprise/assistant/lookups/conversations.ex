@@ -17,6 +17,11 @@ defmodule AshEnterprise.Assistant.Lookups.Conversations do
     messages are scanned.
   * **needs_reply** — the thread's latest message is inbound (someone
     else's), read from each thread's newest message.
+  * **waiting_on_others** — the other way round: the person wrote last and
+    nobody has answered, in email, DMs and group DMs (a channel post waits on
+    nobody in particular). The window defaults to `last_30_days`, the longest
+    wait comes first, and each row names who the thread is waiting on: its
+    participants other than the person (`Support.my_people/1`).
   """
 
   use Ash.Resource.ManualRead
@@ -25,7 +30,8 @@ defmodule AshEnterprise.Assistant.Lookups.Conversations do
 
   alias AshEnterprise.Assistant.Lookup
   alias AshEnterprise.Assistant.Lookups.Support
-  alias AshEnterprise.Canonical.{Conversation, Message}
+  alias AshEnterprise.Canonical.{Conversation, Message, Person}
+  alias AshEnterprise.Platform.LocalTime
 
   @scan 300
   @message_scan 2000
@@ -37,28 +43,43 @@ defmodule AshEnterprise.Assistant.Lookups.Conversations do
   end
 
   defp lookup(args, opts) do
-    with {:ok, bounds} <- optional_window(args[:window]),
-         {:ok, threads} <- read(args, bounds, opts),
+    waiting? = args[:waiting_on_others] == true
+
+    with {:ok, bounds} <- optional_window(args[:window], waiting?),
+         {:ok, threads} <- read_threads(args, bounds, waiting?, opts),
          {:ok, threads} <- by_text(threads, args[:text], bounds, opts) do
+      me = if waiting?, do: Support.my_people(opts), else: MapSet.new()
+
       {:ok,
        threads
        |> awaiting_reply(args[:needs_reply])
+       |> waiting_on_others(waiting?)
        |> Enum.take(@shown)
-       |> Enum.map(&row/1)}
+       |> Enum.map(&row(&1, me, waiting?))}
     end
   end
 
   defp awaiting_reply(threads, true), do: Enum.filter(threads, &needs_reply?/1)
   defp awaiting_reply(threads, _any), do: threads
 
-  defp optional_window(window) do
+  # The person wrote last, outside a channel; the longest wait first.
+  defp waiting_on_others(threads, false), do: threads
+
+  defp waiting_on_others(threads, true) do
+    threads
+    |> Enum.filter(&(waiting?(&1) and &1.kind not in [:public_channel, :private_channel]))
+    |> Enum.sort_by(&latest(&1).sent_at, DateTime)
+  end
+
+  defp optional_window(window, waiting?) do
     case Support.window(window) do
+      :none when waiting? -> Support.window("last_30_days")
       :none -> {:ok, nil}
       other -> other
     end
   end
 
-  defp read(args, bounds, opts) do
+  defp read_threads(args, bounds, waiting?, opts) do
     Conversation
     |> Ash.Query.for_read(action(args[:source]), %{}, opts)
     |> Ash.Query.sort(last_message_at: :desc_nils_last)
@@ -76,8 +97,15 @@ defmodule AshEnterprise.Assistant.Lookups.Conversations do
         |> Ash.Query.limit(1)
         |> Ash.Query.load([:sender_label])
     ])
+    |> participants(waiting?)
     |> Ash.read(opts)
   end
+
+  # Who a waiting thread waits on: its participants, read as the person.
+  defp participants(query, false), do: query
+
+  defp participants(query, true),
+    do: Ash.Query.load(query, people: Ash.Query.load(Person, [:label]))
 
   defp action(:gmail), do: :gmail
   defp action(:slack), do: :slack
@@ -145,8 +173,9 @@ defmodule AshEnterprise.Assistant.Lookups.Conversations do
   defp latest(_thread), do: nil
 
   defp needs_reply?(thread), do: match?(%{direction: :inbound}, latest(thread))
+  defp waiting?(thread), do: match?(%{direction: :outbound}, latest(thread))
 
-  defp row(thread) do
+  defp row(thread, me, waiting?) do
     last = latest(thread)
 
     Support.row(Lookup.Conversation, %{
@@ -159,8 +188,23 @@ defmodule AshEnterprise.Assistant.Lookups.Conversations do
       messages: thread.message_count,
       last_from: last && from(last),
       last_preview: last && Support.clip(last.body, 140),
-      needs_reply: needs_reply?(thread)
+      needs_reply: needs_reply?(thread),
+      waiting_on: if(waiting?, do: others(thread, me, last)),
+      waiting_since: if(waiting?, do: LocalTime.stamp(last.sent_at))
     })
+  end
+
+  # The thread's participants other than the person, by name: the sender of
+  # their own latest message is them too, whatever address it came from.
+  defp others(thread, me, last) do
+    me = MapSet.put(me, last.sender_id)
+
+    thread.people
+    |> List.wrap()
+    |> Enum.reject(&MapSet.member?(me, &1.id))
+    |> Enum.map(&Support.text(&1.label))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.take(5)
   end
 
   @doc false

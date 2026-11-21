@@ -12,7 +12,16 @@ defmodule AshEnterprise.Test.DailyFixtures do
   alias AshEnterprise.Accounts.User
   alias AshEnterprise.Agents.MorningBrief
   alias AshEnterprise.Bpmn.Definition
-  alias AshEnterprise.Canonical.{CalendarEvent, Conversation, Message, Person}
+
+  alias AshEnterprise.Canonical.{
+    CalendarEvent,
+    Conversation,
+    ConversationParticipant,
+    EventAttendee,
+    Message,
+    Person
+  }
+
   alias AshEnterprise.Platform.{Seeder, SystemActor}
   alias AshEnterprise.Security
   alias AshEnterprise.Security.ActorContext
@@ -304,6 +313,85 @@ defmodule AshEnterprise.Test.DailyFixtures do
     |> Ash.create!()
 
     conversation
+  end
+
+  @doc """
+  A conversation in `system` with `people` taking part and `messages`, oldest first,
+  each `{direction, sender, body, minutes_ago}` (`sender` a person; for `:outbound`,
+  the person themself). `opts[:kind]` sets a Slack conversation's kind.
+  """
+  def thread!(%{user: user, tenant: tenant}, system, subject, people, messages, opts \\ []) do
+    scope = scope!()
+    system_opts = [tenant: tenant, authorize?: false]
+
+    conversation =
+      Conversation
+      |> Ash.Changeset.for_create(
+        :upsert_from_source,
+        Map.merge(owner(user), %{
+          subject: subject,
+          participants: %{},
+          kind: opts[:kind],
+          external_system: system,
+          external_id: "conv-#{System.unique_integer([:positive])}",
+          erasure_scope_id: scope.id
+        }),
+        system_opts
+      )
+      |> Ash.create!()
+
+    for person <- people do
+      ConversationParticipant
+      |> Ash.Changeset.for_create(
+        :derive,
+        Map.merge(owner(user), %{conversation_id: conversation.id, person_id: person.id}),
+        system_opts
+      )
+      |> Ash.create!()
+    end
+
+    for {direction, sender, body, minutes_ago} <- messages do
+      Message
+      |> Ash.Changeset.for_create(
+        :upsert_from_source,
+        Map.merge(owner(user), %{
+          body: body,
+          sent_at: DateTime.add(DateTime.utc_now(), -minutes_ago, :minute),
+          direction: direction,
+          external_system: system,
+          external_id: "msg-#{System.unique_integer([:positive])}",
+          conversation_id: conversation.id,
+          sender_id: sender.id,
+          erasure_scope_id: scope.id
+        }),
+        system_opts
+      )
+      |> Ash.create!()
+    end
+
+    conversation
+  end
+
+  @doc "`person` attends `event`, as its projection records an attendee."
+  def attendee!(%{user: user, tenant: tenant}, event, person, status \\ :accepted) do
+    EventAttendee
+    |> Ash.Changeset.for_create(
+      :derive,
+      Map.merge(owner(user), %{event_id: event.id, person_id: person.id, response_status: status}),
+      tenant: tenant,
+      authorize?: false
+    )
+    |> Ash.create!()
+  end
+
+  @doc "A moment tomorrow on the display zone's clock, as UTC."
+  def tomorrow_at(%Time{} = time) do
+    zone = AshEnterprise.Platform.LocalTime.zone()
+
+    AshEnterprise.Platform.LocalTime.today()
+    |> Date.add(1)
+    |> DateTime.new!(time, zone, Tz.TimeZoneDatabase)
+    |> DateTime.shift_zone!("Etc/UTC", Tz.TimeZoneDatabase)
   end
 
   @doc "Publishes `morning.brief` and starts today's brief: it parks on its approval task."

@@ -112,8 +112,9 @@ defmodule AshEnterprise.Assistant.AskTest do
       assert_received {:model_request, first, tools, _opts}
       assert "calendar_events" in tools and "count_activity" in tools
       assert "compose_surface" in tools and "my_accounts" in tools
-      assert "add_action_item" in tools and "merge_duplicate" in tools and length(tools) == 23
+      assert "add_action_item" in tools and "merge_duplicate" in tools and length(tools) == 24
       assert "trace" in tools and "explain" in tools and "stalled_reviews" in tools
+      assert "meeting_prep" in tools
       refute Enum.any?(tools, &String.starts_with?(&1, "propose_"))
       assert Enum.any?(first, &(&1.role == :system))
       assert_received {:model_request, second, _tools, _opts}

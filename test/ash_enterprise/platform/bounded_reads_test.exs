@@ -26,6 +26,7 @@ defmodule AshEnterprise.Platform.BoundedReadsTest do
     {AshEnterprise.Assistant.Lookup.CalendarEvent, "tool calendar_events"} => "shows 25",
     {AshEnterprise.Assistant.Lookup.Conversation, "tool find_conversations"} => "shows 25",
     {AshEnterprise.Assistant.Lookup.Duplicate, "tool steward_queue"} => "reads 25",
+    {AshEnterprise.Assistant.Lookup.MeetingPrep, "tool meeting_prep"} => "shows 15",
     {AshEnterprise.Assistant.Lookup.Message, "tool read_messages"} => "shows 20",
     {AshEnterprise.Assistant.Lookup.Person, "tool find_people"} => "reads 15",
     {AshEnterprise.Assistant.Lookup.StalledReview, "tool stalled_reviews"} => "reads 25",

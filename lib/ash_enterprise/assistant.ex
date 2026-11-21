@@ -22,8 +22,8 @@ defmodule AshEnterprise.Assistant do
 
   ## Reads, a composer, and requests — never a write in the loop
 
-  Thirteen tools read (`AshEnterprise.Assistant.Lookup`), and a run takes each in its
-  loop: ten over the person's own records, `stalled_reviews`, and `trace` and
+  Fourteen tools read (`AshEnterprise.Assistant.Lookup`), and a run takes each in its
+  loop: eleven over the person's own records, `stalled_reviews`, and `trace` and
   `explain`, which answer "what happened" and "why" from the execution record
   (`AshEnterprise.Execution.Entry`) as the person may read it, citing only what it
   returned. One composes (`AshEnterprise.Assistant.Compose`): it asks for a
@@ -71,8 +71,10 @@ defmodule AshEnterprise.Assistant do
       description """
       The person's email threads and Slack conversations, newest first:
       by source, by a person taking part, by text in the subject or messages,
-      by time window, or only those whose latest message is from someone
-      else and still needs a reply. Returns threads with subject, last
+      by time window, only those whose latest message is from someone else
+      and still needs a reply (needs_reply), or only those where the person
+      wrote last and is waiting to hear back (waiting_on_others: who they are
+      waiting on and since when). Returns threads with subject, last
       activity, who wrote last, a ref to cite and an id.
       """
 
@@ -96,6 +98,18 @@ defmodule AshEnterprise.Assistant do
       For a question about a past moment ("as of last Friday", "before the
       merge"), pass as_of: each person then lists the separate records they
       were split across at that moment.
+      """
+
+      action_parameters []
+    end
+
+    tool :meeting_prep, AshEnterprise.Assistant.Lookup.MeetingPrep, :meeting_prep do
+      description """
+      The person's meetings in a window (default tomorrow), each with what to
+      prepare: replies they owe the other people in it, replies they are waiting
+      for from them, open action items from those threads or the meeting, and
+      people they have not met before. prep says whether there is anything, and
+      reasons says what. Use it for "which meetings need prep", "am I ready for".
       """
 
       action_parameters []
@@ -217,6 +231,7 @@ defmodule AshEnterprise.Assistant do
     resource AshEnterprise.Assistant.Thread
     resource AshEnterprise.Assistant.Turn
     resource AshEnterprise.Assistant.Lookup.CalendarEvent
+    resource AshEnterprise.Assistant.Lookup.MeetingPrep
     resource AshEnterprise.Assistant.Lookup.Conversation
     resource AshEnterprise.Assistant.Lookup.Message
     resource AshEnterprise.Assistant.Lookup.Person
