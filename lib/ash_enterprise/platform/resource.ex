@@ -105,6 +105,28 @@ defmodule AshEnterprise.Platform.Resource do
       counter). Those calls carry the private `ash_authentication?` context
       flag. Default `false`.
     * `:extra_extensions` — extensions to add on top (e.g. `AshStateMachine`).
+    * `:facade?` — an ontology facade (ADR 0083): a resource with no storage of its own
+      that gives a vocabulary to the rows of one source resource, declared with
+      `AshStrangler.Facade`, which `facade?: true` adds. It sets the opt-outs below in one
+      place, so a facade file does not repeat them and cannot contradict them; passing any
+      of them beside it is a compile error. Default `false`.
+
+      | Option | Why a facade opts out |
+      |---|---|
+      | `data_layer: Ash.DataLayer.Simple` | Nothing is stored. Rows come from the source's read. |
+      | `ownership: :none` | The source's ownership decides who reaches a row. A second owner column would be a second answer. |
+      | `tenant?: false` | The tenant is carried to the source read, which refuses a call with none. A façade `organization_id` would be a column the façade does not store. |
+      | `lifecycle?: false` | The lifecycle is the source's. With it off the state machine is not added either. |
+      | `archival?: false` | Nothing is stored, so nothing is archived. |
+      | `audit?: false` | The source's action writes the audit event: one fact, one row, on the source. |
+      | `lineage?: false` | The source's action emits the run. A facade has no dataset. |
+      | `optimistic_lock?: false` | The source's update actions carry the lock (ADR 0059). |
+      | `policies?: false`, no authorizer | A facade declares no rule of its own: the source's policies, field policies and secured-column grants decide, because every read and write is a call to the source made as the caller. `AshStrangler.Facade.Verifiers.VerifyOwnShape` refuses a facade that declares a policy, so it also has no `AshEnterprise.Security.TenantBoundary`; the source carries it. |
+
+      A facade adds no provenance columns and no `version_number`
+      (`AshEnterprise.Platform.SystemAttributes`): they would read as empty beside the
+      source's real values. Map them from the source like any other attribute, or leave
+      them out.
 
   Anything else is passed through to `use Ash.Resource`.
 
@@ -122,6 +144,9 @@ defmodule AshEnterprise.Platform.Resource do
 
   @doc false
   defmacro __using__(opts) do
+    {facade?, opts} = Keyword.pop(opts, :facade?, false)
+    opts = if facade?, do: facade_profile(opts), else: opts
+
     {ownership, opts} = Keyword.pop(opts, :ownership, :user_owned)
     {tenant?, opts} = Keyword.pop(opts, :tenant?, true)
     {lifecycle?, opts} = Keyword.pop(opts, :lifecycle?, true)
@@ -143,6 +168,9 @@ defmodule AshEnterprise.Platform.Resource do
     {extra_extensions, opts} = Keyword.pop(opts, :extra_extensions, [])
     {declared_extensions, opts} = Keyword.pop(opts, :extensions, [])
     {authentication_plumbing?, opts} = Keyword.pop(opts, :authentication_plumbing?, false)
+
+    extra_extensions =
+      if facade?, do: List.wrap(extra_extensions) ++ [AshStrangler.Facade], else: extra_extensions
 
     extensions =
       [
@@ -193,10 +221,8 @@ defmodule AshEnterprise.Platform.Resource do
       # Fills the four provenance columns SystemAttributes declares. Outside the
       # `audit?` branch on purpose -- the columns come from being a platform
       # resource, not from being audited, so a resource with `audit?: false`
-      # still records who created and last modified it.
-      changes do
-        change AshEnterprise.Platform.Changes.StampProvenance, on: [:create, :update]
-      end
+      # still records who created and last modified it. A facade has none of them.
+      unquote(stamp_provenance(facade?))
 
       unquote(version_lock(optimistic_lock?))
 
@@ -211,6 +237,7 @@ defmodule AshEnterprise.Platform.Resource do
         changes_authority(unquote(changes_authority))
         optimistic_lock?(unquote(optimistic_lock?))
         state_machine?(unquote(state_machine?))
+        facade?(unquote(facade?))
         audit?(unquote(audit?))
         secured_fields(unquote(secured_fields))
 
@@ -252,8 +279,9 @@ defmodule AshEnterprise.Platform.Resource do
       )
 
       # Before every other policy, and with `policies?: false` too: an actor's
-      # authority applies only in the tenant its context was built for.
-      use AshEnterprise.Security.TenantBoundary
+      # authority applies only in the tenant its context was built for. Not on a
+      # facade, which has no authorizer and no policy (see `:facade?`).
+      unquote(tenant_boundary(facade?))
 
       unquote(
         if policies? do
@@ -329,6 +357,52 @@ defmodule AshEnterprise.Platform.Resource do
           end
         end
       )
+    end
+  end
+
+  # ADR 0083, decision 2. Each option is set here and refused if the caller also passes
+  # it: a facade that restates an opt-out could contradict it, and the profile exists so
+  # that the opt-outs are written once.
+  @facade_profile [
+    data_layer: Ash.DataLayer.Simple,
+    authorizers: [],
+    ownership: :none,
+    tenant?: false,
+    lifecycle?: false,
+    archival?: false,
+    audit?: false,
+    lineage?: false,
+    optimistic_lock?: false,
+    policies?: false
+  ]
+
+  defp facade_profile(opts) do
+    case Keyword.take(opts, Keyword.keys(@facade_profile)) do
+      [] ->
+        Keyword.merge(opts, @facade_profile)
+
+      given ->
+        raise ArgumentError,
+              "`facade?: true` sets #{inspect(Keyword.keys(@facade_profile))} itself " <>
+                "(ADR 0083, decision 2); remove #{inspect(Keyword.keys(given))} from the `use`."
+    end
+  end
+
+  defp stamp_provenance(true), do: nil
+
+  defp stamp_provenance(false) do
+    quote do
+      changes do
+        change AshEnterprise.Platform.Changes.StampProvenance, on: [:create, :update]
+      end
+    end
+  end
+
+  defp tenant_boundary(true), do: nil
+
+  defp tenant_boundary(false) do
+    quote do
+      use AshEnterprise.Security.TenantBoundary
     end
   end
 

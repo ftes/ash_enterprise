@@ -24,16 +24,27 @@ defmodule AshEnterprise.Platform.Transformers.AddSystemAttributes do
     ownership = Transformer.get_option(dsl, [:platform], :ownership, :user_owned)
     tenant? = Transformer.get_option(dsl, [:platform], :tenant?, true)
     lifecycle? = Transformer.get_option(dsl, [:platform], :lifecycle?, true)
+    facade? = Transformer.get_option(dsl, [:platform], :facade?, false)
 
     dsl =
       dsl
-      |> add_provenance()
-      |> add_concurrency()
+      |> maybe_add_row_columns(not facade?)
       |> maybe_add_lifecycle(lifecycle?)
       |> maybe_add_ownership(ownership)
       |> maybe_add_tenancy(tenant?)
 
     {:ok, dsl}
+  end
+
+  # Provenance and `version_number` describe a stored row. A facade (ADR 0083) stores
+  # none, so its own would read as empty or as 1 beside the source's real values: it
+  # maps them from its source like any other attribute, or does not have them.
+  defp maybe_add_row_columns(dsl, false), do: dsl
+
+  defp maybe_add_row_columns(dsl, true) do
+    dsl
+    |> add_provenance()
+    |> add_concurrency()
   end
 
   # --- provenance: cdsCreationModificationDatesAndIds -------------------------

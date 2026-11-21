@@ -226,6 +226,17 @@ defmodule AshEnterprise.Platform.SystemAttributes do
         its source text.
         """
       ],
+      facade?: [
+        type: :boolean,
+        default: false,
+        doc: """
+        Whether this resource is an ontology facade (ADR 0083). Set by
+        `AshEnterprise.Platform.Resource` from its `facade?` option, which also sets the
+        opt-outs. A facade adds no provenance columns and no `version_number`: it stores
+        nothing, so they would read as empty beside the source's real values. A facade
+        maps them from its source like any other attribute, or does not have them.
+        """
+      ],
       api_type: [
         type: :atom,
         default: nil,

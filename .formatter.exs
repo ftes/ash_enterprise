@@ -5,6 +5,7 @@
     # `fields [:a, :b]` to `fields([:a, :b])`.
     :ash_a2ui,
     :ash_operations,
+    :ash_strangler,
     :clarity,
     :cinder,
     :ash_ai,
