@@ -4,7 +4,7 @@ Two project-scoped MCP configs live at the repo root and must not drift silently
 
 | server | `.mcp.json` (Claude Code & friends) | `opencode.json` (opencode) | notes |
 |---|---|---|---|
-| `tidewave` | `http://localhost:4000/tidewave/mcp` | same | needs the dev server running (`iex-server`); shows disconnected otherwise. PIN WARNING: pinned to tidewave 0.8.2 — 0.9.0 removed the `get_*_schema` family, see `docs/research/beam-observer-tooling.md`. |
+| `tidewave` | `http://localhost:4000/tidewave/mcp` | same | needs the dev server running (`iex-server`); shows disconnected otherwise. mix.lock holds tidewave 0.9.2; 0.9.0 removed the `get_*_schema` family (incl. `get_ash_resources`), see `docs/research/beam-observer-tooling.md`. |
 | `ash-agent` | `http://127.0.0.1:4197` | same | read-only introspection MCP (`ash_describe`, `ash_validate`, `ash_search`, `ash_context`, `ash_forbidden`, `ash_daemon_status`, `ash_reload` + concept tools). **No auth by design** (loopback-only, POST-only). |
 | `serena` | not configured (optional) | local: `uvx --from git+https://github.com/oraios/serena serena start-mcp-server --context ide-assistant` | symbolic Ash-DSL edits. Needs `uv`/`uvx` on PATH (host also has `~/.local/bin/uvx`). |
 

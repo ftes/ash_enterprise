@@ -12,6 +12,9 @@ derives from that one declaration a compatibility view, `INSTEAD OF` triggers, a
 resumable backfill, a drift reconciler, a `pg_notify` bridge, twelve compile-time verifiers and a
 column-level lineage graph. Its thesis is *declare it once, derive the rest*.
 
+> **2026-11-21.** "Twelve compile-time verifiers" was the count when this record was written. `ash_strangler` at the
+> version this repository locks has 33 verifier modules.
+
 The whole design turns on one question: **what is a transform, to the compiler?**
 
 The obvious answer is a SQL string. A mapping says

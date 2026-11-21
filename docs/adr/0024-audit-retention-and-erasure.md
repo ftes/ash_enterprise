@@ -3,6 +3,9 @@
 - **Status:** accepted (2026-10-12). The erasure half is built and in use; the age half is built as a verified move to archive tables, not as partitions (2026-11-12)
 - **Date:** 2026-08-19
 - **Implementation note:** 2026-10-12, at the end of this record
+- **Note 2026-11-21:** the title names the design as accepted. The age half was built as a verified move to archive
+  tables, not as partitions; see the implementation note of 2026-11-12 at the end of this record. The title is left as
+  accepted.
 
 ## Context
 

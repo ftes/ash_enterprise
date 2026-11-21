@@ -102,14 +102,15 @@ order of how much they cost:
    overlapping rules publishes without complaint, and the conflict surfaces as a runtime error on the first case that
    matches both rows. An error rather than a silent wrong answer, and much later than it needed to be found.
 
-3. **The audit trail can say a decision was evaluated and what it returned, but not why.** This is the real hole in
-   the evidence story and it is worth stating in its own right rather than as a caveat. `Evaluation.matched_rule_ids`
-   is always `[]` and `TriggerDispatch.fired_rule` is always `nil`, because `Boxic.DMN.evaluate/3` returns the
-   decision's value and nothing about how it reached it. So an auditor asking *"which rule denied this request?"* can
-   be shown the inputs, the outputs, the definition version and the timestamp, and cannot be shown the row. Computing
-   a second opinion is refused on purpose: one that disagreed with the engine that actually decided would be worse
-   than no answer. It is an upstream limitation, the columns are already there, and until it is closed the decision
-   trail is one question short of the one people ask.
+3. **The audit trail can say a decision was evaluated, what it returned and which rule fired.** *Corrected
+   2026-11-21; this entry once said the trail could not show the row.* `Evaluation` records `matched_rule_ids` and
+   `hit_policy` (and `error` when evaluation failed) from the engine's own trace, in the `ash_decisions` version this
+   repository locks, so an auditor asking *"which rule denied this request?"* can be shown the inputs, the outputs, the
+   definition version, the timestamp and the row. A band table that cannot say which band fired is refused rather
+   than admitted: `AshJudgments.Banding` rejects an empty `matched_rule_ids`. The trigger side is narrower:
+   `TriggerDispatch.fired_rule` carries the first rule id the decision resolver reports (`rule_ids`) and is `nil` when
+   the host's resolver reports none. Computing a second opinion is still refused on purpose: one that disagreed with
+   the engine that actually decided would be worse than no answer. ADR 0028 and ADR 0041 each carry a dated note.
 
    Alongside it, a smaller compile-time gap: decision table **input entries are not parsed at publish time**. They are
    unary tests, a grammar the engine parses inside its evaluator rather than exposing, so they are size-bounded at
@@ -243,7 +244,13 @@ invoices, statements, and regulatory filings. Budget for this as bespoke work.
 
 **→ Partly decided.** [ADR 0014 — Superset over Metabase](../adr/0014-superset-over-metabase.md) covers the reporting
 half: ad-hoc analysis, dashboards and scheduled exports over views already filtered by the same actor context. It does
-nothing for the document half. **Pixel-controlled PDF generation is untouched and stays open.**
+nothing for the document half.
+
+*Updated 2026-11-21.* ADR 0014 is still `proposed`. The document half is decided in
+[ADR 0067](../adr/0067-a-document-is-a-pure-function-of-recorded-inputs.md) (accepted 2026-11-10): a document is a pure
+function of recorded inputs, rendered by Typst, with a public rendering package, `lukegalea/ash_paper`. That package
+is not a dependency of this application and nothing here renders a PDF yet, so **pixel-controlled PDF generation is
+decided and not wired in.**
 
 ## 9. OpenTelemetry depth
 
@@ -290,31 +297,29 @@ the strategy evaluator reads only `strategy["constraints"]` — so a flag the Un
 ## 12. Column-level security
 
 [Question 6 on the checklist](../QUESTIONS.md) — "are some columns more sensitive than the rows that contain them?" —
-was answered "not yet", and this is the entry behind it. It is now partly answered: `grep -rn "field_polic" lib/` finds
-one declaration, on `AshEnterprise.Integration.LinkedAccount`, which hides `connection_id` from every read grant. No
-other resource has a field policy and the base resource supplies none. [Thesis 4](04-batteries-are-inherited.md) listed field policies among
-what the base resource supplies until 2026-08-18, which made it the one place where a claim ran ahead of the code; that
-line has been corrected rather than implemented.
+was answered "not yet", and this is the entry behind it. *Updated 2026-11-21.* It is now answered for reads by
+[ADR 0073](../adr/0073-secured-columns-are-grants.md) (accepted 2026-11-14, built for reads): `AshEnterprise.Platform.Resource`
+takes `secured_fields`, and for each one the base writes a field policy that authorizes a read only through a role
+granting `:read` on the column's own privilege (`"<Resource>#<field>"`), plus a catch-all `field_policy :*`. The first
+secured column is `Credentialing.Credential.number`. `AshEnterprise.Integration.LinkedAccount` still declares its own
+field policy, hiding `connection_id` from every read grant. Writes to a secured column follow the row grant. A2UI sends
+a hidden value as `null` and does not yet render it masked (ADR 0073, decision 8). [Thesis 4](04-batteries-are-inherited.md)
+listed field policies among what the base resource supplies until 2026-08-18, which made it the one place where a claim
+ran ahead of the code; the base resource now does supply them.
 
-This is a gap of omission rather than difficulty, which is what makes it worth naming separately from the rest of this
-page. Ash field policies gate columns on the same additive model thesis 3 uses for rows, so nothing has to bend to
+Ash field policies gate columns on the same additive model thesis 3 uses for rows, so nothing had to bend to
 accommodate them. The nouns exist too: `FieldPermission` and `FieldSecurityProfile` are already resolved in the corpus
-(`priv/cdm/resolved/dataverse_field_permission.json` and `dataverse_field_security_profile.json`) and nothing reads
-them.
+(`priv/cdm/resolved/dataverse_field_permission.json` and `dataverse_field_security_profile.json`); the secured-column
+grant reuses the `(role, privilege)` rows `AshEnterprise.Security.ActorContext` resolves once per request, so the rule
+that checks never query holds.
 
-**What it costs:** any column a role should not see — a salary, a national id, a negotiated rate — is readable today by
-anyone the row policies admit, through every derived surface at once: JSON:API, GraphQL, `ash_admin`, A2UI and the MCP
-tools all read the same fields. And unlike the other cross-cutting concerns, this one is not finished by declaring it
-once. The base resource can supply the mechanism; naming which fields are sensitive stays a per-resource judgement, so
-the inheritance argument of thesis 4 only gets you half way.
+**What it costs now:** the mechanism is inherited, but naming which fields are sensitive stays a per-resource judgement,
+so the inheritance argument of thesis 4 only gets you half way. A column nobody declared in `secured_fields` is readable
+by anyone the row policies admit, through every derived surface at once: JSON:API, GraphQL, `ash_admin`, A2UI and the
+MCP tools all read the same fields.
 
-**What to do about it:** declare a `field_policies` block on `AshEnterprise.Platform.Resource` with a catch-all
-`field_policy :*` that authorizes, so no existing surface changes, then attach field grants to the same
-`(role, privilege)` rows `AshEnterprise.Security.ActorContext` already resolves once per request — the same rule about
-checks never querying applies, and the precomputed privilege map is already the right shape to carry them.
-
-**→ Still open.** No decision taken. [The roadmap](../ROADMAP.md) lists it under what stays open rather than sequencing
-it.
+**→ Decided for reads, 2026-11-14.** [ADR 0073](../adr/0073-secured-columns-are-grants.md). Column grants on writes and
+the masked rendering of a hidden value are open. [The roadmap](../ROADMAP.md) lists what stays open.
 
 ## 13. Probabilistic model judgments
 
@@ -327,8 +332,8 @@ question registry, no judgment ledger, no calibration store, no band table and n
 not at all, and the audit trail records the verdict without a machine-checkable link to the clause that justified it.
 
 **What stands in the way here, specifically:** two items in §3 above. A band table that turns probabilities into
-admissions has to be overlap-free and has to record which band fired; `ash_decisions` now does both on its own main
-branch, and this repository's lock predates both, so here the decision trail still cannot say which row matched. The
+admissions has to be overlap-free and has to record which band fired; `ash_decisions` does both, and this
+repository's lock now carries both (§3 above), so here the decision trail does say which row matched. The
 vendor that defined the decision-model wire protocol is also very new — it had been public for twelve days on the date
 of this entry — which is why the design runs every instrument in the data's own declared zone and uses no hosted model
 at all.

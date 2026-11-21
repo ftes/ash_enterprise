@@ -76,7 +76,8 @@ Prefer adopting from the CDM corpus over inventing entities — see `docs/manife
 
 ## MCP
 
-`.mcp.json` wires **Tidewave** (`project_eval`, `get_ash_resources`, `execute_sql_query`, version-pinned `get_docs`).
+`.mcp.json` wires **Tidewave** (`project_eval`, `execute_sql_query`, version-pinned `get_docs`). Tidewave 0.9 removed the
+`get_ash_resources` tool; use `project_eval` or `mix ash_agent.describe` for resource questions.
 It talks to the running dev server, so start `iex-server` first or it shows disconnected. `project_eval` is usually a
 faster way to answer a question about this app than reading files.
 

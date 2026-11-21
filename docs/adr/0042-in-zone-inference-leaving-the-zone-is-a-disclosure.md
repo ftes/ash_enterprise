@@ -15,6 +15,11 @@
 - **Amended 2026-09-28 (acceptance):** accepted by the operator ("reviewed doctrine and approve"). This record narrows
   [ADR 0026](0026-ai-governance-is-disclosure.md), and now says so. Untagged data is refused until tagged; an emulated
   profile, if admitted, runs only over an in-zone runtime's log-probabilities.
+- **Note 2026-11-21:** the status line's "flow rule not built" still holds for the rule as stated. One enforced part
+  has landed since (e22b48d6, 2026-11-16): every model call passes `AshEnterprise.AI.Models`, which admits a target
+  outside the zone only for a tenant that recorded the opt-in (`ResidencyPolicy.allow?(tenant, :sub_processor,
+  :generative)`) and otherwise refuses with `Models.NotOptedIn` before a request is built. Egress is listed in the
+  `AshEnterprise.Governance.DataFlows` register.
 
 ## Context
 

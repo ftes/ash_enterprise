@@ -138,7 +138,7 @@ Worth separating, because they get conflated:
 
 | Surface | Audience | Auth | Purpose |
 |---|---|---|---|
-| **Tidewave** (`/tidewave/mcp`, dev only) | the coding agent building this app | none, localhost | `project_eval`, `get_ash_resources`, SQL, version-pinned docs |
+| **Tidewave** (`/tidewave/mcp`, dev only) | the coding agent building this app | none, localhost | `project_eval`, SQL, version-pinned docs |
 | **ash_ai dev MCP** (`/ash_ai/mcp`, dev only) | the coding agent | none, localhost | Ash-specific dev tools; upstream calls it experimental |
 | **Production MCP** (`/mcp`) | external agents acting for a real user | **OAuth 2.1 or API key** | this application's actions, as tools |
 

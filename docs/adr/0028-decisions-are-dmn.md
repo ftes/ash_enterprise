@@ -263,6 +263,11 @@ record answers *"what did it decide, from what, at which version"* and not *"whi
 and `TriggerDispatch.fired_rule` is nil for the same reason. That is a real gap in the audit story
 this package exists to provide, it is upstream, and it should not be described as anything else.
 
+> **2026-11-21.** Superseded by the recording. `Evaluation` now writes `matched_rule_ids` and `hit_policy` from the
+> engine's trace in the `ash_decisions` version this repository locks, and an empty list is refused where a band is
+> admitted (`AshJudgments.Banding`). `TriggerDispatch.fired_rule` carries the first rule id the decision resolver
+> reports and is `nil` when it reports none. The paragraph above is kept as written on 2026-08-20.
+
 **What it forecloses.** A decision layer with its own rule tables, and therefore any UI that edits
 rules as rows without going through the document. That is the intended trade and it is the one thing
 keeping the designer shippable.

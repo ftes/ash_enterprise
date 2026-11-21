@@ -25,6 +25,12 @@ The facts, verified on 2026-09-27:
   (2026-09-04), so here, today, [thesis 7 §3](../manifesto/07-what-we-do-not-have.md#3-approval-workflows--maker-checker)
   is still accurate: `Evaluation.matched_rule_ids` is always `[]`, and a `UNIQUE` table with overlapping rows publishes.
   A band table that cannot say which band fired, or whose bands overlap, is not auditable.
+
+  > **2026-11-21.** This bullet is superseded. The lock now carries matched-rule recording, so `Evaluation.matched_rule_ids`
+  > is populated from the engine's trace, `AshJudgments.Banding` refuses an empty list, and the publish-time overlap and
+  > completeness verifier is in. Band tables built on this
+  > record are published through `SystemOne.BandTablePublication` after a certified calibration run (see the status
+  > line and [the index](README.md)).
 - **Published accuracy figures are not ours to plan on.** The figures in circulation — 0.766 for
   `laya:typed-decisions` and 0.591 for `decider:2b` on a "typed-decisions" benchmark — are sourced through Ollaya's
   comparison pages, not a benchmark published by anyone independent. They say nothing about any
