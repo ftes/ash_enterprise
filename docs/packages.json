@@ -528,11 +528,11 @@
       "adr": "0009",
       "declared": "direct",
       "only": null,
-      "ref": "03ef7de2a44a3acbc9b403c0f660b8520160b56f",
+      "ref": "e9835fec94122aad7172b9800537d63431d10741",
       "version": "0.4.0",
       "stated_status": null,
       "maturity": "used-and-tested-here",
-      "battery": false,
+      "battery": true,
       "distribution": "git only",
       "builds_on": [
         "ash",
