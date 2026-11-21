@@ -4,7 +4,9 @@ defmodule AshEnterprise.Licences.RungsTest do
 
   The nine questions on `AshEnterprise.Licences.Dependency` are the bytes
   Luke Galea confirmed on 2026-10-21 (record 73da9055): their registry
-  hashes equal the confirmed hashes and the lock's. Over the hex.pm licence
+  hashes equal the confirmed hashes and the lock's. Eight form the
+  calibrated `third_party_licence` family; the declaration question is
+  answered only by the declaration or a person, so it is never calibrated. Over the hex.pm licence
   corpus (public metadata, `test/fixtures/licences/`), every subject that
   declares a single classified SPDX id is answered by the declaration rung,
   identically to the research run's `declaration-rung.csv`, with no model
@@ -20,6 +22,7 @@ defmodule AshEnterprise.Licences.RungsTest do
   alias AshEnterprise.Platform.SystemActor
   alias AshEnterprise.SystemOne.CalibrationInput
   alias AshEnterprise.SystemOne.Judgment
+  alias AshEnterprise.SystemOne.Support
   alias AshEnterprise.SystemOne.TestSupport.FakeReqLLM
   alias AshJudgments.Registry.Info
   alias NimbleCSV.RFC4180, as: CSV
@@ -72,9 +75,96 @@ defmodule AshEnterprise.Licences.RungsTest do
         entry = Map.fetch!(confirmed, Atom.to_string(question.name))
         assert question.question_hash == entry["question_hash"]
         assert question.version == 1
-        assert question.family == :third_party_licence
         assert question.profile == :winnow_gpu
         assert lock[question.question_id] == %{"hash" => entry["question_hash"], "version" => 1}
+      end
+
+      # Eight are the calibrated family; the declaration question is its own
+      # family, answered only by the declaration or a person (2026-11-21).
+      families = declared |> Enum.group_by(& &1.family, & &1.name)
+      assert families[:third_party_licence] == Rungs.model_questions()
+      assert families[:licence_declaration] == [:package_licence_declaration_invalid]
+    end
+  end
+
+  describe "the third_party_licence family without the declaration question" do
+    test "its calibration input contains no lic-7 rows", %{tenant: tenant, actor: actor} do
+      subject =
+        Licences.register_dependency!(
+          %{package: "synthetic_mit", version: "1.0.0", declared_licences: ["MIT"]},
+          actor: actor,
+          tenant: tenant
+        )
+
+      # A calibration pass may not ask the declaration question.
+      assert {:error, {:answered_without_model, :package_licence_declaration_invalid}} =
+               Rungs.judge(subject, :package_licence_declaration_invalid,
+                 actor: actor,
+                 tenant: tenant,
+                 calibration?: true,
+                 judgments: %{req_llm: FakeReqLLM}
+               )
+
+      assert FakeReqLLM.calls() == 0
+
+      assert {:ok, _} =
+               Rungs.judge(subject, :package_licence_is_weak_copyleft,
+                 actor: actor,
+                 tenant: tenant,
+                 calibration?: true,
+                 judgments: %{req_llm: FakeReqLLM}
+               )
+
+      # A lic-7 observation recorded under the family before it left (the
+      # 2026-10-21 pass asked all nine) stays out of the eval set.
+      lic7 = Info.question(Dependency, :package_licence_declaration_invalid)
+
+      Judgment
+      |> Ash.Changeset.for_create(
+        :record,
+        Support.observation_inputs(
+          question_id: lic7.question_id,
+          question_hash: lic7.question_hash,
+          family: "third_party_licence",
+          subject_type: "licence_dependency",
+          subject_id: subject.id,
+          state_ref: %{"purpose" => "calibration"}
+        ),
+        actor: SystemActor.process(),
+        tenant: tenant
+      )
+      |> Ash.create!()
+
+      doc = EvalSet.build(actor: actor, tenant: tenant)
+      weak = Info.question(Dependency, :package_licence_is_weak_copyleft)
+
+      assert Enum.map(doc["pairs"], & &1["question"]) == ["package_licence_is_weak_copyleft"]
+      assert doc["question_hashes"] == [weak.question_hash]
+
+      bytes = Jason.encode!(doc)
+      input = CalibrationInput.input(Jason.decode!(bytes), bytes)
+      assert length(input.pairs) == 1
+      refute lic7.question_hash in input.question_hashes
+    end
+  end
+
+  describe "the classification table" do
+    test "network copyleft is strong copyleft too, and a restricted licence is blocked by lic-9" do
+      agpl = Rungs.route(%{declared_licences: ["AGPL-3.0-only"]}).answers
+      assert agpl.package_licence_is_strong_copyleft
+      assert agpl.package_licence_is_network_copyleft
+      refute agpl.package_licence_is_permissive
+
+      gpl = Rungs.route(%{declared_licences: ["GPL-3.0-or-later"]}).answers
+      assert gpl.package_licence_is_strong_copyleft
+      refute gpl.package_licence_is_network_copyleft
+
+      for id <- ["BUSL-1.1", "Elastic-2.0", "PolyForm-Noncommercial-1.0.0", "CC-BY-NC-4.0"] do
+        answers = Rungs.route(%{declared_licences: [id]}).answers
+        assert answers.package_licence_has_use_restrictions, id
+        refute answers.package_licence_is_permissive, id
+        refute answers.package_licence_is_strong_copyleft, id
+        assert answers.package_licence_requires_attribution, id
       end
     end
   end

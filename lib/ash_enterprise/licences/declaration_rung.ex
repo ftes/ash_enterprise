@@ -6,15 +6,18 @@ defmodule AshEnterprise.Licences.DeclarationRung do
 
   The classification table is policy data, `priv/licences/spdx_classes.csv`:
   per SPDX id, its category (permissive, weak, strong or network copyleft,
-  public-domain equivalent), whether the licence requires its notice to
-  travel with copies, and whether it restricts use. The table is read at
+  public-domain equivalent, or restricted: a licence that limits who may use
+  it or for what), whether the licence requires its notice to travel with
+  copies, and whether it restricts use. The table is read at
   compile time; editing it recompiles this module, and changes the gold
   labels the model rung is calibrated against.
 
   What a declaration settles, per confirmed question:
 
     * the four category questions, attribution, public-domain dedication and
-      use restriction: from the table row;
+      use restriction: from the table row. A network copyleft licence is
+      strong copyleft too: it also requires the whole combined work under the
+      same licence, and adds the network trigger;
     * `package_licence_declaration_invalid`: `false` (the declaration is a
       classified SPDX id);
     * `package_requires_notice_file`: `false` for every id but Apache-2.0.
@@ -33,7 +36,8 @@ defmodule AshEnterprise.Licences.DeclarationRung do
     "weak_copyleft" => :weak_copyleft,
     "strong_copyleft" => :strong_copyleft,
     "network_copyleft" => :network_copyleft,
-    "public_domain_equivalent" => :public_domain_equivalent
+    "public_domain_equivalent" => :public_domain_equivalent,
+    "restricted" => :restricted
   }
 
   @classes @table_path
@@ -79,7 +83,7 @@ defmodule AshEnterprise.Licences.DeclarationRung do
 
     %{
       package_licence_is_permissive: category in [:permissive, :public_domain_equivalent],
-      package_licence_is_strong_copyleft: category == :strong_copyleft,
+      package_licence_is_strong_copyleft: category in [:strong_copyleft, :network_copyleft],
       package_licence_is_weak_copyleft: category == :weak_copyleft,
       package_licence_is_network_copyleft: category == :network_copyleft,
       package_licence_requires_attribution: attribution,

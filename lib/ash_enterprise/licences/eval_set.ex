@@ -11,7 +11,10 @@ defmodule AshEnterprise.Licences.EvalSet do
   recompute), keeps the latest per subject and question, and labels each
   with the subject's routed answer. A question the route left pending (an
   Apache-2.0 NOTICE check with no package contents) has no gold and is left
-  out, and so is a subject that is not on the declaration rung.
+  out, and so is a subject that is not on the declaration rung. Only the
+  family's own questions (`Rungs.model_questions/0`) are pairs: an older
+  ledger row for the declaration question, from before it left the family,
+  is not.
 
   The document is what `AshEnterprise.SystemOne.CalibrationInput` reads.
   """
@@ -32,14 +35,20 @@ defmodule AshEnterprise.Licences.EvalSet do
   Builds the eval-set document for one tenant's calibration observations.
 
   Options: `:actor` (a system actor; required), `:tenant` (required),
-  `:questions` (narrow to some question names; default all nine) and
+  `:questions` (narrow to some of the family's question names; default all
+  eight) and
   `:created_by`.
   """
   @spec build(keyword()) :: map()
   def build(opts) do
     actor = Keyword.fetch!(opts, :actor)
     tenant = Keyword.fetch!(opts, :tenant)
-    wanted = opts |> Keyword.get(:questions, Rungs.questions()) |> MapSet.new(&to_string/1)
+
+    wanted =
+      opts
+      |> Keyword.get(:questions, Rungs.model_questions())
+      |> MapSet.new(&to_string/1)
+      |> MapSet.intersection(MapSet.new(Rungs.model_questions(), &to_string/1))
 
     subjects =
       Dependency

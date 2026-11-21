@@ -16,15 +16,22 @@ defmodule AshEnterprise.Licences.Dependency do
 
   ## The questions
 
-  The nine `third_party_licence` questions below are Luke Galea's
-  confirmation of 2026-10-21 (record
-  `73da9055-7d92-4b2d-9930-acda885f4d48`), rendered by
+  The nine questions below are Luke Galea's confirmation of 2026-10-21
+  (record `73da9055-7d92-4b2d-9930-acda885f4d48`), rendered by
   `AshEnterprise.SystemOne.QuestionProposal.to_dsl/2` and landed verbatim
   at version 1 with the `:winnow_gpu` decision instrument. Their hashes are
   locked in `priv/judgments/lock.json`, so a wording change is a compile
   error until it arrives with a version bump. Which rung answers a given
   subject is `AshEnterprise.Licences.Rungs`' decision: a declared SPDX id is
   answered without a model.
+
+  Eight are the `third_party_licence` family, the questions a model may
+  answer from a licence's text, calibrated together.
+  `package_licence_declaration_invalid` is its own family,
+  `licence_declaration` (Luke Galea, 2026-11-21): it asks about the
+  declaration, which a model is never shown, so only the declaration or a
+  person answers it, and it is never calibrated. The family is outside the
+  question hash, so the move leaves the lock unchanged.
 
   Reference data, held per tenant: `:organization_owned`, no lifecycle, and
   no soft delete (a release is never withdrawn from the record, and a soft
@@ -169,7 +176,7 @@ defmodule AshEnterprise.Licences.Dependency do
       })
 
       version(1)
-      family(:third_party_licence)
+      family(:licence_declaration)
       profile(:winnow_gpu)
     end
 

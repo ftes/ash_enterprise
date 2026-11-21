@@ -4,8 +4,9 @@ defmodule AshEnterprise.Licences do
   the licence policy (S1-63).
 
   One resource, `AshEnterprise.Licences.Dependency`: a package at the
-  version a `mix.lock` resolves. It carries the nine confirmed
-  `third_party_licence` questions. `AshEnterprise.Licences.Rungs` decides
+  version a `mix.lock` resolves. It carries the nine confirmed licence
+  questions: eight in the calibrated `third_party_licence` family, and the
+  declaration question, which only the declaration or a person answers. `AshEnterprise.Licences.Rungs` decides
   which rung answers each subject: a single declared SPDX id is answered by
   the declaration (`AshEnterprise.Licences.DeclarationRung`), and only a
   subject without one is sent to a model.

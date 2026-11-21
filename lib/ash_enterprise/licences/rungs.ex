@@ -24,7 +24,9 @@ defmodule AshEnterprise.Licences.Rungs do
   when the route says the declaration (or the contents) answered it. The
   one exception is a calibration pass (`calibration?: true`), which asks the
   model about declared subjects on purpose, so its answers can be scored
-  against the declaration's.
+  against the declaration's. A calibration pass asks only the eight model
+  questions (`model_questions/0`, the `third_party_licence` family): the
+  declaration question is refused there too.
   """
 
   alias AshEnterprise.Licences.DeclarationRung
@@ -60,6 +62,13 @@ defmodule AshEnterprise.Licences.Rungs do
   @doc "The nine confirmed questions, in clause order (lic-1 to lic-9)."
   @spec questions() :: [atom()]
   def questions, do: @questions
+
+  @doc """
+  The eight questions a model may answer, from a licence's text: the
+  `third_party_licence` family, the unit a calibration pass asks and scores.
+  """
+  @spec model_questions() :: [atom()]
+  def model_questions, do: @model_questions
 
   @doc "Routes one subject to the rung that answers it. Pure: no I/O, no model."
   @spec route(Dependency.t() | map()) :: route()
@@ -138,7 +147,8 @@ defmodule AshEnterprise.Licences.Rungs do
   generated judge action, and records the answer in the judgment ledger.
 
   Refuses (`{:error, {:answered_without_model, question}}`) when the route
-  does not send that question to a model, unless `calibration?: true`.
+  does not send that question to a model, unless `calibration?: true`. The
+  declaration question is refused even then: it is never a model question.
 
   Options: `:actor` (required), `:tenant` (required), `:calibration?`,
   `:judgments` (extra judge-context entries, e.g. a test's `:req_llm`;
@@ -150,7 +160,7 @@ defmodule AshEnterprise.Licences.Rungs do
     route = route(subject)
     calibration? = Keyword.get(opts, :calibration?, false)
 
-    if calibration? or question in route.to_model do
+    if question in route.to_model or (calibration? and question in @model_questions) do
       judgments =
         Map.merge(
           %{
