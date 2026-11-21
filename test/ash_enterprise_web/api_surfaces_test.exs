@@ -373,6 +373,43 @@ defmodule AshEnterpriseWeb.ApiSurfacesTest do
         refute File.read!(file) =~ "dev_routes", "#{file} sets dev_routes"
       end
     end
+
+    test "the endpoint's code-evaluating dev tools are dev surfaces too" do
+      # Tidewave and AshAi.Mcp.Dev trust a loopback caller; behind a proxy every caller is one.
+      source = File.read!("lib/ash_enterprise_web/endpoint.ex")
+
+      assert source =~
+               "if Mix.env() == :dev and Application.compile_env(:ash_enterprise, :dev_routes, false) do\n    # Tidewave"
+
+      assert source =~
+               "if code_reloading? and Application.compile_env(:ash_enterprise, :dev_routes, false) do\n    plug AshAi.Mcp.Dev"
+    end
+
+    test "a dev-config instance takes its signing secrets from the environment" do
+      key_base = String.duplicate("k", 64)
+      token_secret = String.duplicate("t", 32)
+
+      config =
+        with_env("SECRET_KEY_BASE", key_base, fn ->
+          with_env("TOKEN_SIGNING_SECRET", token_secret, fn ->
+            Config.Reader.read!("config/runtime.exs", env: :dev)
+          end)
+        end)
+
+      assert get_in(config, [:ash_enterprise, AshEnterpriseWeb.Endpoint, :secret_key_base]) ==
+               key_base
+
+      assert get_in(config, [:ash_enterprise, :token_signing_secret]) == token_secret
+
+      assert get_in(config, [:ash, :keyset_signing_secret]) ==
+               AshEnterprise.Secrets.keyset_signing_secret(key_base)
+
+      assert_raise RuntimeError, ~r/shorter than 64 bytes/, fn ->
+        with_env("SECRET_KEY_BASE", "short", fn ->
+          Config.Reader.read!("config/runtime.exs", env: :dev)
+        end)
+      end
+    end
   end
 
   defp bearer(user) do

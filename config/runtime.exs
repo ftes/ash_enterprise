@@ -81,6 +81,30 @@ if config_env() != :test and System.get_env("FIXED_SEED_PASSWORD") in ~w(false 0
   config :ash_enterprise, fixed_seed_password?: false
 end
 
+# The dev config signs cookies, sessions and tokens with secrets written in config/dev.exs, which
+# anyone can read in this repository. An instance that runs the dev config but holds real data
+# gives its own: `SECRET_KEY_BASE` (64 bytes or more; the keyset cursor key is derived from it, as
+# in prod) and `TOKEN_SIGNING_SECRET` (32 bytes or more). A value that is set but short stops the
+# boot. Unset, the dev defaults stand. Production reads both below and has no default.
+if config_env() == :dev do
+  if secret_key_base = System.get_env("SECRET_KEY_BASE") do
+    if byte_size(secret_key_base) < 64,
+      do: raise("SECRET_KEY_BASE is set but shorter than 64 bytes (mix phx.gen.secret)")
+
+    config :ash_enterprise, AshEnterpriseWeb.Endpoint, secret_key_base: secret_key_base
+
+    config :ash,
+      keyset_signing_secret: AshEnterprise.Secrets.keyset_signing_secret(secret_key_base)
+  end
+
+  if token_signing_secret = System.get_env("TOKEN_SIGNING_SECRET") do
+    if byte_size(token_signing_secret) < 32,
+      do: raise("TOKEN_SIGNING_SECRET is set but shorter than 32 bytes (mix phx.gen.secret 32)")
+
+    config :ash_enterprise, token_signing_secret: token_signing_secret
+  end
+end
+
 # The deployment's OpenID Connect identity provider (ADR 0071): its issuer URL, this
 # application's client id and secret there, and the callback it redirects to
 # (`<origin>/auth/user/oidc/callback`). Used only when the build declared the strategy

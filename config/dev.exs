@@ -190,7 +190,8 @@ config :ash_enterprise, AshEnterpriseWeb.Endpoint,
 
 # The dev-only surfaces, on by default here: /admin (AshAdmin), /dev/dashboard and
 # /dev/mailbox, /clarity, /canvas, the API explorers (/gql/playground, /api/json/swaggerui)
-# and the in-app /ash_agent/mcp tools. The router reads this when it compiles, so
+# and the in-app /ash_agent/mcp tools, plus the endpoint's Tidewave and /ash_ai/mcp, which evaluate
+# code for a loopback caller. The router and the endpoint read this when they compile, so
 # `DEV_ROUTES=false` (or 0) at COMPILE time builds the dev config without any of them, for an
 # instance that runs this configuration but is shown to other people. Set it for every mix
 # command that builds or runs that instance; Mix recompiles the router when it changes.
@@ -241,5 +242,6 @@ config :ash_enterprise, AshEnterprise.Audit.ClearRecordsForReplay,
   resources: [AshEnterprise.Accounts.BusinessUnit]
 
 # Keyset cursors are signed, so a cursor a client wrote is refused (ADR 0073). A deployment
-# derives its own from SECRET_KEY_BASE in config/runtime.exs.
+# derives its own from SECRET_KEY_BASE in config/runtime.exs, and so does a dev-config instance
+# that sets SECRET_KEY_BASE (config/runtime.exs).
 config :ash, keyset_signing_secret: "dev-only keyset signing secret, not a deployment value"

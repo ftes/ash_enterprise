@@ -61,7 +61,11 @@ defmodule AshEnterpriseWeb.Endpoint do
     only: AshEnterpriseWeb.static_paths(),
     raise_on_missing_only: code_reloading?
 
-  if Mix.env() == :dev do
+  # Tidewave evaluates code in this node, and AshAi.Mcp.Dev below serves its dev tools: both
+  # trust a loopback caller, and a proxy in front of the node (a tailnet serve, say) makes every
+  # caller loopback. They are dev surfaces, so `DEV_ROUTES=false` builds without them, like the
+  # router's (config/dev.exs).
+  if Mix.env() == :dev and Application.compile_env(:ash_enterprise, :dev_routes, false) do
     # Tidewave, except on Clarity's routes.
     #
     # `Tidewave.maybe_inject_toolbar/1` inserts its <meta> and <script> before the
@@ -82,15 +86,17 @@ defmodule AshEnterpriseWeb.Endpoint do
     defp tidewave_except_clarity(conn, _opts), do: Tidewave.call(conn, Tidewave.init([]))
   end
 
-  # Code reloading can be explicitly enabled under the
-  # :code_reloader configuration of your endpoint.
-  if code_reloading? do
+  if code_reloading? and Application.compile_env(:ash_enterprise, :dev_routes, false) do
     plug AshAi.Mcp.Dev,
       # For many tools, you will need to set the `protocol_version_statement` to the older version.
       protocol_version_statement: "2024-11-05",
       otp_app: :ash_enterprise,
       path: "/ash_ai/mcp"
+  end
 
+  # Code reloading can be explicitly enabled under the
+  # :code_reloader configuration of your endpoint.
+  if code_reloading? do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
