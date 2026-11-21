@@ -26,7 +26,7 @@ defmodule AshEnterpriseWeb.SurfaceLiveTest do
     /app/users /app/teams /app/roles /app/business-units
     /app/mdm /app/mdm/mappings /app/mdm/batches
     /app/judgments /app/judgments/band-tables /app/judgments/certifications
-    /app/judgments/calibration /app/judgments/facts
+    /app/judgments/calibration /app/judgments/facts /app/judgments/question-proposals
     /app/tasks /app/acknowledgements /app/reviews/stalled /app/credentialing
     /app/compliance/findings /app/compliance/evaluations /app/compliance/bundles
     /app/compliance/rule-sets /app/compliance/catalogs /app/compliance/profiles
@@ -100,7 +100,7 @@ defmodule AshEnterpriseWeb.SurfaceLiveTest do
   describe "the generated pages" do
     test "each renders its entry's UI, named after its key, with deep links" do
       generated = Surfaces.generated()
-      assert length(generated) == 25
+      assert length(generated) == 26
 
       for surface <- generated do
         config = surface.live.__ash_a2ui_config__()

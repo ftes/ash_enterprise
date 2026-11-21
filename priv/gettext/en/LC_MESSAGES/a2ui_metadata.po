@@ -137,6 +137,10 @@ msgctxt "one_of:band"
 msgid "Admit"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
+msgid "Admitted"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/mdm_batch_ui.ex:1
 msgctxt "one_of:status"
 msgid "Admitted"
@@ -380,6 +384,10 @@ msgctxt "one_of:status"
 msgid "Auto merged"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
+msgid "Automated share"
+msgstr ""
+
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Automation role"
 msgstr ""
@@ -408,6 +416,10 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/judgments/band_tables_ui.ex:1
 msgid "Band tables to certify"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
+msgid "Bandings"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/mdm_batch_ui.ex:1
@@ -732,6 +744,10 @@ msgstr ""
 msgid "Confirm match"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Confirm questions"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:136
 msgid "Confirmed"
 msgstr ""
@@ -801,6 +817,10 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/mdm_batch_ui.ex:1
 msgid "Counts"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
+msgid "Coverage at threshold"
 msgstr ""
 
 #: lib/ash_enterprise/canvas/registry.ex:2
@@ -1071,6 +1091,10 @@ msgstr ""
 #: lib/ash_enterprise_web/a2ui/rule_set_revision_ui.ex:1
 msgctxt "one_of:status"
 msgid "Draft"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Drafted from"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/action_items_ui.ex:1
@@ -1565,6 +1589,10 @@ msgstr ""
 msgid "Instance"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Instrument"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:1
 msgctxt "enum:Elixir.AshEnterprise.Zones.Types.DataClass"
 msgid "Internal"
@@ -1997,6 +2025,10 @@ msgstr ""
 msgid "No deliveries"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "No questions await confirmation"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
 msgctxt "one_of:result"
 msgid "No table"
@@ -2066,6 +2098,10 @@ msgstr ""
 #: lib/ash_enterprise_web/a2ui/mdm_golden_ui.ex:1
 msgctxt "one_of:band"
 msgid "Omit"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
+msgid "Omitted"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/mdm_batch_ui.ex:1
@@ -2294,6 +2330,10 @@ msgstr ""
 msgid "Policy bundle"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Policy digest"
+msgstr ""
+
 #: lib/ash_enterprise/canvas/registry.ex:2
 msgid "Position"
 msgstr ""
@@ -2354,7 +2394,16 @@ msgstr ""
 msgid "Promote routing"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Proposal"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Proposal detail"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/action_items_ui.ex:1
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/mdm_golden_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/planning_ui.ex:1
 msgid "Proposed"
@@ -2414,9 +2463,18 @@ msgstr ""
 msgid "Question id"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Question proposals"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:670
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
 #, fuzzy
 msgid "Questions"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "Questions an instrument drafts from policy text appear here until a person confirms them."
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/operator_ui.ex:1
@@ -2681,6 +2739,7 @@ msgid "Retry"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/flight_ui.ex:121
+#: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
 #: lib/ash_enterprise_web/a2ui/mdm_steward_ui.ex:1
 msgid "Review"
 msgstr ""
@@ -2932,6 +2991,11 @@ msgstr ""
 #: lib/ash_enterprise_web/a2ui/mdm_golden_ui.ex:1
 msgctxt "select_context"
 msgid "Select person"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgctxt "select_context"
+msgid "Select proposal"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/acknowledgement_ui.ex:1
@@ -3341,6 +3405,10 @@ msgstr ""
 msgid "The model"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "The questions in full"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/flight_ui.ex:1
 msgid "The run's process, with a marker on each step it is on now."
 msgstr ""
@@ -3574,6 +3642,10 @@ msgstr ""
 msgid "Webhook endpoints"
 msgstr ""
 
+#: lib/ash_enterprise_web/a2ui/judgments/calibration_ui.ex:1
+msgid "Week"
+msgstr ""
+
 #: lib/ash_enterprise_web/a2ui/daily_ui.ex:670
 msgid "What happened, and why you know: succeeded (it happened), failed (it did not), or retry (it did not happen, you checked, and it runs again)"
 msgstr ""
@@ -3755,6 +3827,10 @@ msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/judgments/band_tables_ui.ex:1
 msgid "proposed band table"
+msgstr ""
+
+#: lib/ash_enterprise_web/a2ui/judgments/question_proposals_ui.ex:1
+msgid "question proposal"
 msgstr ""
 
 #: lib/ash_enterprise_web/a2ui/role_ui.ex:1
