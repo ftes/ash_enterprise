@@ -131,6 +131,15 @@ defmodule AshEnterprise.Surfaces.FacetsTest do
       end
     end
 
+    test "the shell's searchable surfaces are the ones the person may open and search",
+         %{coordinator: coordinator} do
+      entries = AshEnterpriseWeb.Shell.searchable(coordinator)
+
+      assert Enum.map(entries, & &1.surface) == Search.searchable(coordinator)
+      assert Enum.any?(entries, &(&1.key == :credentials and :number in &1.fields))
+      assert AshEnterpriseWeb.Shell.searchable(nil) == []
+    end
+
     test "a clinic case is found by its business reference",
          %{coordinator: coordinator, credential: credential} do
       assert %{hits: hits, failed: []} = Search.find(credential.number, coordinator)

@@ -70,6 +70,11 @@ defmodule AshEnterpriseWeb.Shell do
   @spec surfaces(term()) :: [map()]
   def surfaces(actor), do: ExtMethods.entries(actor, :web)
 
+  @doc "What `actor` may search by a business reference or a run id (`AshEnterprise.Surfaces.Search`)."
+  @impl true
+  def searchable(nil), do: []
+  def searchable(actor), do: Surfaces.Search.entries(actor)
+
   @impl true
   def invoke({:open_surface, %{"id" => id}, target}, actor, socket) do
     with {:ok, surface} <- Records.surface_for(id, actor),

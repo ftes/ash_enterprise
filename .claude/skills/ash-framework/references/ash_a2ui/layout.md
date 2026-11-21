@@ -215,6 +215,41 @@ topics for the full contracts.
   `expandLabel`, and the pairs column `"pairs": true`. A renderer that
   ignores them draws the grid. The basic catalog draws its usual card,
   with the expand fields in its metadata grid.
+- Pair reviews (admin catalog 3.10): each pair may carry its own `review`
+  (a review field's shape: `state`, `page`, `href`, `quote`, `boxes`), a
+  `key` (its stable address in the record) and `action` (whether it
+  offers the field's action, `true` when absent). The row carries the
+  normalized items at `_pairs_<field>`, bound by the column's `items`, and
+  each item's review draws after its value. A `field_action` on a pairs
+  field is a button per item, not per row (the column's `pairAction`): it
+  runs the update for the item chosen, its key as the action's `:item`
+  argument, while the record offers it (`field_action_visible`) and the
+  item does (it has a key and does not say `action: false`). A review
+  summary counts each item whose review waits.
+
+  ```elixir
+  component :table, :clauses do
+    resource MyApp.Clause
+    display :cards
+    context_filter agreement_id: :agreement
+    fields [:kind, :terms]
+    row_layout do
+      title :kind
+      meta [:terms]
+    end
+  end
+
+  # terms: [%{term: "Notice", value: "60 days", key: "0",
+  #           review: %{state: :pending, page: 3}}, ...]
+  field :terms do
+    pairs true
+    field_action :review_term        # an update of MyApp.Clause with an :item argument
+    field_action_visible :terms_open
+  end
+  ```
+
+- A pairs field's action without an `:item` argument, or one shown on a
+  `:detail` card (which draws no button per item), does not compile.
 
 ## Step fields (`steps true`)
 
@@ -340,8 +375,9 @@ topics for the full contracts.
 
 - A button beside one detail value, running an update action on the
   card's record for that field (mark this value reviewed, flag it, ask
-  about it). `field_action` names the update action; it must declare a
-  `:field` argument, which receives the field's name as a string.
+  about it). `field_action` names the update action; a `:field` argument,
+  when it declares one, receives the field's name as a string (an action
+  that marks the whole record declares none).
   `field_action_visible` names a boolean attribute or calculation saying
   per record whether the button is offered (omit it to always offer it).
 
@@ -379,16 +415,119 @@ topics for the full contracts.
   "field_action", context, icon?}`, the rowActions entry shape) and
   `actionVisible` (`/detail/<context>/_action_<field>`). The detail data
   carries `_action_<field>` (true or false) for every field action. The
-  basic catalog and tables draw no button.
+  basic catalog draws no button.
 - The `field_action` ashAction sends the card and the field, never the
   action: the server finds the action in the field's declaration, re-reads
   the record through the card's context as the actor, refuses it unless
   `field_action_visible` holds, runs the update as the actor and re-sends
   the card's record (`/detail/<context>`). Authorization is the action's
   own policies.
-- A `field_action` that is not an update action of the card's record, one
-  without a `:field` argument, or a `field_action_visible` that is not a
-  public field of that record does not compile.
+- In a table (catalog 3.9) the same declaration puts the button in each
+  row, beside the value, for an action on the row's record: one check per
+  line, say, that marks every value on it reviewed. The column carries
+  `action` and a row-relative `actionVisible` (`_action_<field>`), each row
+  its `_action_<field>`. The server re-reads the row through the table's
+  own read and context filters, so a row the table would not show is
+  refused, and after the update refreshes the action's `refreshes` tables
+  and re-sends the records of the contexts the table is filtered by (their
+  review summaries count its rows).
+
+  ```elixir
+  component :table, :lines do
+    resource MyApp.OrderLine
+    context_filter order_id: :order
+    fields [:service, :price]
+  end
+
+  field :price do
+    review :price_review
+    field_action :review_line      # an update of MyApp.OrderLine, no :field argument
+    field_action_visible :review_open
+  end
+
+  action :review_line do
+    label "Mark as reviewed"
+    icon "check"
+    refreshes [:lines]
+  end
+  ```
+
+- A `field_action` that is not an update action of the record of every
+  card or table drawing the field, or a `field_action_visible` that is not
+  a public field of that record, does not compile.
+
+
+## Editing a record in place (`editable` on a `:detail`, `save_bar`)
+
+- A detail card's values a person corrects where they read them (admin
+  catalog 3.11). `editable` on the `:detail` lists the fields, the update
+  action the save runs (default: the context resource's primary update)
+  and `visible`, a boolean field of the record gating it. A field shown as
+  a display calculation names the attribute it edits with `edit`. A
+  `save_bar` saves every change on the surface at once; a surface with an
+  editable card must declare one.
+
+  ```elixir
+  component :detail, :terms do
+    context :agreement
+    fields [:name, :fee_text, :payment_term]
+
+    editable do
+      fields [:name, :fee_text, :payment_term]
+      update_action :correct
+      visible :correctable
+    end
+  end
+
+  field :fee_text do
+    label "Fee"
+    edit :fee            # the attribute behind the formatted value
+    review :fee_review
+  end
+
+  save_bar do
+    context :agreement
+    message "You have unsaved changes"
+    message_waiting "Reviewing extracted details"
+    status "%{count} pending review"
+    status_one "1 pending review"
+    saved_message "Changes saved."
+    edit_reviews true     # :correct records a review of what it changes
+
+    confirm do
+      title "Save with %{count} fields not reviewed?"
+      title_one "Save with 1 field not reviewed?"
+      save_label "Save progress"
+      then_label "Save and mark reviewed"
+      then_action :review
+      then_visible :review_open
+      then_saved_message "Changes saved and marked as reviewed."
+    end
+  end
+  ```
+
+- Choosing or focusing an editable value opens its input (text, a number,
+  a date, or a choice of an atom's `one_of`/enum values, from the edited
+  attribute's type). Enter or leaving it keeps a change; Escape drops it.
+  Nothing is written: the change waits at `/ui/edits/<card>/values/<field>`
+  until Save. A refresh of the whole data model keeps the changes.
+- The bar shows while a change waits. It counts the fields under review
+  (`review` fields of the bar's context) still pending or missing, leaving
+  out edited ones with `edit_reviews`. Discard drops every change. Save
+  sends `save_changes`; with a `confirm` and fields still waiting it asks
+  first (Cancel / `save_label` / `then_label`). `then_when_clear` runs the
+  `then_action` without asking once nothing waits.
+- The server re-reads each card's record through its context as the actor,
+  refuses it unless `visible` holds, and runs each card's `update_action`
+  with only the changed fields, cast to their attributes, in one
+  transaction (on a data layer with transactions), then the `then_action`
+  on the bar's record. A refusal saves nothing, keeps the changes, puts
+  each field's error at its input (`/ui/edit_errors/<card>/<field>`) and
+  says the rest as the outcome. Authorization is the actions' own policies.
+- The `editable` fields (through their `edit` attribute) must be accepted
+  by the update action, `visible` and `then_visible` must be fields of the
+  record and `then_action` an update action of it, or the surface does not
+  compile. The basic catalog draws the card read-only and no bar.
 
 ## Record pages (`page_header`, `section_nav`, `lead`, `alert`)
 
@@ -401,7 +540,7 @@ topics for the full contracts.
   page_header do
     context :order
     title :name
-    crumb "Orders", href: "/orders", page: :back   # /page/back replaces href
+    crumb "Orders", href: "/orders", page: :back, live: :navigate   # /page/back replaces href
 
     tag :status_text do
       tone :status_tone          # info success warning danger neutral pending accent gray
@@ -453,6 +592,13 @@ topics for the full contracts.
   `/detail/<context>`. A host that reloads its page afterwards catches that
   message in its own `handle_event("a2ui:message", ...)`. A pinned (`as_of`)
   surface offers none.
+- `live: :navigate` (or `:patch`) on a `crumb` makes it a live link
+  (catalog 3.7): the `AshA2ui` hook follows a plain click inside the
+  LiveView (`push_navigate` / `push_patch` semantics), which a link drawn
+  in the surface's shadow DOM cannot get from `data-phx-link`. A modified
+  click and a page without the hook follow `href` normally. A host
+  `renderHeader` override puts `data-a2ui-live={crumb.live}` on the
+  element whose `href` holds the address.
 - `/page` holds the host page's values: `build_surface(..., page: %{back:
   url})`, or `page_fn: fn socket -> %{back: ...} end` on
   `AshA2ui.LiveRenderer`, which pushes a change once the surface is built.
@@ -469,7 +615,10 @@ topics for the full contracts.
   `missing`) and a link to the first in declaration order, to its card's
   section (the nav's anchor, else `#section_<component>`), or to
   `fallback_href` once none waits. The alert's `message` stays the host's
-  words; the alert declares no link of its own.
+  words; the alert declares no link of its own. A table filtered by the
+  same context alone (every `context_filter` entry names it) counts too
+  (3.9): each row with a review field waiting, once, read through the
+  table's read action as the reader, in its `default_sort`.
 
   ```elixir
   component :detail, :to_review do

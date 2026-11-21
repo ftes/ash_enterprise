@@ -17,13 +17,16 @@ defmodule AshEnterprise.Surfaces.Search do
 
   A surface whose read fails is reported in `failed`, never folded into "no
   match": a search that could not look somewhere says so.
+
+  The casting, reading and reporting are `AshA2ui.Shell.Search`'s; this
+  module says which surfaces are searched and maps a hit back to its
+  surface.
   """
 
+  alias AshA2ui.Shell.Search, as: ShellSearch
   alias AshEnterprise.Security.ActorContext
   alias AshEnterprise.Surfaces
   alias AshEnterprise.Surfaces.Surface
-
-  @limit 10
 
   @typedoc "One record found: the surface it opens on, its id, the attribute that matched."
   @type hit :: %{surface: Surface.t(), id: String.t(), field: atom(), path: String.t()}
@@ -36,71 +39,40 @@ defmodule AshEnterprise.Surfaces.Search do
   reads nothing.
   """
   @spec find(String.t() | nil, term(), [Surface.t()] | nil) :: result()
-  def find(term, actor, surfaces \\ nil)
+  def find(term, actor, surfaces \\ nil) do
+    %{hits: hits, failed: failed} =
+      ShellSearch.find(
+        term,
+        Enum.map(surfaces || searchable(actor), &entry/1),
+        actor: actor,
+        tenant: ActorContext.tenant(actor)
+      )
 
-  def find(term, actor, surfaces) when is_binary(term) do
-    case String.trim(term) do
-      "" ->
-        %{hits: [], failed: []}
-
-      term ->
-        (surfaces || searchable(actor))
-        |> Enum.map(&{&1, look_up(&1, term, actor)})
-        |> Enum.reduce(%{hits: [], failed: []}, fn
-          {_surface, {:ok, hits}}, acc -> %{acc | hits: acc.hits ++ hits}
-          {surface, :error}, acc -> %{acc | failed: acc.failed ++ [surface]}
-        end)
-    end
+    %{
+      hits:
+        Enum.map(hits, &%{surface: &1.entry.surface, id: &1.id, field: &1.field, path: &1.path}),
+      failed: Enum.map(failed, & &1.surface)
+    }
   end
-
-  def find(_term, _actor, _surfaces), do: %{hits: [], failed: []}
 
   @doc "The surfaces `actor` may open that declare something to search."
   @spec searchable(term()) :: [Surface.t()]
   def searchable(actor), do: Enum.filter(Surfaces.openable(actor), &(&1.searchable != []))
 
-  defp look_up(%Surface{searchable: fields} = surface, term, actor) do
-    case matchable(surface, fields, term) do
-      [] -> {:ok, []}
-      matches -> read(surface, matches, actor)
-    end
-  rescue
-    _error -> :error
-  end
+  @doc """
+  `searchable/1` as `AshA2ui.Shell.Search` entries, each carrying its
+  surface: what `AshEnterpriseWeb.Shell.searchable/1` hands the shell.
+  """
+  @spec entries(term()) :: [ShellSearch.entry()]
+  def entries(actor), do: Enum.map(searchable(actor), &entry/1)
 
-  # Each attribute the term casts to, with the cast value. An attribute the
-  # resource does not have is an error in the registry, not a miss.
-  defp matchable(%Surface{resource: resource}, fields, term) do
-    for field <- fields,
-        attribute = Ash.Resource.Info.attribute(resource, field) || raise("no #{field}"),
-        {:ok, value} when not is_nil(value) <-
-          [Ash.Type.cast_input(attribute.type, term, attribute.constraints)],
-        do: {field, value}
-  end
-
-  defp read(%Surface{resource: resource} = surface, matches, actor) do
-    filter = [or: Enum.map(matches, fn {field, value} -> [{field, value}] end)]
-
-    resource
-    |> Ash.Query.do_filter(filter)
-    |> Ash.Query.limit(@limit)
-    |> Ash.read(actor: actor, tenant: ActorContext.tenant(actor))
-    |> case do
-      {:ok, records} -> {:ok, Enum.map(records, &hit(surface, &1, matches))}
-      {:error, _error} -> :error
-    end
-  end
-
-  defp hit(surface, record, matches) do
-    id = to_string(record.id)
-
+  defp entry(%Surface{key: key} = surface) do
     %{
-      surface: surface,
-      id: id,
-      field:
-        Enum.find_value(matches, fn {field, value} -> Map.get(record, field) == value && field end) ||
-          matches |> hd() |> elem(0),
-      path: "/app/r/#{surface.key}/#{id}"
+      key: key,
+      resource: surface.resource,
+      fields: surface.searchable,
+      path: &"/app/r/#{key}/#{&1}",
+      surface: surface
     }
   end
 end
