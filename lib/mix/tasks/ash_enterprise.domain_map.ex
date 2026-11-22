@@ -534,8 +534,11 @@ defmodule Mix.Tasks.AshEnterprise.DomainMap do
 
     rendered =
       Regex.replace(@region_regex, original, fn _whole, name ->
-        "<!-- domain-map:#{name}:start -->\n" <>
-          Map.fetch!(regions, name) <> "\n<!-- domain-map:#{name}:end -->"
+        # Blank lines around the body: GitHub's parser will not start a table
+        # on the line after an HTML comment, so flush markers render the
+        # generated tables as plain text there.
+        "<!-- domain-map:#{name}:start -->\n\n" <>
+          Map.fetch!(regions, name) <> "\n\n<!-- domain-map:#{name}:end -->"
       end)
 
     if rendered == original, do: {:unchanged, rendered}, else: {:changed, rendered}
@@ -585,10 +588,10 @@ defmodule Mix.Tasks.AshEnterprise.DomainMap do
       end
       |> Enum.sort()
 
-    "flowchart LR\n\n" <>
+    "```mermaid\nflowchart LR\n\n" <>
       subgraphs <>
       "\n\n" <>
-      Enum.join(json_edge_lines ++ rel_lines ++ signal_lines, "\n")
+      Enum.join(json_edge_lines ++ rel_lines ++ signal_lines, "\n") <> "\n```"
   end
 
   defp signal_edge_rows(model) do

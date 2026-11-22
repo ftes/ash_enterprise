@@ -38,6 +38,8 @@ canvas inspects them. A surface can add presentation, never authorization.
 ## The planes
 
 <!-- domain-map:graph:start -->
+
+```mermaid
 flowchart LR
 
   subgraph platform["Platform"]
@@ -133,9 +135,12 @@ flowchart LR
   ctx_mdm -->|"1 rel"| ctx_canonical
   ctx_planning -->|"3 rels"| ctx_erasure
   ctx_security -->|"6 rels"| ctx_accounts
+```
+
 <!-- domain-map:graph:end -->
 
 <!-- domain-map:contexts:start -->
+
 | Context | Plane | Domain | Mission |
 |---|---|---|---|
 | [Platform](#platform) | Platform | — | The base resource and its inherited concerns; the cross-substrate battery proving the seams. |
@@ -178,6 +183,7 @@ flowchart LR
 | [Localization](#l10n) | Surfaces | — | Gettext catalogs and library-shipped translations. |
 | [Telemetry](#telemetry) | Surfaces | — | Tracer → OpenTelemetry → OTLP wiring. |
 | [Artifacts](#artifacts) | Surfaces | — | The artifact registry: every versioned thing a person authors, reviews or releases, declared once. |
+
 <!-- domain-map:contexts:end -->
 
 ## Bounded contexts
@@ -185,6 +191,7 @@ flowchart LR
 ### Platform
 
 <!-- domain-map:context:platform:start -->
+
 Plane: **Platform** · Packages: `battery` · ADRs: [ADR 4](adr/0004-reactor-over-oban-pro.md), [ADR 52](adr/0052-self-service-actions.md), [ADR 59](adr/0059-version-number-is-an-optimistic-lock.md)
 
 The base resource and its inherited concerns; the cross-substrate battery proving the seams.
@@ -197,11 +204,13 @@ The base resource and its inherited concerns; the cross-substrate battery provin
 | **ActorContext** | Everything a policy check needs is precomputed once per request into ActorContext; a check that queries is a bug, not a slow path. |
 | **battery** | The cross-substrate integration battery, run over its own reference instantiation on dependency bumps. |
 
+
 <!-- domain-map:context:platform:end -->
 
 ### Accounts
 
 <!-- domain-map:context:accounts:start -->
+
 Plane: **Platform** · Domain: `AshEnterprise.Accounts` · ADRs: [ADR 2](adr/0002-ash-events-over-paper-trail.md), [ADR 3](adr/0003-attribute-multitenancy.md)
 
 Identity: users, teams, from the published schema commons.
@@ -228,11 +237,13 @@ Identity: users, teams, from the published schema commons.
 | `AshEnterprise.Accounts.Token` | — | 0 | 0 |
 | `AshEnterprise.Accounts.User` | — | 0 | 2 |
 
+
 <!-- domain-map:context:accounts:end -->
 
 ### Security
 
 <!-- domain-map:context:security:start -->
+
 Plane: **Platform** · Domain: `AshEnterprise.Security` · ADRs: [ADR 3](adr/0003-attribute-multitenancy.md), [ADR 23](adr/0023-impersonation-is-attribution.md), [ADR 43](adr/0043-automation-authority-is-a-grant.md), [ADR 52](adr/0052-self-service-actions.md)
 
 Authorization as data: (role, privilege, depth) grants as a pure union; the automation principal and its grants.
@@ -261,11 +272,13 @@ Authorization as data: (role, privilege, depth) grants as a pure union; the auto
 | `AshEnterprise.Security.TeamRole` | — | 0 | 0 |
 | `AshEnterprise.Security.UserRole` | — | 0 | 0 |
 
+
 <!-- domain-map:context:security:end -->
 
 ### Audit
 
 <!-- domain-map:context:audit:start -->
+
 Plane: **Platform** · Domain: `AshEnterprise.Audit` · Packages: `ash_events`, `ash_events_projections` · ADRs: [ADR 2](adr/0002-ash-events-over-paper-trail.md), [ADR 20](adr/0020-tamper-evident-audit-log.md), [ADR 22](adr/0022-audit-log-is-tenant-scoped.md), [ADR 24](adr/0024-audit-retention-and-erasure.md)
 
 The tamper-evident, tenant-scoped event ledger every projection reads from.
@@ -284,11 +297,13 @@ The tamper-evident, tenant-scoped event ledger every projection reads from.
 |---|---|---|---|
 | `AshEnterprise.Audit.EventLog` | — | 0 | 0 |
 
+
 <!-- domain-map:context:audit:end -->
 
 ### Erasure
 
 <!-- domain-map:context:erasure:start -->
+
 Plane: **Platform** · Domain: `AshEnterprise.Erasure` · ADRs: [ADR 24](adr/0024-audit-retention-and-erasure.md), [ADR 32](adr/0032-anonymization-config-is-generated.md)
 
 Crypto-shredding and retention: the right to be forgotten over an append-only ledger.
@@ -308,11 +323,13 @@ Crypto-shredding and retention: the right to be forgotten over an append-only le
 | `AshEnterprise.Erasure.Key` | — | 0 | 0 |
 | `AshEnterprise.Erasure.Scope` | — | 3 | 4 |
 
+
 <!-- domain-map:context:erasure:end -->
 
 ### Standards
 
 <!-- domain-map:context:standards:start -->
+
 Plane: **Platform** · Packages: `ash_agent_tools` · ADRs: [ADR 45](adr/0045-system-one-in-tooling-is-advisory.md)
 
 The advisory standards review over this repository's own code; never fails a build.
@@ -325,11 +342,13 @@ The advisory standards review over this repository's own code; never fails a bui
 | **advisory** | A finding here never fails a build; it is reported for a person to weigh. |
 | **standing check** | The standing review records the last checkout HEAD it judged in full, per tenant and repository. |
 
+
 <!-- domain-map:context:standards:end -->
 
 ### Faults
 
 <!-- domain-map:context:faults:start -->
+
 Plane: **Platform**
 
 Named fault points: places in production code where a test can make the process fail.
@@ -342,11 +361,13 @@ Named fault points: places in production code where a test can make the process 
 | **arm** | A test arms a fault point by name before the code under test runs. |
 | **kill** | The fault that kills the calling process outright, uncatchable — the nearest thing to the node dying that a test can do without stopping the node. |
 
+
 <!-- domain-map:context:faults:end -->
 
 ### Reference
 
 <!-- domain-map:context:reference:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Reference` · ADRs: [ADR 2](adr/0002-ash-events-over-paper-trail.md)
 
 Published-model reference data; do not invent your nouns.
@@ -367,11 +388,13 @@ Published-model reference data; do not invent your nouns.
 | `AshEnterprise.Reference.LanguageLocale` | — | 0 | 2 |
 | `AshEnterprise.Reference.TimeZoneDefinition` | — | 0 | 2 |
 
+
 <!-- domain-map:context:reference:end -->
 
 ### Ingestion
 
 <!-- domain-map:context:ingestion:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Ingestion` · ADRs: [ADR 10](adr/0010-meltano-for-ingestion.md)
 
 External corpora land as Ash resources, not staging schemas.
@@ -390,11 +413,13 @@ External corpora land as Ash resources, not staging schemas.
 |---|---|---|---|
 | `AshEnterprise.Ingestion.SourceObject` | — | 0 | 1 |
 
+
 <!-- domain-map:context:ingestion:end -->
 
 ### Integration
 
 <!-- domain-map:context:integration:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Integration` · Packages: `ash_operations` · ADRs: [ADR 11](adr/0011-nango-as-integration-hub.md), [ADR 63](adr/0063-declared-operations-are-a-package.md)
 
 The provider edge: declared operations, webhook ingress, scoped landing under erasure scopes.
@@ -419,6 +444,7 @@ The provider edge: declared operations, webhook ingress, scoped landing under er
 
 *8 provider-named resources omitted from this table.*
 
+
 <!-- domain-map:context:integration:end -->
 
 <a name="legacy"></a>
@@ -426,6 +452,7 @@ The provider edge: declared operations, webhook ingress, scoped landing under er
 ### Legacy estate
 
 <!-- domain-map:context:legacy:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Legacy` · Packages: `ash_strangler` · ADRs: [ADR 8](adr/0008-typed-invertible-legacy-mappings.md), [ADR 9](adr/0009-strangler-and-bpmn-are-first-party.md), [ADR 31](adr/0031-the-legacy-estate-is-projected-not-cut-over.md)
 
 The projected read model over the strangler'd legacy schema.
@@ -444,11 +471,13 @@ The projected read model over the strangler'd legacy schema.
 |---|---|---|---|
 | `AshEnterprise.Legacy.User` | — | 0 | 2 |
 
+
 <!-- domain-map:context:legacy:end -->
 
 ### Legacy twins
 
 <!-- domain-map:context:legacy-twins:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Legacy.Twins` · Packages: `ash_strangler` · ADRs: [ADR 31](adr/0031-the-legacy-estate-is-projected-not-cut-over.md)
 
 Twin/shadow resources proving projection parity before cutover.
@@ -468,6 +497,7 @@ Twin/shadow resources proving projection parity before cutover.
 | `AshEnterprise.Legacy.Twins.Companies` | — | 0 | 0 |
 | `AshEnterprise.Legacy.Twins.Users` | — | 0 | 0 |
 
+
 <!-- domain-map:context:legacy-twins:end -->
 
 <a name="ledger"></a>
@@ -475,6 +505,7 @@ Twin/shadow resources proving projection parity before cutover.
 ### Change ledger
 
 <!-- domain-map:context:ledger:start -->
+
 Plane: **Canonical record** · Packages: `ash_strangler` · ADRs: [ADR 30](adr/0030-events-trigger-processes.md), [ADR 35](adr/0035-compliance-is-projected-from-events.md)
 
 The change ledger a legacy trigger writes; the drain turns a row into a canonical action in one transaction.
@@ -487,6 +518,7 @@ The change ledger a legacy trigger writes; the drain turns a row into a canonica
 | **drain** | An at-least-once worker that projects a ledger row into a canonical action in one transaction. |
 | **legacy write** | A write in the old schema; the chain legacy write → ledger row → drain → canonical action is the strangler demo in one line. |
 
+
 <!-- domain-map:context:ledger:end -->
 
 <a name="canonical"></a>
@@ -494,6 +526,7 @@ The change ledger a legacy trigger writes; the drain turns a row into a canonica
 ### Canonical store
 
 <!-- domain-map:context:canonical:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Canonical` · ADRs: [ADR 1](adr/0001-cdm-as-frozen-hybrid-corpus.md), [ADR 2](adr/0002-ash-events-over-paper-trail.md), [ADR 49](adr/0049-temporal-resources-are-the-validity-substrate.md)
 
 The CDM-derived operational store on the temporal validity substrate.
@@ -523,11 +556,13 @@ The CDM-derived operational store on the temporal validity substrate.
 | `AshEnterprise.Canonical.Project` | — | 0 | 0 |
 | `AshEnterprise.Canonical.Task` | — | 0 | 10 |
 
+
 <!-- domain-map:context:canonical:end -->
 
 ### Business events
 
 <!-- domain-map:context:business-events:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.BusinessEvents` · Packages: `ash_discrete_business_events` · ADRs: [ADR 51](adr/0051-business-events-are-derived-from-the-canonical-store.md), [ADR 30](adr/0030-events-trigger-processes.md)
 
 The chained, commit-ordered discrete event ledger derived from canonical writes.
@@ -547,6 +582,7 @@ The chained, commit-ordered discrete event ledger derived from canonical writes.
 | `AshEnterprise.BusinessEvents.Ledger` | — | 0 | 0 |
 | `AshEnterprise.BusinessEvents.Ledger.SimulationEvent` | — | 0 | 0 |
 
+
 <!-- domain-map:context:business-events:end -->
 
 <a name="mdm"></a>
@@ -554,6 +590,7 @@ The chained, commit-ordered discrete event ledger derived from canonical writes.
 ### Master data
 
 <!-- domain-map:context:mdm:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Mdm` · Packages: `ash_mdm` · ADRs: [ADR 17](adr/0017-entity-resolution-in-ash.md), [ADR 54](adr/0054-mdm-stewardship-is-system-one.md)
 
 Versioned mappings, deterministic entity resolution, survivorship, non-destructive merges over golden records.
@@ -582,11 +619,13 @@ Versioned mappings, deterministic entity resolution, survivorship, non-destructi
 | `AshEnterprise.Mdm.SourceRecord` | — | 0 | 0 |
 | `AshEnterprise.Mdm.StagedRecord` | — | 0 | 3 |
 
+
 <!-- domain-map:context:mdm:end -->
 
 ### Lineage
 
 <!-- domain-map:context:lineage:start -->
+
 Plane: **Canonical record** · Domain: `AshEnterprise.Lineage` · Packages: `ash_open_lineage` · ADRs: [ADR 12](adr/0012-openlineage-and-marquez.md)
 
 Run-event lineage emitted from action notifications.
@@ -608,11 +647,13 @@ Run-event lineage emitted from action notifications.
 | `AshEnterprise.Lineage.Run` | — | 5 | 2 |
 | `AshEnterprise.Lineage.Window` | — | 0 | 0 |
 
+
 <!-- domain-map:context:lineage:end -->
 
 ### System One
 
 <!-- domain-map:context:system-one:start -->
+
 Plane: **Evidence & judgment** · Domain: `AshEnterprise.SystemOne` · Packages: `ash_judgments`, `ash_evidence` · ADRs: [ADR 38](adr/0038-models-observe-declarations-decide.md), [ADR 39](adr/0039-judgments-are-declared-questions.md), [ADR 40](adr/0040-record-dont-recompute.md), [ADR 41](adr/0041-thresholds-are-dmn-earned-by-calibration.md), [ADR 42](adr/0042-in-zone-inference-leaving-the-zone-is-a-disclosure.md), [ADR 43](adr/0043-automation-authority-is-a-grant.md), [ADR 44](adr/0044-documents-are-addressed-atoms-evidence-is-an-assertion.md), [ADR 45](adr/0045-system-one-in-tooling-is-advisory.md), [ADR 46](adr/0046-the-declaration-is-the-output-contract.md), [ADR 47](adr/0047-learning-produces-proposals.md), [ADR 48](adr/0048-a-judgment-is-a-predicate-over-any-set.md), [ADR 53](adr/0053-subject-state-digest-third-axis.md)
 
 Declared questions, the append-only judgment ledger, banding, admitted facts, human verdicts; evidence adjudication as assertions.
@@ -645,11 +686,13 @@ Declared questions, the append-only judgment ledger, banding, admitted facts, hu
 | `AshEnterprise.SystemOne.QuestionProposal` | — | 0 | 0 |
 | `AshEnterprise.SystemOne.StandingHead` | — | 0 | 0 |
 
+
 <!-- domain-map:context:system-one:end -->
 
 ### Credentialing
 
 <!-- domain-map:context:credentialing:start -->
+
 Plane: **Evidence & judgment** · Domain: `AshEnterprise.Credentialing`
 
 The credentialing vertical slice composing evidence, judgment and process end to end.
@@ -673,11 +716,13 @@ The credentialing vertical slice composing evidence, judgment and process end to
 | `AshEnterprise.Credentialing.LicenceDocument` | — | 0 | 0 |
 | `AshEnterprise.Credentialing.RegistryApi` | — | 0 | 0 |
 
+
 <!-- domain-map:context:credentialing:end -->
 
 ### Licences
 
 <!-- domain-map:context:licences:start -->
+
 Plane: **Evidence & judgment** · Domain: `AshEnterprise.Licences`
 
 Dependency licence adjudication; judgments declared on dependency resources.
@@ -697,11 +742,13 @@ Dependency licence adjudication; judgments declared on dependency resources.
 |---|---|---|---|
 | `AshEnterprise.Licences.Dependency` | — | 0 | 0 |
 
+
 <!-- domain-map:context:licences:end -->
 
 ### Compliance
 
 <!-- domain-map:context:compliance:start -->
+
 Plane: **Deterministic authority** · Domain: `AshEnterprise.Compliance` · Packages: `ash_rules`, `ash_compliance` · ADRs: [ADR 21](adr/0021-control-mapping-is-generated.md), [ADR 35](adr/0035-compliance-is-projected-from-events.md)
 
 Findings projected from the event log under immutable, content-hashed rule bundles; missing evidence is unknown, never compliant.
@@ -739,11 +786,13 @@ Findings projected from the event log under immutable, content-hashed rule bundl
 | `AshEvents.Projections.DeadLetter` | — | 0 | 0 |
 | `AshEvents.Projections.Registry` | — | 0 | 0 |
 
+
 <!-- domain-map:context:compliance:end -->
 
 ### Decisions
 
 <!-- domain-map:context:decisions:start -->
+
 Plane: **Deterministic authority** · Domain: `AshEnterprise.Decisions` · Packages: `ash_decisions`, `boxic_dmn`, `boxic_feel` · ADRs: [ADR 27](adr/0027-feel-is-the-expression-language.md), [ADR 28](adr/0028-decisions-are-dmn.md), [ADR 41](adr/0041-thresholds-are-dmn-earned-by-calibration.md)
 
 DMN decisions as versioned resources over a native expression engine; band tables live here.
@@ -763,11 +812,13 @@ DMN decisions as versioned resources over a native expression engine; band table
 | `AshEnterprise.Decisions.Definition` | — | 0 | 0 |
 | `AshEnterprise.Decisions.Evaluation` | — | 0 | 0 |
 
+
 <!-- domain-map:context:decisions:end -->
 
 ### Planning
 
 <!-- domain-map:context:planning:start -->
+
 Plane: **Deterministic authority** · Domain: `AshEnterprise.Planning` · Packages: `ash_planning`, `solverl` · ADRs: [ADR 62](adr/0062-planning-proposes-declarations-and-people-commit.md)
 
 Constraint models propose; declarations and people commit.
@@ -792,6 +843,7 @@ Constraint models propose; declarations and people commit.
 | `AshEnterprise.Planning.ModelVersion` | — | 0 | 0 |
 | `AshEnterprise.Planning.Run` | — | 0 | 2 |
 
+
 <!-- domain-map:context:planning:end -->
 
 <a name="bpmn"></a>
@@ -799,6 +851,7 @@ Constraint models propose; declarations and people commit.
 ### Processes
 
 <!-- domain-map:context:bpmn:start -->
+
 Plane: **Orchestration** · Domain: `AshEnterprise.Bpmn` · Packages: `ash_bpmn` · ADRs: [ADR 9](adr/0009-strangler-and-bpmn-are-first-party.md), [ADR 29](adr/0029-process-configuration-is-tenant-data.md), [ADR 36](adr/0036-converge-process-triggers-onto-projection-checkpoints.md)
 
 BPMN documents compiled to immutable graphs, executed by a token interpreter.
@@ -828,6 +881,7 @@ BPMN documents compiled to immutable graphs, executed by a token interpreter.
 | `AshEnterprise.Bpmn.TaskCandidate` | — | 0 | 0 |
 | `AshEnterprise.Bpmn.Token` | — | 0 | 0 |
 
+
 <!-- domain-map:context:bpmn:end -->
 
 <a name="process"></a>
@@ -835,6 +889,7 @@ BPMN documents compiled to immutable graphs, executed by a token interpreter.
 ### Process instances
 
 <!-- domain-map:context:process:start -->
+
 Plane: **Orchestration** · Domain: `AshEnterprise.Process` · ADRs: [ADR 15](adr/0015-approvals-stay-in-ash.md), [ADR 30](adr/0030-events-trigger-processes.md), [ADR 36](adr/0036-converge-process-triggers-onto-projection-checkpoints.md)
 
 Host process instances and the dispatched-cursor event triggers.
@@ -853,11 +908,13 @@ Host process instances and the dispatched-cursor event triggers.
 |---|---|---|---|
 | `AshEnterprise.Process.Binding` | — | 0 | 0 |
 
+
 <!-- domain-map:context:process:end -->
 
 ### Execution
 
 <!-- domain-map:context:execution:start -->
+
 Plane: **Orchestration** · Domain: `AshEnterprise.Execution` · ADRs: [ADR 55](adr/0055-consequential-acts-are-governed-invocations.md)
 
 Identity resolution and the governed-invocation lease/job handoff every consequential act runs through.
@@ -886,11 +943,13 @@ Identity resolution and the governed-invocation lease/job handoff every conseque
 | `AshEnterprise.Execution.StartProcess` | — | 0 | 0 |
 | `AshEnterprise.Execution.Step` | — | 0 | 2 |
 
+
 <!-- domain-map:context:execution:end -->
 
 ### Execution sources
 
 <!-- domain-map:context:execution-sources:start -->
+
 Plane: **Orchestration** · ADRs: [ADR 55](adr/0055-consequential-acts-are-governed-invocations.md)
 
 Provenance sources for executions.
@@ -903,11 +962,13 @@ Provenance sources for executions.
 | **target** | A target names <resource module>.<action> and must carry an effects declaration. |
 | **effects declaration** | An action declares the effects it may have; a governed act runs only through a target that carries one. |
 
+
 <!-- domain-map:context:execution-sources:end -->
 
 ### Agents
 
 <!-- domain-map:context:agents:start -->
+
 Plane: **Agents & models** · Domain: `AshEnterprise.Agents` · Packages: `ash_agent` · ADRs: [ADR 55](adr/0055-consequential-acts-are-governed-invocations.md), [ADR 56](adr/0056-the-ash-agent-package.md), [ADR 57](adr/0057-actions-declare-their-effects.md)
 
 Governed invocations, durable runs, the coding-agent bridge; effects declared per action.
@@ -932,11 +993,13 @@ Governed invocations, durable runs, the coding-agent bridge; effects declared pe
 | `AshEnterprise.Agents.MorningBrief` | — | 0 | 3 |
 | `AshEnterprise.Agents.ToolCall` | — | 0 | 0 |
 
+
 <!-- domain-map:context:agents:end -->
 
 ### AI
 
 <!-- domain-map:context:ai:start -->
+
 Plane: **Agents & models** · Domain: `AshEnterprise.AI` · ADRs: [ADR 26](adr/0026-ai-governance-is-disclosure.md), [ADR 42](adr/0042-in-zone-inference-leaving-the-zone-is-a-disclosure.md)
 
 Model wiring and residency: in-zone inference; leaving the zone is a disclosure.
@@ -957,6 +1020,7 @@ Model wiring and residency: in-zone inference; leaving the zone is a disclosure.
 | `AshEnterprise.AI.ModelProfile` | — | 0 | 0 |
 | `AshEnterprise.AI.RequestClassifier` | — | 0 | 0 |
 
+
 <!-- domain-map:context:ai:end -->
 
 <a name="zones"></a>
@@ -964,6 +1028,7 @@ Model wiring and residency: in-zone inference; leaving the zone is a disclosure.
 ### Residency zones
 
 <!-- domain-map:context:zones:start -->
+
 Plane: **Agents & models** · ADRs: [ADR 42](adr/0042-in-zone-inference-leaving-the-zone-is-a-disclosure.md)
 
 The residency policy deciding which zones instruments may run in; configuration, never code.
@@ -976,11 +1041,13 @@ The residency policy deciding which zones instruments may run in; configuration,
 | **residency policy** | May this tenant's data be answered by an instrument of this residency class? |
 | **disclosure** | Leaving the zone is a disclosure, not a second authorization model. |
 
+
 <!-- domain-map:context:zones:end -->
 
 ### Assistant
 
 <!-- domain-map:context:assistant:start -->
+
 Plane: **Agents & models** · Domain: `AshEnterprise.Assistant`
 
 The host assistant and its evaluation harness.
@@ -1015,11 +1082,13 @@ The host assistant and its evaluation harness.
 | `AshEnterprise.Assistant.Thread` | — | 2 | 1 |
 | `AshEnterprise.Assistant.Turn` | — | 0 | 2 |
 
+
 <!-- domain-map:context:assistant:end -->
 
 ### Legacy agent
 
 <!-- domain-map:context:legacy-agent:start -->
+
 Plane: **Agents & models** · Domain: `AshEnterprise.LegacyAgent` · ADRs: [ADR 5](adr/0005-admin-and-a2ui-division-of-labour.md)
 
 The agent console over the legacy estate.
@@ -1038,11 +1107,13 @@ The agent console over the legacy estate.
 |---|---|---|---|
 
 
+
 <!-- domain-map:context:legacy-agent:end -->
 
 ### Quality
 
 <!-- domain-map:context:quality:start -->
+
 Plane: **Agents & models** · Domain: `AshEnterprise.Quality` · ADRs: [ADR 58](adr/0058-agent-quality-and-releases.md)
 
 Agent-quality suites and gated, attested releases.
@@ -1064,6 +1135,7 @@ Agent-quality suites and gated, attested releases.
 | `AshEnterprise.Quality.Suite` | — | 0 | 1 |
 | `AshEnterprise.Quality.SuiteRun` | — | 0 | 2 |
 
+
 <!-- domain-map:context:quality:end -->
 
 <a name="acp"></a>
@@ -1071,6 +1143,7 @@ Agent-quality suites and gated, attested releases.
 ### Agent protocol
 
 <!-- domain-map:context:acp:start -->
+
 Plane: **Agents & models** · Packages: `ash_acp`
 
 The agent-client wire adapter: sessions and permission requests over host behaviours.
@@ -1083,11 +1156,13 @@ The agent-client wire adapter: sessions and permission requests over host behavi
 | **permission request** | A permission the agent asks of a person, resolved through the host's approvals. |
 | **prompt target** | What an arriving prompt may act on, resolved by the host's session store. |
 
+
 <!-- domain-map:context:acp:end -->
 
 ### Surfaces
 
 <!-- domain-map:context:surfaces:start -->
+
 Plane: **Surfaces** · Packages: `ash_a2ui` · ADRs: [ADR 5](adr/0005-admin-and-a2ui-division-of-labour.md), [ADR 33](adr/0033-experience-layer-adoption.md), [ADR 61](adr/0061-judgment-surfaces-ship-with-the-package.md)
 
 The agent-renderable experience layer bound to host resources.
@@ -1100,11 +1175,13 @@ The agent-renderable experience layer bound to host resources.
 | **payload** | The agent-renderable payload generated from the resource declarations. |
 | **client catalog** | A client-side catalog renders the payload. |
 
+
 <!-- domain-map:context:surfaces:end -->
 
 ### Canvas
 
 <!-- domain-map:context:canvas:start -->
+
 Plane: **Surfaces** · ADRs: [ADR 34](adr/0034-canvas-dev-surface.md)
 
 The dev-only object graph inspector.
@@ -1117,11 +1194,13 @@ The dev-only object graph inspector.
 | **naked-object inspector** | The inspector that renders a record from its own declaration, with no per-type page. |
 | **canvas contract** | The contract the dev-only object graph is described by; the library tier implements it. |
 
+
 <!-- domain-map:context:canvas:end -->
 
 ### Showcase
 
 <!-- domain-map:context:showcase:start -->
+
 Plane: **Surfaces**
 
 The guided demonstration estate.
@@ -1134,6 +1213,7 @@ The guided demonstration estate.
 | **slice** | One tour segment of the showcase, added on top of the demo data. |
 | **fault panel** | The showcase's panel that arms named fault points, so a tour can show what a death between commits does. |
 
+
 <!-- domain-map:context:showcase:end -->
 
 <a name="l10n"></a>
@@ -1141,6 +1221,7 @@ The guided demonstration estate.
 ### Localization
 
 <!-- domain-map:context:l10n:start -->
+
 Plane: **Surfaces** · ADRs: [ADR 60](adr/0060-localization-through-gettext-and-library-catalogs.md)
 
 Gettext catalogs and library-shipped translations.
@@ -1153,11 +1234,13 @@ Gettext catalogs and library-shipped translations.
 | **library-shipped translation** | Translations a dependency ships for its own strings, extracted with their own metadata. |
 | **host copy** | The application's own text: static, in source control, shipped with the app. |
 
+
 <!-- domain-map:context:l10n:end -->
 
 ### Telemetry
 
 <!-- domain-map:context:telemetry:start -->
+
 Plane: **Surfaces** · ADRs: [ADR 18](adr/0018-grafana-lgtm-observability-backend.md)
 
 Tracer → OpenTelemetry → OTLP wiring.
@@ -1170,11 +1253,13 @@ Tracer → OpenTelemetry → OTLP wiring.
 | **exporter** | The wiring that ships spans off-node to the collector. |
 | **OTLP** | The wire the exporter ships over: tracer to the telemetry SDK to the collector. |
 
+
 <!-- domain-map:context:telemetry:end -->
 
 ### Artifacts
 
 <!-- domain-map:context:artifacts:start -->
+
 Plane: **Surfaces**
 
 The artifact registry: every versioned thing a person authors, reviews or releases, declared once.
@@ -1188,11 +1273,13 @@ The artifact registry: every versioned thing a person authors, reviews or releas
 | **semantic diff** | The comparison of one version against its predecessor or any other version, by meaning. |
 | **header** | Identity, version, lifecycle, content hash, provenance and who published it, with the run it was opened from. |
 
+
 <!-- domain-map:context:artifacts:end -->
 
 ## Substrate packages
 
 <!-- domain-map:substrates:start -->
+
 | Package | Kind | Locked as | Context | Role |
 |---|---|---|---|
 | `ash_events` | fork | git @ d71f6d06 | [Audit](#audit) | Audit/event ledger with as-of capture/replay (ADR 0002). |
@@ -1216,6 +1303,7 @@ The artifact registry: every versioned thing a person authors, reviews or releas
 | `ash_a2ui` | first-party | git @ 0d86a7ba | [Surfaces](#surfaces) | Agent-renderable payloads generated from resources. |
 | `ash_agent_tools` | first-party dev | git @ 0171a910 | [Standards](#standards) | Read-only introspection CLI + the iron laws. |
 | `battery` | in-repo | in-repo (`battery/`) | [Platform](#platform) | Cross-substrate integration battery over its own reference instantiation. |
+
 <!-- domain-map:substrates:end -->
 
 ### How the substrates meet the host
@@ -1250,6 +1338,7 @@ dependencies of first-party substrates, listed because the lock pins them either
 ## Context relationships
 
 <!-- domain-map:signals:start -->
+
 No declared signals cross the registered domains: no resource in `:ash_domains` declares
 an `emit` on an action, and none declares a `signals_in` listener. The map renders the
 table the day one does.
@@ -1273,11 +1362,13 @@ table the day one does.
 | [Agents](#agents) | conformist | [Platform](#platform) | Same action layer and policies as every other actor (thesis 5). |
 | [Quality](#quality) | customer–supplier | [Agents](#agents) | Suites gate attested releases (ADR 0058). |
 | [Surfaces](#surfaces) | conformist | [Platform](#platform) | Renders declared actions; no parallel authorization (ADR 0033). |
+
 <!-- domain-map:signals:end -->
 
 ## Adopted platform
 
 <!-- domain-map:adopted:start -->
+
 | Package | Role |
 |---|---|
 | `ash` | The declarative framework every resource, action and policy is written in. |
@@ -1303,6 +1394,7 @@ table the day one does.
 | `solverl` | The constraint-solver adapter behind the planning backend. |
 | `usage_rules` | Dependency usage rules gathered into the agent guidance. |
 | `igniter` | Code generation and project patching. |
+
 <!-- domain-map:adopted:end -->
 
 ## Staying current
