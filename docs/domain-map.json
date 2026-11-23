@@ -136,6 +136,32 @@
       "edges": []
     },
     {
+      "id": "flags",
+      "name": "Flags",
+      "domain": "AshEnterprise.Flags",
+      "plane": "platform",
+      "mission": "Feature flags, tenant by tenant, resolved once per request into the actor's context.",
+      "packages": [],
+      "adrs": [
+        72
+      ],
+      "terms": [
+        {
+          "term": "catalogue",
+          "definition": "The keys this build declares, and the ones the deployment killed."
+        },
+        {
+          "term": "flag",
+          "definition": "One tenant's decision for one key: off, on, or on for named people, teams, business-unit subtrees and a percentage."
+        },
+        {
+          "term": "targeting",
+          "definition": "Whether a row is on for a person, pure."
+        }
+      ],
+      "edges": []
+    },
+    {
       "id": "audit",
       "name": "Audit",
       "domain": "AshEnterprise.Audit",
@@ -143,7 +169,8 @@
       "mission": "The tamper-evident, tenant-scoped event ledger every projection reads from.",
       "packages": [
         "ash_events",
-        "ash_events_projections"
+        "ash_events_projections",
+        "ash_events_chain"
       ],
       "adrs": [
         2,
@@ -173,7 +200,9 @@
       "domain": "AshEnterprise.Erasure",
       "plane": "platform",
       "mission": "Crypto-shredding and retention: the right to be forgotten over an append-only ledger.",
-      "packages": [],
+      "packages": [
+        "ash_greenmask"
+      ],
       "adrs": [
         24,
         32
@@ -592,6 +621,32 @@
       ]
     },
     {
+      "id": "exports",
+      "name": "Exports",
+      "domain": "AshEnterprise.Exports",
+      "plane": "canonical",
+      "mission": "Bulk export out: a tenant's data as CSV, under the same policies as every other read.",
+      "packages": [],
+      "adrs": [
+        59
+      ],
+      "terms": [
+        {
+          "term": "export",
+          "definition": "The export privilege: one more grantable (resource, verb) row, held by default by the tenant's Administrator role and nobody else."
+        },
+        {
+          "term": "exportable",
+          "definition": "Which resources are exportable."
+        },
+        {
+          "term": "csv stream",
+          "definition": "The stream of one exportable resource, read in keyset pages as the requester."
+        }
+      ],
+      "edges": []
+    },
+    {
       "id": "system-one",
       "name": "System One",
       "domain": "AshEnterprise.SystemOne",
@@ -702,6 +757,39 @@
         {
           "term": "declaration rung",
           "definition": "The release declares exactly one licence id the policy classifies; every question is answered from the id."
+        }
+      ],
+      "edges": []
+    },
+    {
+      "id": "signatures",
+      "name": "Signatures",
+      "domain": "AshEnterprise.Signatures",
+      "plane": "knowledge",
+      "mission": "Signature and acknowledgement requests: the five fragments on the platform base.",
+      "packages": [
+        "ash_signatures"
+      ],
+      "adrs": [
+        74,
+        32
+      ],
+      "terms": [
+        {
+          "term": "request",
+          "definition": "People asked to sign or acknowledge exact document versions, in order."
+        },
+        {
+          "term": "request document",
+          "definition": "One document version a request shows, with its SHA-256 copied from it."
+        },
+        {
+          "term": "signer",
+          "definition": "One person asked, acting on their own row."
+        },
+        {
+          "term": "signer event",
+          "definition": "One thing that happened, append-only."
         }
       ],
       "edges": []
@@ -896,6 +984,32 @@
         {
           "term": "approval",
           "definition": "Approvals and process modelling stay inside Ash."
+        }
+      ],
+      "edges": []
+    },
+    {
+      "id": "automation",
+      "name": "Automation",
+      "domain": "AshEnterprise.Automation",
+      "plane": "process",
+      "mission": "What a tenant's recipes react to when the thing that happened is not an audited tenant write.",
+      "packages": [],
+      "adrs": [
+        71
+      ],
+      "terms": [
+        {
+          "term": "occurrence",
+          "definition": "A fact recorded into a tenant's audit chain so that a subscription can match it: a user deactivated, a sign-in refused, a break-glass session approved, an API key issued, an inbound alert."
+        },
+        {
+          "term": "incident",
+          "definition": "The alerts that share a key, from the first one that fired until it closes; a duplicate alert joins the open incident."
+        },
+        {
+          "term": "alert webhook",
+          "definition": "How inbound alerts reach occurrences."
         }
       ],
       "edges": []
@@ -1514,6 +1628,33 @@
         "platform"
       ],
       "role": "Cross-substrate integration battery over its own reference instantiation."
+    },
+    {
+      "package": "ash_events_chain",
+      "repo": "lukegalea/ash_events_chain",
+      "kind": "first-party",
+      "context": [
+        "audit"
+      ],
+      "role": "The audit log's hash chain: immutability triggers, the verifier over hot log and archive as one chain, the verified move to the archive."
+    },
+    {
+      "package": "ash_greenmask",
+      "repo": "lukegalea/ash_greenmask",
+      "kind": "first-party",
+      "context": [
+        "erasure"
+      ],
+      "role": "Masking blocks for sensitive attributes; the generated config's drift gate."
+    },
+    {
+      "package": "ash_signatures",
+      "repo": "lukegalea/ash_signatures",
+      "kind": "first-party",
+      "context": [
+        "signatures"
+      ],
+      "role": "The signature and acknowledgement fragments the host instantiates (ADR 0074)."
     }
   ],
   "adopted": [

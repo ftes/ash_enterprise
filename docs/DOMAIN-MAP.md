@@ -44,38 +44,42 @@ flowchart LR
 
   subgraph platform["Platform"]
     ctx_platform["Platform"]
-    ctx_accounts["Accounts<br/>8 resources"]
-    ctx_security["Security<br/>9 resources"]
-    ctx_audit["Audit<br/>1 resources"]
-    ctx_erasure["Erasure<br/>2 resources"]
+    ctx_accounts["Accounts<br/>12 resources"]
+    ctx_security["Security<br/>11 resources"]
+    ctx_flags["Flags<br/>1 resources"]
+    ctx_audit["Audit<br/>6 resources"]
+    ctx_erasure["Erasure<br/>3 resources"]
     ctx_standards["Standards"]
     ctx_faults["Faults"]
   end
   subgraph canonical["Canonical record"]
     ctx_reference["Reference<br/>3 resources"]
     ctx_ingestion["Ingestion<br/>1 resources"]
-    ctx_integration["Integration<br/>13 resources"]
+    ctx_integration["Integration<br/>16 resources"]
     ctx_legacy["Legacy estate<br/>1 resources"]
     ctx_legacy-twins["Legacy twins<br/>2 resources"]
     ctx_ledger["Change ledger"]
     ctx_canonical["Canonical store<br/>10 resources"]
     ctx_business-events["Business events<br/>2 resources"]
-    ctx_mdm["Master data<br/>9 resources"]
+    ctx_mdm["Master data<br/>11 resources"]
     ctx_lineage["Lineage<br/>4 resources"]
+    ctx_exports["Exports<br/>1 resources"]
   end
   subgraph knowledge["Evidence & judgment"]
     ctx_system-one["System One<br/>12 resources"]
     ctx_credentialing["Credentialing<br/>6 resources"]
     ctx_licences["Licences<br/>1 resources"]
+    ctx_signatures["Signatures<br/>5 resources"]
   end
   subgraph decision["Deterministic authority"]
-    ctx_compliance["Compliance<br/>18 resources"]
+    ctx_compliance["Compliance<br/>19 resources"]
     ctx_decisions["Decisions<br/>2 resources"]
     ctx_planning["Planning<br/>5 resources"]
   end
   subgraph process["Orchestration"]
-    ctx_bpmn["Processes<br/>9 resources"]
+    ctx_bpmn["Processes<br/>10 resources"]
     ctx_process["Process instances<br/>1 resources"]
+    ctx_automation["Automation<br/>2 resources"]
     ctx_execution["Execution<br/>10 resources"]
     ctx_execution-sources["Execution sources"]
   end
@@ -83,7 +87,7 @@ flowchart LR
     ctx_agents["Agents<br/>6 resources"]
     ctx_ai["AI<br/>3 resources"]
     ctx_zones["Residency zones"]
-    ctx_assistant["Assistant<br/>17 resources"]
+    ctx_assistant["Assistant<br/>18 resources"]
     ctx_legacy-agent["Legacy agent"]
     ctx_quality["Quality<br/>4 resources"]
     ctx_acp["Agent protocol"]
@@ -119,7 +123,7 @@ flowchart LR
   ctx_assistant -->|"3 rels"| ctx_erasure
   ctx_audit -->|"1 rel"| ctx_lineage
   ctx_bpmn -->|"1 rel"| ctx_accounts
-  ctx_canonical -->|"4 rels"| ctx_erasure
+  ctx_canonical -->|"5 rels"| ctx_erasure
   ctx_credentialing -->|"1 rel"| ctx_erasure
   ctx_erasure -->|"3 rels"| ctx_canonical
   ctx_erasure -->|"1 rel"| ctx_integration
@@ -127,14 +131,16 @@ flowchart LR
   ctx_execution -->|"3 rels"| ctx_erasure
   ctx_ingestion -->|"1 rel"| ctx_erasure
   ctx_integration -->|"1 rel"| ctx_canonical
-  ctx_integration -->|"1 rel"| ctx_erasure
+  ctx_integration -->|"2 rels"| ctx_erasure
   ctx_integration -->|"1 rel"| ctx_lineage
   ctx_lineage -->|"1 rel"| ctx_audit
   ctx_lineage -->|"1 rel"| ctx_integration
   ctx_mdm -->|"1 rel"| ctx_bpmn
   ctx_mdm -->|"1 rel"| ctx_canonical
   ctx_planning -->|"3 rels"| ctx_erasure
-  ctx_security -->|"6 rels"| ctx_accounts
+  ctx_security -->|"9 rels"| ctx_accounts
+  ctx_signatures -->|"1 rel"| ctx_accounts
+  ctx_signatures -->|"2 rels"| ctx_erasure
 ```
 
 <!-- domain-map:graph:end -->
@@ -146,6 +152,7 @@ flowchart LR
 | [Platform](#platform) | Platform | — | The base resource and its inherited concerns; the cross-substrate battery proving the seams. |
 | [Accounts](#accounts) | Platform | `AshEnterprise.Accounts` | Identity: users, teams, from the published schema commons. |
 | [Security](#security) | Platform | `AshEnterprise.Security` | Authorization as data: (role, privilege, depth) grants as a pure union; the automation principal and its grants. |
+| [Flags](#flags) | Platform | `AshEnterprise.Flags` | Feature flags, tenant by tenant, resolved once per request into the actor's context. |
 | [Audit](#audit) | Platform | `AshEnterprise.Audit` | The tamper-evident, tenant-scoped event ledger every projection reads from. |
 | [Erasure](#erasure) | Platform | `AshEnterprise.Erasure` | Crypto-shredding and retention: the right to be forgotten over an append-only ledger. |
 | [Standards](#standards) | Platform | — | The advisory standards review over this repository's own code; never fails a build. |
@@ -160,14 +167,17 @@ flowchart LR
 | [Business events](#business-events) | Canonical record | `AshEnterprise.BusinessEvents` | The chained, commit-ordered discrete event ledger derived from canonical writes. |
 | [Master data](#mdm) | Canonical record | `AshEnterprise.Mdm` | Versioned mappings, deterministic entity resolution, survivorship, non-destructive merges over golden records. |
 | [Lineage](#lineage) | Canonical record | `AshEnterprise.Lineage` | Run-event lineage emitted from action notifications. |
+| [Exports](#exports) | Canonical record | `AshEnterprise.Exports` | Bulk export out: a tenant's data as CSV, under the same policies as every other read. |
 | [System One](#system-one) | Evidence & judgment | `AshEnterprise.SystemOne` | Declared questions, the append-only judgment ledger, banding, admitted facts, human verdicts; evidence adjudication as assertions. |
 | [Credentialing](#credentialing) | Evidence & judgment | `AshEnterprise.Credentialing` | The credentialing vertical slice composing evidence, judgment and process end to end. |
 | [Licences](#licences) | Evidence & judgment | `AshEnterprise.Licences` | Dependency licence adjudication; judgments declared on dependency resources. |
+| [Signatures](#signatures) | Evidence & judgment | `AshEnterprise.Signatures` | Signature and acknowledgement requests: the five fragments on the platform base. |
 | [Compliance](#compliance) | Deterministic authority | `AshEnterprise.Compliance` | Findings projected from the event log under immutable, content-hashed rule bundles; missing evidence is unknown, never compliant. |
 | [Decisions](#decisions) | Deterministic authority | `AshEnterprise.Decisions` | DMN decisions as versioned resources over a native expression engine; band tables live here. |
 | [Planning](#planning) | Deterministic authority | `AshEnterprise.Planning` | Constraint models propose; declarations and people commit. |
 | [Processes](#bpmn) | Orchestration | `AshEnterprise.Bpmn` | BPMN documents compiled to immutable graphs, executed by a token interpreter. |
 | [Process instances](#process) | Orchestration | `AshEnterprise.Process` | Host process instances and the dispatched-cursor event triggers. |
+| [Automation](#automation) | Orchestration | `AshEnterprise.Automation` | What a tenant's recipes react to when the thing that happened is not an audited tenant write. |
 | [Execution](#execution) | Orchestration | `AshEnterprise.Execution` | Identity resolution and the governed-invocation lease/job handoff every consequential act runs through. |
 | [Execution sources](#execution-sources) | Orchestration | — | Provenance sources for executions. |
 | [Agents](#agents) | Agents & models | `AshEnterprise.Agents` | Governed invocations, durable runs, the coding-agent bridge; effects declared per action. |
@@ -224,18 +234,22 @@ Identity: users, teams, from the published schema commons.
 | **business unit** | A node in the organizational hierarchy, and the unit of the Local and Deep access levels. |
 | **team** | A group of users; by type either a principal that can own records and hold roles, or a lightweight bucket for sharing. |
 
-**Resources** — 8 introspected
+**Resources** — 12 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
+| `AshEnterprise.Accounts.ApiKey` | — | 0 | 0 |
 | `AshEnterprise.Accounts.BusinessUnit` | — | 1 | 5 |
+| `AshEnterprise.Accounts.Offboarding` | — | 0 | 0 |
 | `AshEnterprise.Accounts.Organization` | — | 0 | 2 |
 | `AshEnterprise.Accounts.Position` | — | 0 | 2 |
 | `AshEnterprise.Accounts.ProjectedUser` | — | 0 | 5 |
+| `AshEnterprise.Accounts.SignInLockout` | — | 0 | 0 |
 | `AshEnterprise.Accounts.Team` | — | 0 | 4 |
 | `AshEnterprise.Accounts.TeamMembership` | — | 0 | 0 |
 | `AshEnterprise.Accounts.Token` | — | 0 | 0 |
 | `AshEnterprise.Accounts.User` | — | 0 | 2 |
+| `AshEnterprise.Accounts.UserIdentity` | — | 0 | 0 |
 
 
 <!-- domain-map:context:accounts:end -->
@@ -258,14 +272,16 @@ Authorization as data: (role, privilege, depth) grants as a pure union; the auto
 | **access grant** | An explicit share: (principal, record, rights). |
 | **automation role** | Assigns a role to an automation principal, scoped to a business unit (ADR 0043). |
 
-**Resources** — 9 introspected
+**Resources** — 11 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
 | `AshEnterprise.Security.AccessGrant` | — | 0 | 1 |
 | `AshEnterprise.Security.AccessRequest` | — | 0 | 2 |
 | `AshEnterprise.Security.AgentStartGrant` | — | 0 | 0 |
+| `AshEnterprise.Security.AuthenticationEvent` | — | 0 | 0 |
 | `AshEnterprise.Security.AutomationRole` | — | 0 | 0 |
+| `AshEnterprise.Security.BreakGlassSession` | — | 0 | 2 |
 | `AshEnterprise.Security.Privilege` | — | 0 | 0 |
 | `AshEnterprise.Security.Role` | — | 0 | 2 |
 | `AshEnterprise.Security.RolePrivilege` | — | 0 | 0 |
@@ -275,11 +291,36 @@ Authorization as data: (role, privilege, depth) grants as a pure union; the auto
 
 <!-- domain-map:context:security:end -->
 
+### Flags
+
+<!-- domain-map:context:flags:start -->
+
+Plane: **Platform** · Domain: `AshEnterprise.Flags` · ADRs: [ADR 72](adr/0072-ash-native-tenant-flags.md)
+
+Feature flags, tenant by tenant, resolved once per request into the actor's context.
+
+**Ubiquitous language**
+
+| Term | Meaning |
+|---|---|
+| **catalogue** | The keys this build declares, and the ones the deployment killed. |
+| **flag** | One tenant's decision for one key: off, on, or on for named people, teams, business-unit subtrees and a percentage. |
+| **targeting** | Whether a row is on for a person, pure. |
+
+**Resources** — 1 introspected
+
+| Resource | Description | Aggregates | Calculations |
+|---|---|---|---|
+| `AshEnterprise.Flags.Flag` | — | 0 | 0 |
+
+
+<!-- domain-map:context:flags:end -->
+
 ### Audit
 
 <!-- domain-map:context:audit:start -->
 
-Plane: **Platform** · Domain: `AshEnterprise.Audit` · Packages: `ash_events`, `ash_events_projections` · ADRs: [ADR 2](adr/0002-ash-events-over-paper-trail.md), [ADR 20](adr/0020-tamper-evident-audit-log.md), [ADR 22](adr/0022-audit-log-is-tenant-scoped.md), [ADR 24](adr/0024-audit-retention-and-erasure.md)
+Plane: **Platform** · Domain: `AshEnterprise.Audit` · Packages: `ash_events`, `ash_events_projections`, `ash_events_chain` · ADRs: [ADR 2](adr/0002-ash-events-over-paper-trail.md), [ADR 20](adr/0020-tamper-evident-audit-log.md), [ADR 22](adr/0022-audit-log-is-tenant-scoped.md), [ADR 24](adr/0024-audit-retention-and-erasure.md)
 
 The tamper-evident, tenant-scoped event ledger every projection reads from.
 
@@ -291,11 +332,16 @@ The tamper-evident, tenant-scoped event ledger every projection reads from.
 | **hash chain** | Each chain's rows link by hash; the verifier walks every chain and reports where, if anywhere, it stops adding up. |
 | **projection** | A read model built from the event log; how far each projector has processed is its checkpoint. |
 
-**Resources** — 1 introspected
+**Resources** — 6 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
+| `AshEnterprise.Audit.ArchiveRun` | — | 0 | 0 |
+| `AshEnterprise.Audit.ArchivedEvent` | — | 0 | 0 |
+| `AshEnterprise.Audit.ArchivedEvidence` | — | 0 | 0 |
 | `AshEnterprise.Audit.EventLog` | — | 0 | 0 |
+| `AshEnterprise.Audit.ExportCursor` | — | 0 | 0 |
+| `AshEnterprise.Audit.Package` | — | 0 | 0 |
 
 
 <!-- domain-map:context:audit:end -->
@@ -304,7 +350,7 @@ The tamper-evident, tenant-scoped event ledger every projection reads from.
 
 <!-- domain-map:context:erasure:start -->
 
-Plane: **Platform** · Domain: `AshEnterprise.Erasure` · ADRs: [ADR 24](adr/0024-audit-retention-and-erasure.md), [ADR 32](adr/0032-anonymization-config-is-generated.md)
+Plane: **Platform** · Domain: `AshEnterprise.Erasure` · Packages: `ash_greenmask` · ADRs: [ADR 24](adr/0024-audit-retention-and-erasure.md), [ADR 32](adr/0032-anonymization-config-is-generated.md)
 
 Crypto-shredding and retention: the right to be forgotten over an append-only ledger.
 
@@ -316,11 +362,12 @@ Crypto-shredding and retention: the right to be forgotten over an append-only le
 | **key** | One erasure scope's data-encryption key, stored wrapped under the master key. |
 | **crypto-shredding** | Destroying a scope's key renders everything the scope covered unreadable, without rewriting a single appended row. |
 
-**Resources** — 2 introspected
+**Resources** — 3 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
 | `AshEnterprise.Erasure.Key` | — | 0 | 0 |
+| `AshEnterprise.Erasure.PersonErasure` | — | 0 | 0 |
 | `AshEnterprise.Erasure.Scope` | — | 3 | 4 |
 
 
@@ -432,7 +479,7 @@ The provider edge: declared operations, webhook ingress, scoped landing under er
 | **declared operation** | One generic action and one code interface per provider operation, with a vendored spec pinned by sha-256 and one transport per provider. |
 | **delivery** | A provider webhook delivery, recorded once. |
 
-**Resources** — 13 introspected
+**Resources** — 16 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
@@ -440,6 +487,9 @@ The provider edge: declared operations, webhook ingress, scoped landing under er
 | `AshEnterprise.Integration.Calendar.SyncCursor` | — | 0 | 0 |
 | `AshEnterprise.Integration.LinkedAccount` | — | 7 | 8 |
 | `AshEnterprise.Integration.Operations.Delivery` | — | 0 | 0 |
+| `AshEnterprise.Integration.Outbound.Delivery` | — | 0 | 0 |
+| `AshEnterprise.Integration.Outbound.Endpoint` | — | 0 | 0 |
+| `AshEnterprise.Integration.Outbound.Receiver` | — | 0 | 0 |
 | `AshEnterprise.Integration.ProjectionCursor` | — | 0 | 0 |
 
 *8 provider-named resources omitted from this table.*
@@ -552,7 +602,7 @@ The CDM-derived operational store on the temporal validity substrate.
 | `AshEnterprise.Canonical.ConversationParticipant` | — | 0 | 0 |
 | `AshEnterprise.Canonical.EventAttendee` | — | 0 | 1 |
 | `AshEnterprise.Canonical.Message` | — | 0 | 4 |
-| `AshEnterprise.Canonical.Person` | — | 3 | 3 |
+| `AshEnterprise.Canonical.Person` | — | 3 | 4 |
 | `AshEnterprise.Canonical.Project` | — | 0 | 0 |
 | `AshEnterprise.Canonical.Task` | — | 0 | 10 |
 
@@ -605,12 +655,14 @@ Versioned mappings, deterministic entity resolution, survivorship, non-destructi
 | **source identity** | The cross-reference registry: which external source identity points at which golden record, right now — temporal, one open period per identity. |
 | **golden record** | The survived, merged record the operational store reads; merges are non-destructive. |
 
-**Resources** — 9 introspected
+**Resources** — 11 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
+| `AshEnterprise.Mdm.AttributeAssertion` | — | 0 | 0 |
 | `AshEnterprise.Mdm.Egress` | — | 0 | 0 |
 | `AshEnterprise.Mdm.ImportBatch` | — | 0 | 2 |
+| `AshEnterprise.Mdm.ImportRowRefusal` | — | 0 | 0 |
 | `AshEnterprise.Mdm.Mapping` | — | 0 | 2 |
 | `AshEnterprise.Mdm.MappingProposal` | — | 0 | 0 |
 | `AshEnterprise.Mdm.MatchCandidate` | — | 0 | 12 |
@@ -650,6 +702,31 @@ Run-event lineage emitted from action notifications.
 
 <!-- domain-map:context:lineage:end -->
 
+### Exports
+
+<!-- domain-map:context:exports:start -->
+
+Plane: **Canonical record** · Domain: `AshEnterprise.Exports` · ADRs: [ADR 59](adr/0059-version-number-is-an-optimistic-lock.md)
+
+Bulk export out: a tenant's data as CSV, under the same policies as every other read.
+
+**Ubiquitous language**
+
+| Term | Meaning |
+|---|---|
+| **export** | The export privilege: one more grantable (resource, verb) row, held by default by the tenant's Administrator role and nobody else. |
+| **exportable** | Which resources are exportable. |
+| **csv stream** | The stream of one exportable resource, read in keyset pages as the requester. |
+
+**Resources** — 1 introspected
+
+| Resource | Description | Aggregates | Calculations |
+|---|---|---|---|
+| `AshEnterprise.Exports.Export` | — | 0 | 0 |
+
+
+<!-- domain-map:context:exports:end -->
+
 ### System One
 
 <!-- domain-map:context:system-one:start -->
@@ -675,7 +752,7 @@ Declared questions, the append-only judgment ledger, banding, admitted facts, hu
 |---|---|---|---|
 | `AshEnterprise.SystemOne.BandTableCertification` | — | 0 | 0 |
 | `AshEnterprise.SystemOne.Banding` | — | 0 | 8 |
-| `AshEnterprise.SystemOne.CalibrationRun` | — | 0 | 2 |
+| `AshEnterprise.SystemOne.CalibrationRun` | — | 0 | 3 |
 | `AshEnterprise.SystemOne.CalibrationSample` | — | 0 | 0 |
 | `AshEnterprise.SystemOne.EvidenceAssertion` | — | 0 | 0 |
 | `AshEnterprise.SystemOne.Fact` | — | 0 | 3 |
@@ -683,7 +760,7 @@ Declared questions, the append-only judgment ledger, banding, admitted facts, hu
 | `AshEnterprise.SystemOne.FilterProposal` | — | 0 | 0 |
 | `AshEnterprise.SystemOne.HumanVerdict` | — | 0 | 0 |
 | `AshEnterprise.SystemOne.Judgment` | — | 0 | 0 |
-| `AshEnterprise.SystemOne.QuestionProposal` | — | 0 | 0 |
+| `AshEnterprise.SystemOne.QuestionProposal` | — | 0 | 2 |
 | `AshEnterprise.SystemOne.StandingHead` | — | 0 | 0 |
 
 
@@ -745,6 +822,36 @@ Dependency licence adjudication; judgments declared on dependency resources.
 
 <!-- domain-map:context:licences:end -->
 
+### Signatures
+
+<!-- domain-map:context:signatures:start -->
+
+Plane: **Evidence & judgment** · Domain: `AshEnterprise.Signatures` · Packages: `ash_signatures` · ADRs: [ADR 74](adr/0074-signatures-are-a-package.md), [ADR 32](adr/0032-anonymization-config-is-generated.md)
+
+Signature and acknowledgement requests: the five fragments on the platform base.
+
+**Ubiquitous language**
+
+| Term | Meaning |
+|---|---|
+| **request** | People asked to sign or acknowledge exact document versions, in order. |
+| **request document** | One document version a request shows, with its SHA-256 copied from it. |
+| **signer** | One person asked, acting on their own row. |
+| **signer event** | One thing that happened, append-only. |
+
+**Resources** — 5 introspected
+
+| Resource | Description | Aggregates | Calculations |
+|---|---|---|---|
+| `AshEnterprise.Signatures.Completion` | — | 0 | 0 |
+| `AshEnterprise.Signatures.Request` | — | 0 | 0 |
+| `AshEnterprise.Signatures.RequestDocument` | — | 0 | 0 |
+| `AshEnterprise.Signatures.Signer` | — | 0 | 7 |
+| `AshEnterprise.Signatures.SignerEvent` | — | 0 | 5 |
+
+
+<!-- domain-map:context:signatures:end -->
+
 ### Compliance
 
 <!-- domain-map:context:compliance:start -->
@@ -763,7 +870,7 @@ Findings projected from the event log under immutable, content-hashed rule bundl
 | **policy override** | An approval-bearing exception: a replacement of a rule, or a waiver of one, with the accountability the framework requires. |
 | **evaluation** | The append-only record of one evaluation: what the engine decided and why. |
 
-**Resources** — 18 introspected
+**Resources** — 19 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
@@ -782,6 +889,7 @@ Findings projected from the event log under immutable, content-hashed rule bundl
 | `AshCompliance.Resources.RuleSetRevision` | — | 0 | 0 |
 | `AshCompliance.Resources.TenantPolicySet` | — | 0 | 0 |
 | `AshEnterprise.Compliance.EventLog` | — | 0 | 0 |
+| `AshEnterprise.Compliance.Policy` | — | 0 | 0 |
 | `AshEvents.Projections.Checkpoint` | — | 0 | 0 |
 | `AshEvents.Projections.DeadLetter` | — | 0 | 0 |
 | `AshEvents.Projections.Registry` | — | 0 | 0 |
@@ -867,16 +975,17 @@ BPMN documents compiled to immutable graphs, executed by a token interpreter.
 | **subscription** | A declaration that something happening in the audit log should start a process. |
 | **cursor** | How far the trigger sweep has read into one tenant's audit chain. |
 
-**Resources** — 9 introspected
+**Resources** — 10 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
 | `AshEnterprise.Bpmn.Cursor` | — | 0 | 1 |
 | `AshEnterprise.Bpmn.Definition` | — | 0 | 0 |
 | `AshEnterprise.Bpmn.Dispatch` | — | 0 | 0 |
-| `AshEnterprise.Bpmn.HumanTask` | — | 0 | 20 |
+| `AshEnterprise.Bpmn.HumanTask` | — | 0 | 21 |
 | `AshEnterprise.Bpmn.Instance` | — | 0 | 4 |
 | `AshEnterprise.Bpmn.ProcessEvent` | — | 0 | 0 |
+| `AshEnterprise.Bpmn.Redrive` | — | 0 | 0 |
 | `AshEnterprise.Bpmn.Subscription` | — | 0 | 0 |
 | `AshEnterprise.Bpmn.TaskCandidate` | — | 0 | 0 |
 | `AshEnterprise.Bpmn.Token` | — | 0 | 0 |
@@ -911,6 +1020,32 @@ Host process instances and the dispatched-cursor event triggers.
 
 <!-- domain-map:context:process:end -->
 
+### Automation
+
+<!-- domain-map:context:automation:start -->
+
+Plane: **Orchestration** · Domain: `AshEnterprise.Automation` · ADRs: [ADR 71](adr/0071-one-oidc-identity-provider-per-deployment.md)
+
+What a tenant's recipes react to when the thing that happened is not an audited tenant write.
+
+**Ubiquitous language**
+
+| Term | Meaning |
+|---|---|
+| **occurrence** | A fact recorded into a tenant's audit chain so that a subscription can match it: a user deactivated, a sign-in refused, a break-glass session approved, an API key issued, an inbound alert. |
+| **incident** | The alerts that share a key, from the first one that fired until it closes; a duplicate alert joins the open incident. |
+| **alert webhook** | How inbound alerts reach occurrences. |
+
+**Resources** — 2 introspected
+
+| Resource | Description | Aggregates | Calculations |
+|---|---|---|---|
+| `AshEnterprise.Automation.Incident` | — | 0 | 0 |
+| `AshEnterprise.Automation.Occurrence` | — | 0 | 0 |
+
+
+<!-- domain-map:context:automation:end -->
+
 ### Execution
 
 <!-- domain-map:context:execution:start -->
@@ -936,7 +1071,7 @@ Identity resolution and the governed-invocation lease/job handoff every conseque
 | `AshEnterprise.Execution.Entry` | — | 0 | 0 |
 | `AshEnterprise.Execution.HumanInput` | — | 0 | 0 |
 | `AshEnterprise.Execution.Intervention` | — | 0 | 0 |
-| `AshEnterprise.Execution.Invocation` | — | 0 | 3 |
+| `AshEnterprise.Execution.Invocation` | — | 0 | 4 |
 | `AshEnterprise.Execution.ReleaseManifest` | — | 0 | 0 |
 | `AshEnterprise.Execution.Run` | — | 0 | 3 |
 | `AshEnterprise.Execution.RunFinished` | — | 0 | 0 |
@@ -1060,7 +1195,7 @@ The host assistant and its evaluation harness.
 | **turn** | One question or one answer in a thread. |
 | **pinned app** | A surface the person composed in the agent chat and pinned: a personal app on their launcher. |
 
-**Resources** — 17 introspected
+**Resources** — 18 introspected
 
 | Resource | Description | Aggregates | Calculations |
 |---|---|---|---|
@@ -1072,6 +1207,7 @@ The host assistant and its evaluation harness.
 | `AshEnterprise.Assistant.Lookup.CalendarEvent` | — | 0 | 0 |
 | `AshEnterprise.Assistant.Lookup.Conversation` | — | 0 | 0 |
 | `AshEnterprise.Assistant.Lookup.Duplicate` | — | 0 | 0 |
+| `AshEnterprise.Assistant.Lookup.MeetingPrep` | — | 0 | 0 |
 | `AshEnterprise.Assistant.Lookup.Message` | — | 0 | 0 |
 | `AshEnterprise.Assistant.Lookup.Person` | — | 0 | 0 |
 | `AshEnterprise.Assistant.Lookup.StalledReview` | — | 0 | 0 |
@@ -1282,27 +1418,30 @@ The artifact registry: every versioned thing a person authors, reviews or releas
 
 | Package | Kind | Locked as | Context | Role |
 |---|---|---|---|
-| `ash_events` | fork | git @ d71f6d06 | [Audit](#audit) | Audit/event ledger with as-of capture/replay (ADR 0002). |
-| `ash_events_projections` | transitive | git @ f5c05d99 | [Compliance](#compliance) | The projector engine behind compliance findings. |
-| `ash_strangler` | first-party | git @ a47f5158 | [Legacy estate](#legacy), [Change ledger](#ledger) | Strangler-fig mappings, ledger, drain. |
-| `ash_operations` | first-party | git @ c09e7b40 | [Integration](#integration) | Declared provider operations + webhook ingress. |
-| `ash_discrete_business_events` | first-party | git @ 050c4de8 | [Business events](#business-events) | SourceRecord landing + chained event ledger. |
-| `ash_mdm` | first-party | git @ 97d67af2 | [Master data](#mdm) | Mappings-as-data, resolution, survivorship, merge. |
+| `ash_events` | fork | git @ bd5f4970 | [Audit](#audit) | Audit/event ledger with as-of capture/replay (ADR 0002). |
+| `ash_events_projections` | transitive | git @ 826aff25 | [Compliance](#compliance) | The projector engine behind compliance findings. |
+| `ash_strangler` | first-party | git @ e9835fec | [Legacy estate](#legacy), [Change ledger](#ledger) | Strangler-fig mappings, ledger, drain. |
+| `ash_operations` | first-party | git @ 84f2b221 | [Integration](#integration) | Declared provider operations + webhook ingress. |
+| `ash_discrete_business_events` | first-party | git @ 23ea5336 | [Business events](#business-events) | SourceRecord landing + chained event ledger. |
+| `ash_mdm` | first-party | git @ f8db5fb3 | [Master data](#mdm) | Mappings-as-data, resolution, survivorship, merge. |
 | `ash_open_lineage` | first-party | git @ c35de0bc | [Lineage](#lineage) | Run events from action notifications. |
-| `ash_judgments` | first-party | git @ cc73c469 | [System One](#system-one) | Declared questions, judgment ledger fragments, calibration. |
-| `ash_evidence` | first-party | git @ 63ae9bab | [System One](#system-one) | Document versions, addressed atoms, parse runs, assertions. |
+| `ash_judgments` | first-party | git @ c495c022 | [System One](#system-one) | Declared questions, judgment ledger fragments, calibration. |
+| `ash_evidence` | first-party | git @ 3e2ce790 | [System One](#system-one) | Document versions, addressed atoms, parse runs, assertions. |
 | `ash_rules` | first-party | git @ ab97fdc8 | [Compliance](#compliance) | Serializable rule IR, fact schemas, evaluator seam. |
-| `ash_compliance` | first-party | git @ 5a53583f | [Compliance](#compliance) | Catalogs/profiles/waivers → immutable bundles; findings projection. |
-| `ash_decisions` | first-party | git @ 89dcfccb | [Decisions](#decisions) | Decisions as versioned resources; TCK-measured. |
-| `boxic_dmn` | transitive | git @ 92c2a2ad | [Decisions](#decisions) | Decision-document validation (ADR 0027). |
+| `ash_compliance` | first-party | git @ b1ddecde | [Compliance](#compliance) | Catalogs/profiles/waivers → immutable bundles; findings projection. |
+| `ash_decisions` | first-party | git @ 1a01808e | [Decisions](#decisions) | Decisions as versioned resources; TCK-measured. |
+| `boxic_dmn` | transitive | git @ 6280f2fa | [Decisions](#decisions) | Decision-document validation (ADR 0027). |
 | `boxic_feel` | transitive | hex 0.2.0 | [Decisions](#decisions) | The FEEL expression engine (ADR 0027). |
-| `ash_bpmn` | first-party | git @ 9c76cc58 | [Processes](#bpmn) | Process documents → graph snapshot → token interpreter. |
-| `ash_planning` | first-party | git @ 6dbf0924 | [Planning](#planning) | Planning fragments, IR, validators; solver backend. |
-| `ash_agent` | first-party | git @ 469138a2 | [Agents](#agents) | Governed invocations and durable agent runs (host-instantiated). |
+| `ash_bpmn` | first-party | git @ 0daf09f9 | [Processes](#bpmn) | Process documents → graph snapshot → token interpreter. |
+| `ash_planning` | first-party | git @ 4d7b3c12 | [Planning](#planning) | Planning fragments, IR, validators; solver backend. |
+| `ash_agent` | first-party | git @ c3bd9892 | [Agents](#agents) | Governed invocations and durable agent runs (host-instantiated). |
 | `ash_acp` | first-party | git @ 536a404d | [Agent protocol](#acp) | The agent-client wire adapter; no second authorization model. |
-| `ash_a2ui` | first-party | git @ 0d86a7ba | [Surfaces](#surfaces) | Agent-renderable payloads generated from resources. |
+| `ash_a2ui` | first-party | git @ 9b1957cd | [Surfaces](#surfaces) | Agent-renderable payloads generated from resources. |
 | `ash_agent_tools` | first-party dev | git @ 0171a910 | [Standards](#standards) | Read-only introspection CLI + the iron laws. |
 | `battery` | in-repo | in-repo (`battery/`) | [Platform](#platform) | Cross-substrate integration battery over its own reference instantiation. |
+| `ash_events_chain` | first-party | git @ cd122991 | [Audit](#audit) | The audit log's hash chain: immutability triggers, the verifier over hot log and archive as one chain, the verified move to the archive. |
+| `ash_greenmask` | first-party | git @ 24b0c882 | [Erasure](#erasure) | Masking blocks for sensitive attributes; the generated config's drift gate. |
+| `ash_signatures` | first-party | git @ cb192d44 | [Signatures](#signatures) | The signature and acknowledgement fragments the host instantiates (ADR 0074). |
 
 <!-- domain-map:substrates:end -->
 
