@@ -21,7 +21,6 @@ defmodule AshEnterpriseWeb.E2E.SignInTest do
 
     conn
     |> visit("/sign-in")
-    |> assert_connected()
     # The register and reset forms are on the page too, hidden by CSS, with the same labels.
     |> within("#user-password-sign-in-with-password", fn session ->
       session

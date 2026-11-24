@@ -160,7 +160,6 @@ defmodule MyAppWeb.E2E.OrdersTest do
     conn
     |> sign_in(%{"user_token" => token}, MyAppWeb.Endpoint.session_options())
     |> visit("/orders")
-    |> assert_connected()
     |> click_button("Create order")
 
     assert_chain(key, [browser_event(), handle_event(), ash_action(action: :create), query()])
