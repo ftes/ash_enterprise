@@ -806,8 +806,8 @@ jobs:
     # ash_browser_tests/ is a test-only package with its own mix project and lock,
     # consumed through a sparse git dep or by path. Its suite drives a real Chromium
     # against a tiny fixture application, so nothing else in this workflow exercises
-    # it. The browser comes from the runner image (locally it comes from devenv),
-    # never from Playwright's own download.
+    # it. The browser is the one `mix playwright.install` installs (locally it comes
+    # from devenv).
 
     services:
       postgres:
@@ -828,7 +828,7 @@ jobs:
       PGUSER: postgres
       PGPASSWORD: postgres
       MIX_ENV: test
-      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      E2E_CHROMIUM: bundled
 
     defaults:
       run:
@@ -846,8 +846,7 @@ jobs:
           path: |
             ash_browser_tests/deps
             ash_browser_tests/_build
-            ash_browser_tests/test/playwright/node_modules
-          key: ${{ runner.os }}-browser-tests-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('ash_browser_tests/mix.lock', 'ash_browser_tests/test/playwright/package-lock.json') }}
+          key: ${{ runner.os }}-browser-tests-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('ash_browser_tests/mix.lock') }}
           restore-keys: ${{ runner.os }}-browser-tests-${{ steps.beam.outputs.elixir-version }}-
 
       - run: mix deps.get
@@ -861,39 +860,18 @@ jobs:
       - name: Compile with warnings as errors
         run: mix compile --warnings-as-errors
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install the Playwright driver
-        run: npm ci --prefix test/playwright
-
-      - name: Locate Chromium
-        run: echo "E2E_CHROMIUM=$(command -v chromium || command -v chromium-browser || command -v google-chrome)" >> "$GITHUB_ENV"
-
-      # A cold runner sometimes takes over 30 s to start Chromium for the first time,
-      # which failed the suite before any spec ran (ECL-66). Pay that cost here, with
-      # its own bound, so the launch inside the suite is a warm one.
-      - name: Warm Chromium
-        run: |
-          start=$(date +%s)
-          for attempt in 1 2 3; do
-            if timeout 60 "$E2E_CHROMIUM" --headless --no-sandbox --disable-gpu --dump-dom about:blank > /dev/null; then
-              break
-            fi
-            echo "warm-up attempt $attempt did not finish in 60 s"
-          done
-          echo "Chromium warm-up took $(( $(date +%s) - start )) s"
+      - name: Install the Playwright driver and Chromium
+        run: mix playwright.install chromium --with-deps
 
       - name: Test
         run: mix test
 
-      - name: Upload screenshots from a failure
-        if: failure()
+      - name: Upload traces and screenshots of failed tests
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: browser-tests-screenshots
-          path: ash_browser_tests/screenshots/
+          name: browser-tests-results
+          path: ash_browser_tests/test-results/
           retention-days: 7
 
   battery:
