@@ -660,9 +660,10 @@ jobs:
   e2e:
     name: Browser end-to-end
     runs-on: ${{ github.event_name == 'push' && github.repository == 'lukegalea/ash_enterprise' && github.actor == 'lukegalea' && contains(fromJSON(vars.SELF_HOSTED_JOBS || '[]'), 'e2e') && fromJSON('["self-hosted","homelab"]') || 'ubuntu-latest' }}
-    # Every Playwright spec in assets/e2e, in chromium, against the dev server
-    # the specs drive locally. It gates like the others: it was advisory until
-    # three runs in a row were green (42295888081, 42299104023, 42307413088).
+    # Every browser test in test/playwright, in chromium, against the dev
+    # server, which `mix test.playwright` starts in the test node. It gates like
+    # the others: it was advisory until three runs in a row were green
+    # (42295888081, 42299104023, 42307413088).
 
     # pgvector on pg18, for the reasons given on the main job's service. The
     # dev config connects to `ash_enterprise_dev`, created below.
@@ -688,7 +689,6 @@ jobs:
       SHOWCASE_FAULT_CONTROLS: "true"
       LOG_LEVEL: info
       E2E_PORT: "4100"
-      E2E_SERVER_COMMAND: mix phx.server
 
     steps:
       - uses: actions/checkout@v4
@@ -721,7 +721,8 @@ jobs:
           cache-dependency-path: assets/package-lock.json
 
       # The server's esbuild and tailwind watchers rebuild on change; the
-      # first build happens here so the first page a spec loads is styled.
+      # first build happens here so the first page a test loads is styled.
+      # npm also installs the axe-core the accessibility checks inject.
       - name: Build assets
         run: |
           npm ci --prefix assets
@@ -729,14 +730,13 @@ jobs:
           mix assets.build
 
       - name: Install chromium
-        working-directory: assets
-        run: npx playwright install --with-deps chromium
+        run: mix playwright.install chromium --with-deps
 
       # The order of `mix setup`, then the tenants the specs sign in to: the
       # seeder's example tenant (admin@example.com), the baseline processes
       # the flight view draws, and the clinic-demo tenant. The demo people get
-      # a random password, written to E2E_DEMO_PASSWORD_FILE for the specs to
-      # read (assets/e2e/support/demo.ts) and never printed.
+      # a random password, written to E2E_DEMO_PASSWORD_FILE for the tests to
+      # read (test/playwright/support/demo.ex) and never printed.
       - name: Create and seed the database
         env:
           E2E_DEMO_PASSWORD_FILE: ${{ runner.temp }}/e2e/demo-password
@@ -759,19 +759,19 @@ jobs:
       - name: Check the strangler mappings against the legacy fixture
         run: mix ash_strangler.check --strict
 
-      # Playwright's webServer starts the app (E2E_SERVER_COMMAND) and stops
-      # it when the run ends.
+      # `mix test.playwright` serves the endpoint in the test node, as
+      # `mix phx.server` would, and runs test/playwright against it.
       - name: Playwright
         env:
           E2E_DEMO_PASSWORD_FILE: ${{ runner.temp }}/e2e/demo-password
-        run: npm --prefix assets run test:e2e
+        run: mix test.playwright
 
       - name: Upload the Playwright results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-results
-          path: assets/test-results
+          path: test-results
           retention-days: 7
 
   quick:
