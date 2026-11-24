@@ -60,7 +60,10 @@ defmodule AshBrowserTests.Browser do
 
   # --- Connection ------------------------------------------------------------------
 
-  @doc "Asserts the LiveView on the page has joined its channel."
+  @doc """
+  Asserts the LiveView on the page has joined its channel. Fluffy's `visit` already
+  waits for that.
+  """
   @spec assert_connected(struct(), keyword()) :: struct()
   def assert_connected(conn, opts \\ []) do
     Fluffy.PhoenixTest.assert_has(conn, "body .phx-connected",

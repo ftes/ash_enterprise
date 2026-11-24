@@ -224,7 +224,6 @@ defmodule AshBrowserTests.Surfaces do
     context.conn
     |> host.sign_in(surface.actor, context)
     |> Fluffy.PhoenixTest.visit(surface.path)
-    |> Browser.assert_connected()
     |> Fluffy.PhoenixTest.assert_has(surface.mounted || "[data-phx-main]", timeout: 15_000)
   end
 

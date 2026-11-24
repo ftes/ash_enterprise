@@ -9,7 +9,6 @@ defmodule AshBrowserTests.Case do
           conn
           |> sign_in(%{"user_token" => token()}, MyAppWeb.Endpoint.session_options())
           |> visit("/orders")
-          |> assert_connected()
           |> click_button("Create")
 
           assert_chain(key, [browser_event(), handle_event(), ash_action(), query()])
