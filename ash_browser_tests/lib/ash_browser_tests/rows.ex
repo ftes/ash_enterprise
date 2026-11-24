@@ -223,17 +223,7 @@ defmodule AshBrowserTests.Rows do
     end
   end
 
-  defp eval(conn, expression) do
-    parent = self()
-    ref = make_ref()
-    PhoenixTest.Playwright.evaluate(conn, expression, &send(parent, {ref, &1}))
-
-    receive do
-      {^ref, result} -> result
-    after
-      5_000 -> raise ExUnit.AssertionError, message: "the page did not answer evaluate"
-    end
-  end
+  defp eval(conn, expression), do: Fluffy.Playwright.evaluate(conn.session, expression)
 
   # --- The row a row action acts on --------------------------------------------
 
