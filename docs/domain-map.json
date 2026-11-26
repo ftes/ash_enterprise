@@ -1624,6 +1624,7 @@
       "package": "battery",
       "repo": "in-repo",
       "kind": "in-repo",
+      "path": "battery",
       "context": [
         "platform"
       ],
@@ -1750,5 +1751,39 @@
       "package": "igniter",
       "role": "Code generation and project patching."
     }
+  ],
+  "first_party_orgs": [
+    "lukegalea"
+  ],
+  "vendor_tokens": [
+    "Nango",
+    "Meltano",
+    "Airbyte",
+    "Marquez",
+    "OpenMetadata",
+    "Superset",
+    "Metabase",
+    "Grafana",
+    "Unleash",
+    "FunWithFlags",
+    "Kafka",
+    "Elasticsearch",
+    "DataHub",
+    "Slack",
+    "Gmail",
+    "GitHub",
+    "daisyUI",
+    "Phoenix",
+    "Elixir",
+    "Postgres",
+    "PostgreSQL",
+    "Oban",
+    "Google",
+    "Microsoft",
+    "Outlook",
+    "Zoom",
+    "Notion",
+    "Dropbox",
+    "Teams"
   ]
 }
