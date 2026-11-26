@@ -277,7 +277,7 @@ defmodule AshBrowserTests.Surfaces do
 
   defp click_in_row(conn, row_text, label) do
     clicked =
-      eval(conn, """
+      Fluffy.Playwright.evaluate(conn, """
       (() => {
         #{Browser.walker()}
         const row = deep(document, 'tr, [role="row"]').find((el) => el.textContent.includes(#{Jason.encode!(row_text)}))
@@ -296,6 +296,4 @@ defmodule AshBrowserTests.Surfaces do
 
     conn
   end
-
-  defp eval(conn, expression), do: Fluffy.Playwright.evaluate(conn.session, expression)
 end

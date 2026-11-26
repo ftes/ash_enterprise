@@ -36,26 +36,7 @@ defmodule AshBrowserTests.Browser do
   """
   @spec sign_in(struct(), map(), keyword()) :: struct()
   def sign_in(conn, session, session_options) when is_map(session) do
-    endpoint = Application.fetch_env!(:fluffy, :endpoint)
-
-    plug_conn =
-      Plug.Test.conn(:get, "/")
-      |> Map.put(:secret_key_base, endpoint.config(:secret_key_base))
-      |> Plug.Session.call(Plug.Session.init(session_options))
-      |> Plug.Conn.fetch_session()
-
-    plug_conn =
-      session
-      |> Enum.reduce(plug_conn, fn {key, value}, acc -> Plug.Conn.put_session(acc, key, value) end)
-      |> Plug.Conn.send_resp(200, "")
-
-    cookie = %{
-      name: session_options[:key],
-      value: plug_conn.resp_cookies[session_options[:key]].value,
-      url: Fluffy.base_url(conn.session)
-    }
-
-    %{conn | session: Fluffy.add_cookies(conn.session, [cookie])}
+    Fluffy.add_session_cookie(conn, session, session_options: session_options)
   end
 
   # --- Connection ------------------------------------------------------------------
@@ -77,7 +58,7 @@ defmodule AshBrowserTests.Browser do
   """
   @spec flush_browser_spans(struct()) :: struct()
   def flush_browser_spans(conn) do
-    Fluffy.Playwright.evaluate(conn.session, """
+    Fluffy.Playwright.evaluate(conn, """
     (() => {
       if (window.__otelEndConnect) window.__otelEndConnect()
       if (window.__otelFlush) window.__otelFlush()
@@ -92,7 +73,7 @@ defmodule AshBrowserTests.Browser do
   @doc "The elements matching `selector` in the document and every open shadow root below it."
   @spec deep_query(struct(), String.t()) :: [map()]
   def deep_query(conn, selector) do
-    eval(conn, """
+    Fluffy.Playwright.evaluate(conn, """
     (() => {
       #{@walker}
       return deep(document, #{Jason.encode!(selector)}).map((el) => ({
@@ -139,7 +120,7 @@ defmodule AshBrowserTests.Browser do
     text = Keyword.get(opts, :text)
 
     clicked =
-      eval(conn, """
+      Fluffy.Playwright.evaluate(conn, """
       (() => {
         #{@walker}
         const text = #{Jason.encode!(text)}
@@ -194,8 +175,6 @@ defmodule AshBrowserTests.Browser do
     Enum.filter(matches, &String.contains?(&1["text"], text))
   end
 
-  defp eval(conn, expression), do: Fluffy.Playwright.evaluate(conn.session, expression)
-
   # --- Failure capture --------------------------------------------------------------
 
   @doc false
@@ -210,7 +189,7 @@ defmodule AshBrowserTests.Browser do
   """
   @spec browser_failures(struct()) :: [FailureCapture.failure()]
   def browser_failures(conn) do
-    Fluffy.Playwright.evaluate(conn.session, "1")
+    Fluffy.Playwright.evaluate(conn, "1")
     capture() |> FailureCapture.failures()
   end
 
@@ -238,7 +217,7 @@ defmodule AshBrowserTests.Browser do
   """
   @spec take_browser_failures(struct(), Regex.t()) :: [FailureCapture.failure()]
   def take_browser_failures(conn, %Regex{} = pattern) do
-    Fluffy.Playwright.evaluate(conn.session, "1")
+    Fluffy.Playwright.evaluate(conn, "1")
     capture() |> FailureCapture.take(pattern)
   end
 

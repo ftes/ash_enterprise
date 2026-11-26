@@ -119,7 +119,7 @@ defmodule AshBrowserTests.RowActions do
     })()
     """
 
-    case eval(conn, expression) do
+    case Fluffy.Playwright.evaluate(conn, expression) do
       true ->
         conn
 
@@ -155,7 +155,7 @@ defmodule AshBrowserTests.RowActions do
   end
 
   defp do_wait_for_row(conn, expression, deadline, row_text) do
-    case eval(conn, expression) do
+    case Fluffy.Playwright.evaluate(conn, expression) do
       "yes" ->
         conn
 
@@ -165,7 +165,7 @@ defmodule AshBrowserTests.RowActions do
           do_wait_for_row(conn, expression, deadline, row_text)
         else
           state =
-            eval(conn, """
+            Fluffy.Playwright.evaluate(conn, """
             (() => {
               #{Browser.walker()}
               return JSON.stringify({
@@ -228,7 +228,7 @@ defmodule AshBrowserTests.RowActions do
       |> String.replace("__ROW_ID__", Jason.encode!(row_id))
       |> String.replace("__LABEL__", Jason.encode!(row_action.label))
 
-    case eval(conn, expression) do
+    case Fluffy.Playwright.evaluate(conn, expression) do
       "clicked" ->
         conn
 
@@ -277,6 +277,4 @@ defmodule AshBrowserTests.RowActions do
 
   defp fill_prompt(conn, field, value),
     do: Fluffy.PhoenixTest.fill_in(conn, field.label, with: value)
-
-  defp eval(conn, expression), do: Fluffy.Playwright.evaluate(conn.session, expression)
 end

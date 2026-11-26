@@ -498,7 +498,7 @@ defmodule AshEnterprise.MixProject do
       # The Playwright tier (`mix test.playwright`, test/playwright): the specs
       # ported from Playwright Test, on the client Fluffy drives the browser tier
       # with. In dev too, because that tier runs against the dev server.
-      {:playwright, "~> 1.65.0-rc.4", hex: :playwright_ex, only: [:dev, :test]},
+      {:playwright, "~> 1.65.0-rc.6", hex: :playwright_ex, only: [:dev, :test]},
 
       # --- Static analysis -----------------------------------------------------
       # Dialyzer runs NON-BLOCKING in CI: there is no official guidance for

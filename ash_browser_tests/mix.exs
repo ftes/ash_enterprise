@@ -45,7 +45,8 @@ defmodule AshBrowserTests.MixProject do
   defp deps do
     [
       # --- The browser harness -----------------------------------------------------
-      {:fluffy, "~> 0.9.0-rc.5"},
+      {:fluffy, "~> 0.9.0-rc.7"},
+      {:playwright, "~> 1.65.0-rc.6", hex: :playwright_ex},
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.1"},
       {:phoenix_ecto, "~> 4.5"},

@@ -26,7 +26,7 @@ defmodule AshBrowserTests do
   Points Fluffy at the endpoint and attaches the sandbox hook. Call it from `test_helper.exs`, after the application started.
 
   Options: `:endpoint` (required, a started endpoint), `:sandbox`
-  (default `Ecto.Adapters.SQL.Sandbox`).
+  (default `Fluffy.Sandbox`).
   """
   @spec start!(keyword()) :: :ok
   def start!(opts) do

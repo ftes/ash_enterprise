@@ -27,7 +27,7 @@ defmodule AshBrowserTests.FailureCapture do
     {:ok, pid} = GenServer.start(__MODULE__, nil)
 
     for event <- [Event.console(), Event.page_error(), Event.response()] do
-      Fluffy.on(conn.session, event, &send(pid, {:playwright_event, &1}))
+      Fluffy.on(conn, event, &send(pid, {:playwright_event, &1}))
     end
 
     pid
