@@ -1700,7 +1700,7 @@
       "context": [
         "documents"
       ],
-      "role": "The paper kernel: document kinds, runs and the vocabulary the host binds to."
+      "role": "Deterministic PDF documents from Ash data (early; the API may change)."
     }
   ],
   "adopted": [
