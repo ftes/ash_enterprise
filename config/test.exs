@@ -159,7 +159,7 @@ config :ash_enterprise, :sql_sandbox, true
 
 # Chromium comes from the environment, never a Playwright download: devenv's
 # `pkgs.chromium` by default, `E2E_CHROMIUM=<path>` for another binary, or
-# `E2E_CHROMIUM=bundled` for the one Playwright installed for its driver, which
+# `E2E_CHROMIUM=bundled` for the one `mix playwright.install chromium` installs, which
 # is what CI uses — the runner image's own Chromium changes with every release.
 e2e_chromium =
   case System.get_env("E2E_CHROMIUM") do
@@ -168,30 +168,25 @@ e2e_chromium =
     path -> path
   end
 
-config :phoenix_test,
-  otp_app: :ash_enterprise,
+config :fluffy,
   endpoint: AshEnterpriseWeb.Endpoint,
-  playwright: [
-    browser_pool: :chromium_pool,
-    browser_pools: [
-      [id: :chromium_pool, browser: :chromium, size: 2] ++
-        if(e2e_chromium, do: [executable_path: e2e_chromium], else: [])
-    ],
-    # A module holds its browser from setup_all to its last test, so a module
-    # can queue behind every other module. The bound is the whole tier's run
-    # rather than one module's.
-    browser_pool_checkout_timeout: 10 * 60_000,
-    assets_dir: "./assets",
-    timeout: 30_000,
-    browser_launch_timeout: 90_000,
-    # Both halves of each pair. `screenshot_dir` without `screenshot: true`
-    # writes nothing at all, which is an easy way to upload an empty directory
-    # for months without noticing.
-    screenshot: true,
-    screenshot_dir: "tmp/playwright/screenshots",
-    trace: System.get_env("PW_TRACE") == "1",
-    trace_dir: "tmp/playwright/traces"
-  ]
+  ecto_repos: [AshEnterprise.Repo, AshEvidence.Repo]
+
+# `AshBrowserTests.SandboxHook` reads the sandbox metadata from the user agent.
+config :fluffy, Fluffy.Sandbox, header: "user-agent"
+
+config :playwright, :test,
+  browser_name: :chromium,
+  workers: 2,
+  launch_options:
+    [timeout: 90_000] ++ if(e2e_chromium, do: [executable_path: e2e_chromium], else: []),
+  action_timeout: 30_000,
+  navigation_timeout: 30_000,
+  expect: [timeout: 30_000],
+  # Under test-results/: a screenshot of every test, and a trace of a failed one, or of
+  # every test when PW_TRACE is set.
+  screenshot: :on,
+  trace: if(System.get_env("PW_TRACE") == "1", do: :on, else: :retain_on_failure)
 
 # In test we don't send emails
 config :ash_enterprise, AshEnterprise.Mailer, adapter: Swoosh.Adapters.Test
@@ -258,7 +253,8 @@ config :ash_events_projections, start_projectors?: false, start_probe?: false
 # The test-support subjects are the only ones declaring questions today.
 config :ash_enterprise, :system_one_subject_resources, [
   AshEnterprise.SystemOne.TestSupport.Note,
-  AshEnterprise.SystemOne.TestSupport.Standard
+  AshEnterprise.SystemOne.TestSupport.Standard,
+  AshEnterprise.SystemOne.ShowcaseSubject
 ]
 
 # The boot-time privilege sync (AshEnterprise.Platform.PrivilegeSync) writes
@@ -335,3 +331,17 @@ config :ash_enterprise, AshEnterprise.Audit.ClearRecordsForReplay,
 # Keyset cursors are signed, so a cursor a client wrote is refused (ADR 0073). A deployment
 # derives its own from SECRET_KEY_BASE in config/runtime.exs.
 config :ash, keyset_signing_secret: "test-only keyset signing secret, not a deployment value"
+
+# The fixture documents the kernel's `mix paper.impact --layout <module>` compares a
+# layout change against (test/support; run it as `MIX_ENV=test mix paper.impact`).
+config :ash_paper, :impact_samples, AshEnterprise.Test.PaperSamples
+
+# The host's kinds plus the synthetic ones the generic paper tests issue
+# (test/support/paper_kind): the paper machinery is tested on a kind that is
+# nobody's business data.
+config :ash_enterprise, AshEnterprise.Documents.Paper,
+  kinds: [
+    AshEnterprise.Credentialing.Paper.CredentialStatusLetter,
+    AshEnterprise.Test.Paper.ActivitySummary,
+    AshEnterprise.Test.Paper.ActivitySummaryBrief
+  ]
