@@ -1464,7 +1464,7 @@ The documents surface: issuing real documents from the host's own data through t
 | `ash_discrete_business_events` | first-party | git @ 4badc1c3 | [Business events](#business-events) | SourceRecord landing + chained event ledger. |
 | `ash_mdm` | first-party | git @ f8db5fb3 | [Master data](#mdm) | Mappings-as-data, resolution, survivorship, merge. |
 | `ash_open_lineage` | first-party | git @ c35de0bc | [Lineage](#lineage) | Run events from action notifications. |
-| `ash_judgments` | first-party | git @ 89219338 | [System One](#system-one) | Declared questions, judgment ledger fragments, calibration. |
+| `ash_judgments` | first-party | git @ f984265d | [System One](#system-one) | Declared questions, judgment ledger fragments, calibration. |
 | `ash_evidence` | first-party | git @ 329c367c | [System One](#system-one) | Document versions, addressed atoms, parse runs, assertions. |
 | `ash_provenance` | first-party | git @ ac73afc9 | [System One](#system-one) | Plain-data contract that explains a value: steps, typed gaps, PROV-O export. |
 | `ash_rules` | first-party | git @ ab97fdc8 | [Compliance](#compliance) | Serializable rule IR, fact schemas, evaluator seam. |
